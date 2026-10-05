@@ -4,7 +4,7 @@
 
 STU MCP 在你的电脑运行，可为 Codex、Claude Code、Cursor、WorkBuddy、ZCode、Grok Build 和 DeepSeek Harness 桌面端生成接入配置；豆包工作与其他能执行本机命令的 agent 可使用导出的 Skill。无需 Hermes、自建服务器或模型 API key。公开功能可以直接使用，个人功能在需要时才登录。[接入方式与官方文档](docs/clients.md)
 
-**0.3.0 是预览版本。** 新增可选 WebVPN 自动重登：会话失效时用本机安全保存的账号密码和令牌密钥按需重新登录。公开网站与匿名 OA 已实际验证；WebVPN 自动认证、教务、MySTU、雨课堂的真实账号流程及新增客户端端到端接入仍需要学生参与验证。[验证范围](docs/verification.md)
+**0.3.1 是修复预览版。** 修复 macOS/Linux 的 uv 启动路径、旧学期待办残留，并采用仅负责登录的设置页。保留可选 WebVPN 自动重登。公开网站与匿名 OA 已实际验证；WebVPN 自动认证、教务、MySTU、雨课堂的真实账号流程及客户端应用内的端到端接入仍需要学生参与验证。[验证范围](docs/verification.md)
 
 ## 复制这段话给你的 agent
 
@@ -12,7 +12,7 @@ STU MCP 在你的电脑运行，可为 Codex、Claude Code、Cursor、WorkBuddy�
 
 ```text
 请在我的电脑安装并接入 STU MCP，仓库是 https://github.com/0error0warning/stu-mcp 。
-请读取仓库 v0.3.0 的 README、docs/install.md 和 docs/clients.md，使用该版本的官方发行包；缺少 uv/Python 时按文档处理。
+请读取仓库 v0.3.1 的 README、docs/install.md 和 docs/clients.md，使用该版本的官方发行包；缺少 uv/Python 时按文档处理。
 根据你当前所在的客户端，只配置 STU MCP，保留其他配置并备份。豆包工作用本机 Skill；需要我导入或授权时说明。不要展示或上传我现有配置里的密钥。
 先验证无需登录的校园公开信息与 OA。需要成绩或课程时，再打开本地设置页让我在学校官方页面登录。
 不要在对话里索要密码、cookie、token，不要配置模型 API key，不要接入微信私聊或群聊。
@@ -41,8 +41,10 @@ STU MCP 在你的电脑运行，可为 Codex、Claude Code、Cursor、WorkBuddy�
 先安装 [uv](https://docs.astral.sh/uv/getting-started/installation/)，随后运行：
 
 ```sh
-uv tool install --python 3.12 https://github.com/0error0warning/stu-mcp/releases/download/v0.3.0/stu_mcp-0.3.0-py3-none-any.whl
+uv tool install --python 3.12 https://github.com/0error0warning/stu-mcp/releases/download/v0.3.1/stu_mcp-0.3.1-py3-none-any.whl
 ```
+
+已安装旧版时，在安装命令中加入 `--force`；升级后重新运行对应的 `connect ... --apply`，更新客户端中旧的启动路径，然后重新加载 MCP 或重启客户端。
 
 然后接入你用的客户端：
 
