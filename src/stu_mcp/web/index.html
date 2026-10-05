@@ -12,9 +12,10 @@
     <div class="intro"><p class="eyebrow">校园工具，随需使用</p><h1>让你的 agent<br>读懂校园信息。</h1>
     <p class="lead">连接你常用的 AI 助手。通知可以先用，成绩和课程在需要时再登录。</p></div>
     <section class="connection" aria-labelledby="connect-title">
-      <div><span class="step">01 / 接入</span><h2 id="connect-title">选择你的 agent</h2><p>保存接入后，在客户端重新加载 MCP 或重启，并启用 STU MCP。</p></div>
-      <div class="connect-controls"><label for="client">客户端</label><select id="client"><option value="codex">Codex</option><option value="claude-code">Claude Code</option><option value="cursor">Cursor</option><option value="generic">其他 MCP 客户端</option></select><button id="connect">保存接入</button></div>
+      <div><span class="step">01 / 接入</span><h2 id="connect-title">选择你的 agent</h2><p id="client-guide">正在读取接入方式…</p></div>
+      <div class="connect-controls"><label for="client">客户端</label><select id="client" disabled><option>正在读取…</option></select><button id="connect" disabled>保存接入</button></div>
       <pre id="generic" hidden></pre>
+      <button id="download-skill" class="secondary" hidden>下载技能包</button>
     </section>
     <section class="features" aria-labelledby="features-title">
       <div class="section-heading"><div><span class="step">02 / 功能</span><h2 id="features-title">只登录你需要的来源</h2></div><p>登录在学校页面完成，账密无需发给 agent。</p></div>

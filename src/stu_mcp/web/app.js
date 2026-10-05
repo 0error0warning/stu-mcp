@@ -3,6 +3,7 @@
   const token = location.hash.slice(1);
   const feedback = document.getElementById("feedback");
   let initial = true, polling = null;
+  let clients = [];
   const names = {not_required:"无需账号", needs_login:"尚未登录", session_saved:"会话已保存", login_expired:"登录已过期", secure_storage_unavailable:"系统密钥库不可用", session_invalid:"请重新登录"};
   function say(message, error=false) { feedback.textContent=message; feedback.className=error?"error":""; }
   async function api(path, data) {
@@ -44,18 +45,47 @@
       if(status==="session_saved")actions.append(button("退出","secondary forget",b=>action(b,"/api/logout",{service:source.source},"已移除此来源的会话和缓存。")));
       row.append(actions);container.append(row);
     }
-    if(initial){document.getElementById("jw-http-compat").checked=state.transport.jw_http_compat;for(const key of ["college","major","entry_year","interests"])document.getElementById(key).value=state.profile[key]||"";if(state.clients.length)document.getElementById("client").value=state.clients[0];initial=false;}
+    if(initial){
+      document.getElementById("jw-http-compat").checked=state.transport.jw_http_compat;
+      for(const key of ["college","major","entry_year","interests"])document.getElementById(key).value=state.profile[key]||"";
+      clients=state.available_clients;
+      const select=document.getElementById("client");select.replaceChildren();
+      for(const client of clients){const option=element("option",client.label);option.value=client.id;select.append(option);}
+      if(state.clients.length)select.value=state.clients[0];
+      select.disabled=false;document.getElementById("connect").disabled=false;clientChanged();initial=false;
+    }
     const running=state.jobs.find(j=>j.status==="running");
     if(polling&&running&&running.phase==="preparing_browser")say("首次使用正在准备登录浏览器。下载完成后会打开学校页面，无需提供任何账密。");
     if(polling&&running&&running.phase==="waiting_for_login")say("请在打开的学校页面完成登录。验证码或扫码也只在学校页面处理。");
     const finished=state.jobs.find(j=>j.status==="finished");
     if(polling&&finished){clearInterval(polling);polling=null;say(finished.result.ok?"登录会话已安全保存，现在可刷新对应来源。":finished.result.message,!finished.result.ok);}
   }
-  document.getElementById("client").addEventListener("change",e=>{document.getElementById("connect").textContent=e.target.value==="generic"?"显示接入配置":"保存接入";document.getElementById("generic").hidden=true;});
+  function clientChanged(){
+    say("");
+    const spec=clients.find(c=>c.id===document.getElementById("client").value);
+    document.getElementById("connect").textContent=spec.action;
+    document.getElementById("client-guide").textContent=spec.next_step;
+    document.getElementById("generic").hidden=true;document.getElementById("download-skill").hidden=true;
+  }
+  document.getElementById("client").addEventListener("change",clientChanged);
   document.getElementById("connect").addEventListener("click",async e=>{
     const client=document.getElementById("client").value;
-    const result=await action(e.target,"/api/connect",{client},client==="generic"?"将此配置添加到支持本地 stdio MCP 的客户端。":"接入已保存。请重新加载 MCP 或重启客户端，并启用 STU MCP。");
-    if(result&&client==="generic"){const pre=document.getElementById("generic");pre.textContent=JSON.stringify(result.config,null,2);pre.hidden=false;}
+    const result=await action(e.target,"/api/connect",{client});
+    if(result){
+      const prefix=result.status==="connected"?"接入配置已保存。 ":result.status==="already_connected"?"接入配置已存在。 ":"";
+      say(prefix+(result.message?result.message+" ":"")+result.next_step);
+      if(result.config){const pre=document.getElementById("generic");pre.textContent=JSON.stringify(result.config,null,2);pre.hidden=false;}
+      if(result.status==="skill_exported")document.getElementById("download-skill").hidden=false;
+    }
+  });
+  document.getElementById("download-skill").addEventListener("click",async e=>{
+    e.target.disabled=true;
+    try{
+      const res=await fetch("/api/skill",{headers:{"X-STU-Setup":token}});
+      if(!res.ok)throw new Error("技能包无法下载，请重新生成。");
+      const url=URL.createObjectURL(await res.blob()),link=document.createElement("a");
+      link.href=url;link.download="stu-campus.zip";link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    }catch(error){say(error.message,true);}finally{e.target.disabled=false;}
   });
   document.getElementById("save-profile").addEventListener("click",e=>{const data={};for(const key of ["college","major","entry_year","interests"])data[key]=document.getElementById(key).value;action(e.target,"/api/profile",data,"资料已保存。");});
   document.getElementById("save-transport").addEventListener("click",e=>action(e.target,"/api/transport",{jw_http_compat:document.getElementById("jw-http-compat").checked},"教务选项已保存。需要成绩时，再登录并刷新教务。"));

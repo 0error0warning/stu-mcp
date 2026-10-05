@@ -2,9 +2,9 @@
 
 把汕头大学的通知、成绩、课程和作业，接入你常用的 agent。
 
-STU MCP 在你的电脑运行，支持 Codex、Claude Code、Cursor，以及其他支持本地 stdio MCP 的客户端。无需 Hermes、自建服务器或模型 API key。公开功能可以直接使用，个人功能在需要时才登录。
+STU MCP 在你的电脑运行，可为 Codex、Claude Code、Cursor、WorkBuddy、ZCode、Grok Build 和 DeepSeek Harness 桌面端生成接入配置；豆包工作与其他能执行本机命令的 agent 可使用导出的 Skill。无需 Hermes、自建服务器或模型 API key。公开功能可以直接使用，个人功能在需要时才登录。[接入方式与官方文档](docs/clients.md)
 
-**0.1.0 是首版预览。** 公开网站与匿名 OA 已实际验证；教务、MySTU、雨课堂的真实账号登录还需要学生参与验证。不要将已实现的适配器理解为所有学校流程都已验收。[验证范围](docs/verification.md)
+**0.2.0 是预览版本。** 新增客户端配置适配与 CLI + Skill 接入。公开网站与匿名 OA 已实际验证；新增客户端端到端接入、教务、MySTU、雨课堂的真实账号登录还需要学生参与验证。[验证范围](docs/verification.md)
 
 ## 复制这段话给你的 agent
 
@@ -12,8 +12,8 @@ STU MCP 在你的电脑运行，支持 Codex、Claude Code、Cursor，以及其�
 
 ```text
 请在我的电脑安装并接入 STU MCP，仓库是 https://github.com/0error0warning/stu-mcp 。
-请读取仓库 v0.1.0 的 README 和 docs/install.md，使用该版本的官方发行包；缺少 uv/Python 时按文档处理。
-根据你当前所在的客户端，只配置 STU MCP，保留其他配置并备份。不要读取或展示我现有配置里的密钥。
+请读取仓库 v0.2.0 的 README、docs/install.md 和 docs/clients.md，使用该版本的官方发行包；缺少 uv/Python 时按文档处理。
+根据你当前所在的客户端，只配置 STU MCP，保留其他配置并备份。豆包工作用本机 Skill；需要我导入或授权时说明。不要展示或上传我现有配置里的密钥。
 先验证无需登录的校园公开信息与 OA。需要成绩或课程时，再打开本地设置页让我在学校官方页面登录。
 不要在对话里索要密码、cookie、token，不要配置模型 API key，不要接入微信私聊或群聊。
 请报告安装和验证结果；如果客户端需要重新加载或重启，明确告诉我下一步。
@@ -41,7 +41,7 @@ STU MCP 在你的电脑运行，支持 Codex、Claude Code、Cursor，以及其�
 先安装 [uv](https://docs.astral.sh/uv/getting-started/installation/)，随后运行：
 
 ```sh
-uv tool install --python 3.12 https://github.com/0error0warning/stu-mcp/releases/download/v0.1.0/stu_mcp-0.1.0-py3-none-any.whl
+uv tool install --python 3.12 https://github.com/0error0warning/stu-mcp/releases/download/v0.2.0/stu_mcp-0.2.0-py3-none-any.whl
 stu-mcp setup
 ```
 
@@ -53,11 +53,17 @@ stu-mcp setup
 stu-mcp connect codex --apply
 stu-mcp connect claude-code --apply
 stu-mcp connect cursor --apply
+stu-mcp connect workbuddy --apply
+stu-mcp connect zcode --apply
+stu-mcp connect grok-build --apply
+stu-mcp connect deepseek-harness --apply
 ```
 
 只运行自己需要的一条。省略 `--apply` 只预览；重复运行不产生重复配置。已存在其他同名服务时停止，检查后才使用 `--replace`。配置变更会保留原文件备份。保存后按客户端要求重新加载 MCP、重启或启用服务。
 
 其他客户端：`stu-mcp connect generic` 输出不含凭据的标准 `mcpServers` 配置，选择本地 stdio 接入。
+
+豆包工作：`stu-mcp connect doubao-work --apply` 生成可导入的本机 Skill；其他可执行本机命令的 agent 可用 `generic-cli`。设置页提供技能包下载。导入技能、允许本机执行后再验证；豆包工作的原生 MCP 接入尚未确认。[各客户端说明](docs/clients.md)
 
 ## 开始使用
 

@@ -10,8 +10,9 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from .auth import LoginJobs
-from .clients import connect, detected_clients, server_config
-from .runtime import AppError
+from .clients import catalog, connect, detected_clients
+from .runtime import AppError, reject_symlinks
+from .skill_export import skill_path
 
 
 class SetupServer:
@@ -29,6 +30,8 @@ class SetupServer:
                 self.send_response(code)
                 self.send_header("Content-Type", content_type)
                 self.send_header("Content-Length", str(len(body)))
+                if content_type == "application/zip":
+                    self.send_header("Content-Disposition", 'attachment; filename="stu-campus.zip"')
                 self.send_header("Cache-Control", "no-store")
                 self.send_header("X-Content-Type-Options", "nosniff")
                 self.send_header("X-Frame-Options", "DENY")
@@ -59,9 +62,20 @@ class SetupServer:
                 if self.path == "/api/status":
                     try:
                         status = owner.app.status()
+                        status["available_clients"] = catalog(owner.client_home)
                         if owner.client_home is not None:
                             status["clients"] = detected_clients(owner.client_home)
                         self.json(200, {**status, "jobs": owner.jobs.snapshot()})
+                    except AppError as exc:
+                        self.json(400, exc.result())
+                    return
+                if self.path == "/api/skill":
+                    path = skill_path(owner.app.runtime)
+                    try:
+                        reject_symlinks(path)
+                        if not path.is_file() or path.stat().st_size > 256 * 1024:
+                            raise AppError("skill_not_exported", "请先生成技能包。")
+                        self.reply(200, path.read_bytes(), "application/zip")
                     except AppError as exc:
                         self.json(400, exc.result())
                     return
@@ -99,7 +113,7 @@ class SetupServer:
                         result = owner.app.refresh(str(data.get("source", "")))
                     elif self.path == "/api/connect":
                         client = str(data.get("client", ""))
-                        result = {"ok": True, "config": {"mcpServers": {"stu-mcp": server_config()}}} if client == "generic" else connect(client, owner.app.runtime, apply=True, home=owner.client_home)
+                        result = connect(client, owner.app.runtime, apply=True, home=owner.client_home)
                     elif self.path == "/api/transport":
                         owner.app.runtime.save_preferences(data)
                         result = {"ok": True, "status": "saved"}

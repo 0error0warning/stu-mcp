@@ -4,12 +4,12 @@
 
 ## 1. 环境与发行包
 
-使用 `https://github.com/0error0warning/stu-mcp` 的 `v0.1.0` 版本。[发行页](https://github.com/0error0warning/stu-mcp/releases/tag/v0.1.0) 包含 wheel、源码与 SHA256 校验文件。不要安装未知 PyPI 同名包；当前未发布到 PyPI。
+使用 `https://github.com/0error0warning/stu-mcp` 的 `v0.2.0` 版本。[发行页](https://github.com/0error0warning/stu-mcp/releases/tag/v0.2.0) 包含 wheel、源码与 SHA256 校验文件。不要安装未知 PyPI 同名包；当前未发布到 PyPI。
 
 检查 `uv`。缺少时参考 [uv 官方安装文档](https://docs.astral.sh/uv/getting-started/installation/)，使用官方安装器或系统已有的软件包管理器。优先用户目录安装；不需要管理员权限、不改全局 Python、不修改其他项目依赖。若终端还未刷新 PATH，使用安装好的 `uv` 绝对路径。
 
 ```sh
-uv tool install --python 3.12 https://github.com/0error0warning/stu-mcp/releases/download/v0.1.0/stu_mcp-0.1.0-py3-none-any.whl
+uv tool install --python 3.12 https://github.com/0error0warning/stu-mcp/releases/download/v0.2.0/stu_mcp-0.2.0-py3-none-any.whl
 ```
 
 Python 3.12 缺失时，uv 可以按自己的受管理 Python 流程准备。安装后找到 `stu-mcp` 的用户级可执行文件；如果 PATH 未刷新，使用绝对路径执行接下来的命令。不要为了“修复安装”删除用户已有工具或配置。
@@ -18,15 +18,17 @@ Python 3.12 缺失时，uv 可以按自己的受管理 Python 流程准备。安
 
 ## 2. 连接当前客户端
 
-使用 `stu-mcp connect codex --apply`、`stu-mcp connect claude-code --apply` 或 `stu-mcp connect cursor --apply`。程序负责保留其他设置、备份和生成不含凭据的启动项。不要让 agent 把整个已有配置输出到对话中。
+先运行 `stu-mcp clients`，按当前客户端选择 `stu-mcp connect CLIENT --apply`。自动合并配置支持 `codex`、`claude-code`、`cursor`、`workbuddy`、`zcode`、`grok-build` 和 `deepseek-harness`。官方路径、特殊合并规则和验收状态见 [客户端适配说明](clients.md)。程序负责保留其他设置、备份和生成不含凭据的启动项，不输出完整已有配置。
 
-程序为 Codex 写当前 `CODEX_HOME/config.toml`（默认 `~/.codex/config.toml`）；Claude Code 写 `~/.claude.json`；Cursor 写 `~/.cursor/mcp.json`。使用绝对 Python 启动路径，避免桌面客户端的 PATH 与终端不同。
+使用绝对 Python 启动路径，避免桌面客户端的 PATH 与终端不同。DeepSeek Harness 需先安装并打开一次桌面端，再写它的桌面 profile；没有初始化时报告该步骤，不另建 CLI profile。
+
+豆包工作使用 `stu-mcp connect doubao-work --apply` 生成本机 Skill 包，从技能入口导入，并在本地电脑环境验证命令执行；其他可执行本机命令的 agent 可用 `generic-cli`。包生成成功不等于已导入、能执行命令或已配置原生 MCP，如实报告。可先用 CLI 验证公开查询，再由用户导入技能。不调用未公开的客户端内部接口或扫描账户数据库来自动注册。
 
 客户端无法识别时，只询问用户正在使用哪个客户端。支持本地 stdio MCP 的其他客户端用 `stu-mcp connect generic`，按该客户端的官方配置方式添加。托管/网页客户端如果只支持远程 MCP，应报告限制，不能声称已经接通。
 
 同名冲突会返回 `client_config_conflict`；保留现状，向用户展示冲突类型，只有明确选择替换后才使用 `--replace`。原配置备份位于用户 STU MCP 数据目录的 `backups`，包含原来的设置，不要上传。
 
-保存后提醒用户重新加载/重启 MCP 客户端，并完成该客户端要求的启用步骤。配置写入不等于当前会话已经加载新工具。
+保存后提醒用户重新加载/重启并启用；写入不等于已加载新工具。Skill 接入要执行版本 / 状态命令验证本机权限。
 
 ## 3. 验证公开功能
 

@@ -9,7 +9,7 @@ import time
 from . import __version__
 from .app import App
 from .auth import interactive_login
-from .clients import connect, server_config
+from .clients import CLIENTS, catalog, connect
 from .runtime import AppError
 
 
@@ -19,6 +19,7 @@ def parser() -> argparse.ArgumentParser:
     sub = p.add_subparsers(dest="command")
     sub.add_parser("serve", help="启动 stdio MCP 服务")
     sub.add_parser("status", help="输出功能/登录/缓存状态")
+    sub.add_parser("clients", help="查看客户端接入方式与官方说明")
     setup = sub.add_parser("setup", help="打开本机设置页")
     setup.add_argument("--no-browser", action="store_true", help="仅在终端输出本机设置地址")
     login = sub.add_parser("login", help="在独立浏览器中手动登录学校")
@@ -26,7 +27,7 @@ def parser() -> argparse.ArgumentParser:
     logout = sub.add_parser("logout", help="移除指定来源的会话和缓存")
     logout.add_argument("service", choices=("jw", "mystu", "yuketang", "webvpn"))
     client = sub.add_parser("connect", help="预览或保存客户端接入，保留其他配置")
-    client.add_argument("client", choices=("codex", "claude-code", "cursor", "generic"))
+    client.add_argument("client", choices=tuple(CLIENTS))
     client.add_argument("--apply", action="store_true", help="实际写入；默认只预览")
     client.add_argument("--replace", action="store_true", help="明确替换其他同名配置")
     refresh = sub.add_parser("refresh", help="按需更新一个来源")
@@ -39,6 +40,20 @@ def parser() -> argparse.ArgumentParser:
     query.add_argument("--search", default="")
     query.add_argument("--limit", type=int, default=20)
     query.add_argument("--offset", type=int, default=0)
+    notice = sub.add_parser("notice", help="读取已缓存通知的正文和附件列表")
+    notice.add_argument("item_id")
+    notice.add_argument("--refresh", action="store_true")
+    attachment = sub.add_parser("attachment", help="读取已缓存通知的 PDF / 文本附件")
+    attachment.add_argument("item_id")
+    attachment.add_argument("--index", type=int, default=0)
+    summary = sub.add_parser("academic-summary", help="计算已缓存成绩的学分加权统计")
+    summary.add_argument("--semester", default="")
+    task = sub.add_parser("task-status", help="更新本机待办状态，不提交学校作业")
+    task.add_argument("item_id")
+    task.add_argument("status", choices=("todo", "done", "ignored"))
+    profile = sub.add_parser("profile", help="读取或更新可选学生资料")
+    for field in ("college", "major", "entry-year", "interests"):
+        profile.add_argument("--" + field)
     browser = sub.add_parser("browser", help="安装手动登录所需浏览器")
     browser.add_argument("action", choices=("install",))
     return p
@@ -60,6 +75,8 @@ def main(argv: list[str] | None = None) -> int:
             from .server import build_server
             build_server().run(transport="stdio")
             return 0
+        if args.command == "clients":
+            return emit({"ok": True, "clients": catalog()})
         app = App()
         if args.command == "status":
             return emit(app.status())
@@ -82,12 +99,25 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "logout":
             return emit(app.logout(args.service))
         if args.command == "connect":
-            return emit({"ok": True, "mcpServers": {"stu-mcp": server_config()}} if args.client == "generic"
-                        else connect(args.client, app.runtime, apply=args.apply, replace=args.replace))
+            return emit(connect(args.client, app.runtime, apply=args.apply, replace=args.replace))
         if args.command == "refresh":
             return emit(app.refresh(args.source, args.limit, args.semester))
         if args.command == "query":
             return emit(app.query(args.kind, args.search, args.limit, args.offset, args.source))
+        if args.command == "notice":
+            return emit(app.notice(args.item_id, args.refresh))
+        if args.command == "attachment":
+            return emit(app.attachment(args.item_id, args.index))
+        if args.command == "academic-summary":
+            return emit(app.academic_summary(args.semester))
+        if args.command == "task-status":
+            return emit(app.store.set_task_status(args.item_id, args.status))
+        if args.command == "profile":
+            fields = {field: getattr(args, field) for field in ("college", "major", "entry_year", "interests")
+                      if getattr(args, field) is not None}
+            if fields:
+                app.runtime.save_profile(fields)
+            return emit({"ok": True, "profile": app.runtime.profile()})
     except AppError as exc:
         return emit(exc.result())
     except KeyboardInterrupt:
