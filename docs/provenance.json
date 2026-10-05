@@ -1,0 +1,39 @@
+{
+  "baseline": {
+    "repository": "0error0warning/school-hub",
+    "commit": "13f1b216ac35269d9840b6854ccff64c1e25e548"
+  },
+  "method": "Clean, manually adapted parsers and endpoint contracts; no import of the original runtime.",
+  "inputs": [
+    {
+      "path": "school_hub/scrapers/jw.py",
+      "sha256": "e303def22a4970eaa7e3b8f39bf9e5fbb686507114b996c986efd522c3850b1e"
+    },
+    {
+      "path": "school_hub/scrapers/mystu_api.py",
+      "sha256": "478384c87a20c375a63c9018a61d1ac249bec81f4982486041d69dcf374e731e"
+    },
+    {
+      "path": "school_hub/scrapers/oa.py",
+      "sha256": "5eca99e9ae314ecf3fc83e63eaa35a2e3168976ff1f11c80642d3446f77ee86c"
+    },
+    {
+      "path": "school_hub/scrapers/stu_public.py",
+      "sha256": "a013d7473af781b45cfcca52332d38493d6ad34081ea38f2ff88fbc5b37d3b92"
+    },
+    {
+      "path": "tools/yuketang_refresh.py",
+      "sha256": "9bdc43d65d990746ff3bc233a77ce7c6c8f7c0b8e5cb2d2a7fb958a903323ab0"
+    }
+  ],
+  "excluded": [
+    "Git history",
+    "production data",
+    "credentials and sessions",
+    "personal profile defaults",
+    "Hermes configuration",
+    "WeChat acquisition",
+    "model routing and AI batch processing"
+  ],
+  "tests": "New synthetic fixtures only; original fixtures were not redistributed."
+}

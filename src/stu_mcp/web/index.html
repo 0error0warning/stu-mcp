@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>STU MCP · 本地设置</title><link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+<div class="shell">
+  <header class="masthead"><span class="brand">STU <span>MCP</span></span><span class="local">本机设置 · 汕头大学</span></header>
+  <main>
+    <div class="intro"><p class="eyebrow">校园工具，随需使用</p><h1>让你的 agent<br>读懂校园信息。</h1>
+    <p class="lead">连接你常用的 AI 助手。通知可以先用，成绩和课程在需要时再登录。</p></div>
+    <section class="connection" aria-labelledby="connect-title">
+      <div><span class="step">01 / 接入</span><h2 id="connect-title">选择你的 agent</h2><p>保存接入后，在客户端重新加载 MCP 或重启，并启用 STU MCP。</p></div>
+      <div class="connect-controls"><label for="client">客户端</label><select id="client"><option value="codex">Codex</option><option value="claude-code">Claude Code</option><option value="cursor">Cursor</option><option value="generic">其他 MCP 客户端</option></select><button id="connect">保存接入</button></div>
+      <pre id="generic" hidden></pre>
+    </section>
+    <section class="features" aria-labelledby="features-title">
+      <div class="section-heading"><div><span class="step">02 / 功能</span><h2 id="features-title">只登录你需要的来源</h2></div><p>登录在学校页面完成，账密无需发给 agent。</p></div>
+      <div id="sources" aria-live="polite"><p>正在读取本地状态…</p></div>
+      <div class="compat">
+        <label><input id="jw-http-compat" type="checkbox"> 使用学校现有教务 HTTP 接口</label>
+        <p>教务目前会跳转到 HTTP。开启后，教务会话和成绩会经过未加密连接；账号密码仍只在 HTTPS 统一认证页输入。这项兼容只影响教务。</p>
+        <button id="save-transport" class="secondary">保存教务选项</button>
+      </div>
+    </section>
+    <details class="profile"><summary>补充学院和兴趣，让你的 agent 更了解需求 <span>可选</span></summary>
+      <div class="fields"><label>学院<input id="college" maxlength="100" autocomplete="off"></label><label>专业<input id="major" maxlength="100" autocomplete="off"></label><label>入学年份<input id="entry_year" type="number" min="2000" max="2100"></label><label class="wide">关注方向<input id="interests" maxlength="300" placeholder="例如：竞赛、科研、实习" autocomplete="off"></label></div>
+      <button id="save-profile" class="secondary">保存资料</button>
+    </details>
+    <div class="privacy"><span class="privacy-marker">●</span><p>登录会话保存在本机，加密密钥放在系统密钥库中。没有独立后台 AI，也不获取微信私聊和群聊。</p></div>
+    <p id="feedback" role="status" aria-live="polite"></p>
+  </main>
+  <footer><span>STU MCP <span id="version"></span></span><span>独立开源项目 · 非学校官方服务</span></footer>
+</div>
+</body>
+</html>
