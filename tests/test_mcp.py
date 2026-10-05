@@ -1,15 +1,17 @@
 import json
 import os
-import sys
 
 import pytest
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
+from stu_mcp.clients import server_config
+
 
 @pytest.mark.asyncio
 async def test_real_stdio_handshake_schema_and_feature_gating(tmp_path):
-    params = StdioServerParameters(command=sys.executable, args=["-m", "stu_mcp", "serve"],
+    config = server_config()
+    params = StdioServerParameters(command=config["command"], args=config["args"],
                                   env={**os.environ, "STU_MCP_HOME": str(tmp_path / "stdio-data")})
     async with stdio_client(params) as (read, write), ClientSession(read, write, read_timeout_seconds=30) as client:
         initialized = await client.initialize()

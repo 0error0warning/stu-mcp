@@ -64,7 +64,8 @@ CLIENTS = {
 
 
 def server_config(client: str = "generic") -> dict:
-    config = {"command": str(Path(sys.executable).resolve()), "args": ["-m", "stu_mcp", "serve"]}
+    # Keep the virtualenv entry point: resolving its symlink loses installed packages.
+    config = {"command": sys.executable, "args": ["-m", "stu_mcp", "serve"]}
     return {"type": "stdio", **config} if client == "workbuddy" else config
 
 

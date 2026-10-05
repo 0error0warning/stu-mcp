@@ -8,6 +8,7 @@ from contextlib import contextmanager
 from datetime import UTC, datetime
 
 from .runtime import AppError, Runtime, reject_symlinks
+from .sync import COURSE_KINDS, CourseSync, in_scope
 from .vault import Vault
 
 
@@ -30,6 +31,8 @@ class Store:
                     status TEXT NOT NULL, saved INTEGER NOT NULL DEFAULT 0);
                 CREATE TABLE IF NOT EXISTS task_overrides (
                     id TEXT PRIMARY KEY, status TEXT NOT NULL);
+                CREATE TABLE IF NOT EXISTS course_scopes (
+                    source TEXT PRIMARY KEY, payload BLOB NOT NULL);
             """)
 
     @contextmanager
@@ -46,19 +49,37 @@ class Store:
         finally:
             c.close()
 
-    def save_batch(self, source: str, records: list[dict], *, private: bool = False) -> int:
+    def save_batch(self, source: str, records: list[dict], *, private: bool = False,
+                   sync: CourseSync | None = None) -> int:
         if source not in ("public", "oa", "jw", "mystu", "yuketang", "local"):
             raise AppError("unknown_source", "不支持此数据来源。")
         if source in {"jw", "mystu", "yuketang"} and not private:
             raise AppError("private_storage_required", "此来源必须加密保存。", source)
+        if sync is not None and source not in {"mystu", "yuketang"}:
+            raise AppError("invalid_sync", "此来源不支持课程范围同步。", source)
         timestamp = now()
-        cipher = self.vault._cipher(create=True) if records and private else None
+        cipher = self.vault._cipher(create=True) if private and (records or sync is not None) else None
         rows = []
         for item in records:
             data = {**item, "source": source, "collected_at": timestamp}
             payload = self.vault.protect(data, cipher=cipher) if private else json.dumps(data, ensure_ascii=False).encode()
             rows.append((source, item["kind"], item["id"], payload, int(private), timestamp))
         with self.connect() as c:
+            if sync is not None:
+                incoming_ids = {item["id"] for item in records}
+                old = c.execute("SELECT * FROM records WHERE source=? AND kind IN ('course','task','resource')",
+                                (source,)).fetchall()
+                retired = []
+                for row in old:
+                    item = self.vault.unprotect(bytes(row["payload"]), cipher=cipher)
+                    if sync.obsolete(item, incoming_ids):
+                        retired.append((source, row["kind"], row["id"]))
+                c.executemany("DELETE FROM records WHERE source=? AND kind=? AND id=?", retired)
+                c.executemany("DELETE FROM task_overrides WHERE id=?", [(r[2],) for r in retired])
+                if sync.course_ids is not None:
+                    scope = {**sync.scope(), "collected_at": timestamp}
+                    c.execute("INSERT OR REPLACE INTO course_scopes VALUES (?,?)",
+                              (source, self.vault.protect(scope, cipher=cipher)))
             c.executemany("INSERT OR REPLACE INTO records VALUES (?,?,?,?,?,?)", rows)
         return len(rows)
 
@@ -85,13 +106,25 @@ class Store:
             rows = c.execute("SELECT * FROM records WHERE " + " AND ".join(clauses) +
                              " ORDER BY collected_at DESC, id ASC LIMIT 5000", params).fetchall()
             overrides = {r[0]: r[1] for r in c.execute("SELECT id,status FROM task_overrides")}
+            scope_rows = c.execute("SELECT * FROM course_scopes WHERE source IN (" +
+                                   ",".join("?" for _ in sources) + ")", list(sources)).fetchall() if (
+                                       kind is None or kind in COURSE_KINDS) else []
         items, unavailable = [], []
         cipher, key_problem = None, None
-        if any(row["private"] for row in rows):
+        if scope_rows or any(row["private"] for row in rows):
             try:
                 cipher = self.vault._cipher()
             except AppError as exc:
                 key_problem = exc
+        scopes, blocked_scopes, unverified_count = {}, set(), 0
+        for row in scope_rows:
+            try:
+                if key_problem:
+                    raise key_problem
+                scopes[row["source"]] = self.vault.unprotect(bytes(row["payload"]), cipher=cipher)
+            except AppError as exc:
+                unavailable.append({"source": row["source"], "status": exc.code})
+                blocked_scopes.add(row["source"])
         for row in rows:
             try:
                 if row["private"] and key_problem:
@@ -99,6 +132,11 @@ class Store:
                 item = self.vault.unprotect(bytes(row["payload"]), cipher=cipher) if row["private"] else json.loads(row["payload"])
             except AppError as exc:
                 unavailable.append({"source": row["source"], "status": exc.code})
+                continue
+            if row["source"] in blocked_scopes and item["kind"] in COURSE_KINDS:
+                continue
+            if row["source"] in scopes and not in_scope(item, scopes[row["source"]]):
+                unverified_count += 1
                 continue
             if query and not all(t.casefold() in json.dumps(item, ensure_ascii=False).casefold()
                                  for t in query.split()):
@@ -109,6 +147,10 @@ class Store:
         return {"ok": True, "items": items if _all_items else items[offset:offset + limit], "total_count": len(items),
                 "offset": offset, "has_more": len(items) > offset + limit, "cached": True,
                 "unavailable": list({(r["source"], r["status"]): r for r in unavailable}.values()),
+                "unverified_count": unverified_count,
+                "scopes": [{"source": source, "semester": scope["semester"],
+                            "course_count": len(scope["course_ids"]), "collected_at": scope["collected_at"]}
+                           for source, scope in scopes.items()],
                 "scan_capped": len(rows) == 5000, "freshness": self.freshness()}
 
     def get(self, item_id: str) -> dict:
@@ -130,3 +172,4 @@ class Store:
             c.execute("DELETE FROM task_overrides WHERE id IN (SELECT id FROM records WHERE source=?)", (source,))
             c.execute("DELETE FROM records WHERE source=?", (source,))
             c.execute("DELETE FROM source_status WHERE source=?", (source,))
+            c.execute("DELETE FROM course_scopes WHERE source=?", (source,))

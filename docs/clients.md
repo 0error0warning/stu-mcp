@@ -23,6 +23,8 @@
 
 配置保存返回 `verification: configuration_only`。重新加载 / 重启并启用后，从当前 agent 发现并调用 `get_capabilities` 才算连接验证完成。
 
+Python 启动路径必须保留 uv 虚拟环境的入口，即使它是符号链接，也不能解析成底层 Python。升级修复后重新执行对应的 `connect ... --apply`，会备份并更新已有 STU MCP 启动项，保留用户的其他设置。导出的 JSON 或 Skill ZIP 需要重新生成并替换客户端内的旧副本。
+
 ## WorkBuddy
 
 [官方 MCP 指南](https://www.codebuddy.cn/docs/workbuddy/From-Beginner-to-Expert-Guide/Function-Description/MCP-Guide) 给出用户与项目路径及界面入口；[官方开放平台说明](https://open.workbuddy.cn/docs/connector) 确认 stdio 的 `type`、`command` 和 `args` 结构。
