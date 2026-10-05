@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "stu-mcp"
-version = "0.3.0"
+version = "0.3.1"
 description = "汕头大学学生的校园工具，供 MCP agents 按需调用"
 readme = "README.md"
 requires-python = ">=3.11"

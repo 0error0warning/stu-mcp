@@ -4,7 +4,7 @@
 
 STU MCP 在你的电脑运行，可为 Codex、Claude Code、Cursor、WorkBuddy、ZCode、Grok Build 和 DeepSeek Harness 桌面端生成接入配置；豆包工作与其他能执行本机命令的 agent 可使用导出的 Skill。无需 Hermes、自建服务器或模型 API key。公开功能可以直接使用，个人功能在需要时才登录。[接入方式与官方文档](docs/clients.md)
 
-**0.3.0 是预览版本。** 新增可选 WebVPN 自动重登：会话失效时用本机安全保存的账号密码和令牌密钥按需重新登录。公开网站与匿名 OA 已实际验证；WebVPN 自动认证、教务、MySTU、雨课堂的真实账号流程及新增客户端端到端接入仍需要学生参与验证。[验证范围](docs/verification.md)
+**0.3.1 是修复预览版。** 修复 macOS/Linux 的 uv 启动路径、旧学期待办残留，并采用仅负责登录的设置页。保留可选 WebVPN 自动重登。公开网站与匿名 OA 已实际验证；WebVPN 自动认证、教务、MySTU、雨课堂的真实账号流程及客户端应用内的端到端接入仍需要学生参与验证。[验证范围](docs/verification.md)
 
 ## 复制这段话给你的 agent
 
@@ -12,7 +12,7 @@ STU MCP 在你的电脑运行，可为 Codex、Claude Code、Cursor、WorkBuddy�
 
 ```text
 请在我的电脑安装并接入 STU MCP，仓库是 https://github.com/0error0warning/stu-mcp 。
-请读取仓库 v0.3.0 的 README、docs/install.md 和 docs/clients.md，使用该版本的官方发行包；缺少 uv/Python 时按文档处理。
+请读取仓库 v0.3.1 的 README、docs/install.md 和 docs/clients.md，使用该版本的官方发行包；缺少 uv/Python 时按文档处理。
 根据你当前所在的客户端，只配置 STU MCP，保留其他配置并备份。豆包工作用本机 Skill；需要我导入或授权时说明。不要展示或上传我现有配置里的密钥。
 先验证无需登录的校园公开信息与 OA。需要成绩或课程时，再打开本地设置页让我在学校官方页面登录。
 不要在对话里索要密码、cookie、token，不要配置模型 API key，不要接入微信私聊或群聊。
@@ -35,7 +35,7 @@ STU MCP 在你的电脑运行，可为 Codex、Claude Code、Cursor、WorkBuddy�
 
 这是按需、有界的信息读取工具。刷新会报告获取范围、数量上限和失败部分；查询会报告缓存时间。空缓存不表示学校没有通知或作业。
 
-狐友功能暂在开发分支，v0.3.0 发行包不包含它。使用该分支时可调用 `search_huyou_posts`、`get_huyou_post`、`search_huyou_circles`，或 CLI 的 `stu-mcp huyou search/detail/circles`。默认搜索汕大树洞，当前 agent 规划少量字面关键词，工具不另行调用模型。帖子和回复标为 `official=false`，不混入 OA 通知。[狐友调用与范围](docs/huyou.md)
+狐友功能暂在开发分支，v0.3.1 发行包不包含它。使用该分支时可调用 `search_huyou_posts`、`get_huyou_post`、`search_huyou_circles`，或 CLI 的 `stu-mcp huyou search/detail/circles`。默认搜索汕大树洞，当前 agent 规划少量字面关键词，工具不另行调用模型。帖子和回复标为 `official=false`，不混入 OA 通知。[狐友调用与范围](docs/huyou.md)
 
 不做微信私聊/群聊获取、聊天解密或历史扫描。首版也没有公众号采集、独立后台 AI、自动投递或自动提交作业。
 
@@ -44,13 +44,12 @@ STU MCP 在你的电脑运行，可为 Codex、Claude Code、Cursor、WorkBuddy�
 先安装 [uv](https://docs.astral.sh/uv/getting-started/installation/)，随后运行：
 
 ```sh
-uv tool install --python 3.12 https://github.com/0error0warning/stu-mcp/releases/download/v0.3.0/stu_mcp-0.3.0-py3-none-any.whl
-stu-mcp setup
+uv tool install --python 3.12 https://github.com/0error0warning/stu-mcp/releases/download/v0.3.1/stu_mcp-0.3.1-py3-none-any.whl
 ```
 
-设置页里选择客户端并保存接入。首次点击个人功能的“登录”会自动准备登录浏览器；也可预先运行 `stu-mcp browser install`。Python 和登录浏览器只需要首次准备。Linux 还需可用的 Secret Service/KWallet 和桌面环境；公开查询不依赖密钥库。
+已安装旧版时，在安装命令中加入 `--force`；升级后重新运行对应的 `connect ... --apply`，更新客户端中旧的启动路径，然后重新加载 MCP 或重启客户端。
 
-也可以在终端完成接入：
+然后接入你用的客户端：
 
 ```sh
 stu-mcp connect codex --apply
@@ -62,11 +61,13 @@ stu-mcp connect grok-build --apply
 stu-mcp connect deepseek-harness --apply
 ```
 
-只运行自己需要的一条。省略 `--apply` 只预览；重复运行不产生重复配置。已存在其他同名服务时停止，检查后才使用 `--replace`。配置变更会保留原文件备份。保存后按客户端要求重新加载 MCP、重启或启用服务。
+只运行自己需要的一条。需要成绩、课程或作业时，运行 `stu-mcp setup` 打开本机设置页登录学校账号。首次点「登录」会自动准备登录浏览器；也可预先运行 `stu-mcp browser install`。Linux 还需可用的 Secret Service/KWallet 和桌面环境；公开查询不依赖密钥库。
+
+省略 `--apply` 只预览；重复运行不产生重复配置。已存在其他同名服务时停止，检查后才使用 `--replace`。配置变更会保留原文件备份。保存后按客户端要求重新加载 MCP、重启或启用服务。
 
 其他客户端：`stu-mcp connect generic` 输出不含凭据的标准 `mcpServers` 配置，选择本地 stdio 接入。
 
-豆包工作：`stu-mcp connect doubao-work --apply` 生成可导入的本机 Skill；其他可执行本机命令的 agent 可用 `generic-cli`。设置页提供技能包下载。导入技能、允许本机执行后再验证；豆包工作的原生 MCP 接入尚未确认。[各客户端说明](docs/clients.md)
+豆包工作：`stu-mcp connect doubao-work --apply` 生成可导入的本机 Skill；其他可执行本机命令的 agent 可用 `generic-cli`。导入技能、允许本机执行后再验证；豆包工作的原生 MCP 接入尚未确认。[各客户端说明](docs/clients.md)
 
 ## 开始使用
 
@@ -91,17 +92,17 @@ CLI 别名为 `stu`。学校服务对校园网络、VPN、验证码或多因素�
 
 ## 凭据与隐私
 
-默认在学校页面手动登录，账密无需发给 agent。OA 的 WebVPN 还可以选择自动重登：在本机设置页展开相应选项，填写学校账号、密码和已绑定令牌的密钥（或完整 `otpauth://totp/` 地址），主动勾选允许后保存。保存的是能生成动态验证码的密钥，不能填写当前六位验证码。密钥支持 Base32、Base64、十六进制，可明确指定格式。
+默认在学校页面手动登录，账密无需发给 agent。OA 的 WebVPN 还可以选择自动重登：在本机设置页点 WebVPN 的「设置」，填写学校账号、密码和已绑定令牌的密钥（或完整 `otpauth://totp/` 地址）后保存。保存的是能生成动态验证码的密钥，不能填写当前六位验证码。密钥支持 Base32、Base64、十六进制，可明确指定格式。
 
 这份可选配置直接存系统密钥库，不写入文件、MCP 参数、客户端配置或日志。读取受保护 OA 列表、正文或附件时，先复用会话，失效后自动登录并验证读取；匿名 OA 不触发登录。凭据错误或学校要求人工验证时暂停自动尝试，需重新配置或手动登录；网络问题设有尝试间隔，不反复提交凭据，也不运行定时保活。
 
 登录会话、成绩和个人课程缓存加密保存，密钥放在系统密钥库中。密钥库不可用时停止对应个人功能，不退回明文。来源独立配置、独立退出；重新登录会清除该来源旧缓存，避免混入旧账号数据。
 
-`stu-mcp logout jw`、`stu-mcp logout mystu`、`stu-mcp logout yuketang`、`stu-mcp logout webvpn` 移除相应会话及缓存。退出 WebVPN 同时移除自动重登凭据；手动重新登录 WebVPN 会移除旧自动配置，避免自动切回旧账号。设置页可单独关闭自动重登并移除凭据，保留当前会话。公开数据与可选兴趣资料不含登录凭据。数据默认位于当前用户的系统数据目录，开发时可用 `STU_MCP_HOME` 指定独立目录。
+`stu-mcp logout jw`、`stu-mcp logout mystu`、`stu-mcp logout yuketang`、`stu-mcp logout webvpn` 移除相应会话及缓存。退出 WebVPN 同时移除自动重登凭据；手动重新登录 WebVPN 会移除旧自动配置，避免自动切回旧账号。设置页的「断开」等同 `stu-mcp logout webvpn`。公开数据与可选兴趣资料不含登录凭据。数据默认位于当前用户的系统数据目录，开发时可用 `STU_MCP_HOME` 指定独立目录。
 
 OA 的公开接口目前是 HTTP，程序仅匿名读取，绝不向该地址发送登录态。HTTPS 认证代理是否可用取决于学校环境，首版尚未完成真实 WebVPN 验证。
 
-2026-10-05 实测教务 HTTPS 入口会跳转到 HTTP。本版提供独立的“使用学校现有教务 HTTP 接口”选项，默认关闭，需要成绩时在设置页开启。密码只在学校 HTTPS 统一认证页输入；开启后，教务会话和成绩会通过 HTTP 传输，保存到本机时仍加密。此例外只允许教务主机，不影响 MySTU、雨课堂或 WebVPN 的 HTTPS 要求。真实学生登录仍需验收。
+2026-10-05 实测教务 HTTPS 入口会跳转到 HTTP。教务 HTTP 兼容默认关闭；在设置页首次登录教务时，页面会先说明这一点，点「继续登录」才开启。密码只在学校 HTTPS 统一认证页输入；开启后，教务会话和成绩会通过 HTTP 传输，保存到本机时仍加密。此例外只允许教务主机，不影响 MySTU、雨课堂或 WebVPN 的 HTTPS 要求。真实学生登录仍需验收。
 
 同一系统账号下拥有完整执行权限的程序仍可能访问你的密钥库或进程内存；加密存储不等于防御已控制电脑的 agent。[详细安全边界](SECURITY.md)
 

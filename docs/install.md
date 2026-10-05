@@ -4,15 +4,15 @@
 
 ## 1. 环境与发行包
 
-使用 `https://github.com/0error0warning/stu-mcp` 的 `v0.3.0` 版本。[发行页](https://github.com/0error0warning/stu-mcp/releases/tag/v0.3.0) 包含 wheel、源码与 SHA256 校验文件。不要安装未知 PyPI 同名包；当前未发布到 PyPI。
+使用 `https://github.com/0error0warning/stu-mcp` 的 `v0.3.1` 版本。[发行页](https://github.com/0error0warning/stu-mcp/releases/tag/v0.3.1) 包含 wheel、源码与 SHA256 校验文件。不要安装未知 PyPI 同名包；当前未发布到 PyPI。
 
 检查 `uv`。缺少时参考 [uv 官方安装文档](https://docs.astral.sh/uv/getting-started/installation/)，使用官方安装器或系统已有的软件包管理器。优先用户目录安装；不需要管理员权限、不改全局 Python、不修改其他项目依赖。若终端还未刷新 PATH，使用安装好的 `uv` 绝对路径。
 
 ```sh
-uv tool install --python 3.12 https://github.com/0error0warning/stu-mcp/releases/download/v0.3.0/stu_mcp-0.3.0-py3-none-any.whl
+uv tool install --python 3.12 https://github.com/0error0warning/stu-mcp/releases/download/v0.3.1/stu_mcp-0.3.1-py3-none-any.whl
 ```
 
-从旧版升级时，在上述命令加入 `--force`。升级后重新加载 MCP 或重启客户端，关闭旧设置页，再执行 `stu-mcp setup` 打开新版。保存的来源会话和独立用户数据目录保留；WebVPN 自动重登仍需本人主动配置。
+从旧版升级时，在上述命令加入 `--force`。安装后重新运行当前客户端的 `connect ... --apply`，让旧的启动路径更新为安装环境内的 Python，再重新加载 MCP 或重启客户端。关闭旧设置页，再执行 `stu-mcp setup` 打开新版。保存的来源会话和独立用户数据目录保留；WebVPN 自动重登仍需本人主动配置。
 
 Python 3.12 缺失时，uv 可以按自己的受管理 Python 流程准备。安装后找到 `stu-mcp` 的用户级可执行文件；如果 PATH 未刷新，使用绝对路径执行接下来的命令。不要为了“修复安装”删除用户已有工具或配置。
 
@@ -55,11 +55,11 @@ stu-mcp setup
 
 也可以用 MCP `open_setup`。设置页或 CLI `stu-mcp login jw|mystu|yuketang|webvpn` 打开学校/雨课堂页面，用户自己操作。验证码、MFA 或二维码在官方页面处理。agent 不索要、不代填、不记录密码、cookie、token、验证码或 TOTP 密钥，不截图用户登录过程，不导出 storage-state。
 
-若用户希望 WebVPN 过期后自动重登，可由本人在设置页展开“WebVPN 会话失效后自动重新登录”，填写学校账号、密码和已绑定令牌的密钥或完整 `otpauth://totp/` 地址，并勾选允许保存和自动登录。不要让 agent 读取/截图/代填这个表单，也不要把密钥或当前验证码发进对话。该配置完全可选，保存在系统密钥库；表单不回填，状态只显示开关和失败状态。
+若用户希望 WebVPN 过期后自动重登，可由本人在设置页点 WebVPN 的「设置」，填写学校账号、密码和已绑定令牌的密钥或完整 `otpauth://totp/` 地址后保存。不要让 agent 读取/截图/代填这个表单，也不要把密钥或当前验证码发进对话。该配置完全可选，保存在系统密钥库；表单不回填，状态只显示开关和失败状态。
 
-受保护 OA 读取会复用会话，失效时尝试一次自动认证；账号密码或令牌被拒绝、学校要求人工验证时会暂停。`auto_login_paused` 表示需本人更新配置或手动登录，`auto_login_cooldown` 表示稍后再试，不能反复刷新登录。手动重新登录会移除旧自动配置；退出 WebVPN 会移除会话、缓存和自动凭据。可以只移除自动凭据而保留当前会话。没有定时保活或后台 AI。
+受保护 OA 读取会复用会话，失效时尝试一次自动认证；账号密码或令牌被拒绝、学校要求人工验证时会暂停。`auto_login_paused` 表示需本人更新配置或手动登录，`auto_login_cooldown` 表示稍后再试，不能反复刷新登录。手动重新登录会移除旧自动配置；退出 WebVPN 会移除会话、缓存和自动凭据。设置页「断开」与 `stu-mcp logout webvpn` 相同。没有定时保活或后台 AI。
 
-需要教务成绩时，先让用户在设置页选择“使用学校现有教务 HTTP 接口”。该选项默认关闭，只兼容教务，开启后教务会话和成绩会经过 HTTP，密码仍在 HTTPS 统一认证页输入。不要让 agent 自动替用户改这个传输选项。
+需要教务成绩时，让用户在设置页登录教务；首次登录会先说明 HTTP 兼容，由用户点「继续登录」确认。该选项默认关闭，只兼容教务，开启后教务会话和成绩会经过 HTTP，密码仍在 HTTPS 统一认证页输入。不要让 agent 自动替用户改这个传输选项。
 
 在有桌面的电脑上完成浏览器登录。Linux 安全密钥库未运行或被锁定时，向用户报告 `secure_storage_unavailable`，不要安装明文 keyring 后端作为替代。无账号功能仍能使用。
 

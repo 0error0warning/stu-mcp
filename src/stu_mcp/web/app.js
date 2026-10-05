@@ -1,109 +1,299 @@
 "use strict";
 (() => {
   const token = location.hash.slice(1);
-  const feedback = document.getElementById("feedback");
-  let initial = true, polling = null;
-  let clients = [];
-  const names = {not_required:"无需账号", needs_login:"尚未登录", session_saved:"会话已保存", login_expired:"登录已过期", secure_storage_unavailable:"系统密钥库不可用", session_invalid:"请重新登录"};
-  function say(message, error=false) { feedback.textContent=message; feedback.className=error?"error":""; }
+  const $ = id => document.getElementById(id);
+  const NAMES = {jw: "教务系统", mystu: "MySTU", yuketang: "雨课堂", oa: "WebVPN"};
+  const EXPIRED = new Set(["login_expired", "session_invalid", "session_changed"]);
+  const SECRETS = ["vpn-user", "vpn-pass", "vpn-totp"];
+  const rows = [...document.querySelectorAll(".row[data-service]")];
+
+  let state = null;
+  let watching = false;
+  let pollTimer = null;
+  let pollFailures = 0;
+  let toastTimer = null;
+  let disarmTimer = null;
+
+  for (const button of document.querySelectorAll(".act")) button.disabled = true;
+
   async function api(path, data) {
-    const res = await fetch(path, {method:data===undefined?"GET":"POST", headers:{"X-STU-Setup":token,"Content-Type":"application/json"}, body:data===undefined?undefined:JSON.stringify(data)});
-    const result=await res.json();
-    if (!res.ok || result.ok===false) throw new Error(result.message || "设置页已失效，请从 stu-mcp setup 重新打开。");
-    return result;
+    const response = await fetch(path, {
+      method: data === undefined ? "GET" : "POST",
+      headers: {"X-STU-Setup": token, "Content-Type": "application/json"},
+      body: data === undefined ? undefined : JSON.stringify(data),
+    });
+    let body = {};
+    try { body = await response.json(); } catch (_) { /* non-JSON error page */ }
+    if (!response.ok || body.ok === false) {
+      const error = new Error(body.message || (response.status === 403
+        ? "页面已失效，请重新运行 stu-mcp setup。" : "操作没有完成，请重试。"));
+      error.httpStatus = response.status;
+      throw error;
+    }
+    return body;
   }
-  function element(tag, text, className) { const node=document.createElement(tag);if(text!==undefined)node.textContent=text;if(className)node.className=className;return node; }
-  async function action(button, path, data, message) {
-    button.disabled=true;
-    try {const result=await api(path,data);say(message || result.message || "操作已完成。");await load();return result;}
-    catch(error){say(error.message,true);return null;}
-    finally{button.disabled=false;}
+
+  function toast(message, bad = false) {
+    const node = $("toast");
+    node.textContent = message;
+    node.setAttribute("role", bad ? "alert" : "status");
+    node.className = "toast show" + (bad ? " bad" : "");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { node.className = "toast" + (bad ? " bad" : ""); }, bad ? 6000 : 3500);
   }
-  function button(text, kind, fn) { const node=element("button",text,kind);node.addEventListener("click",()=>fn(node));return node; }
+
+  function el(tag, text, className) {
+    const node = document.createElement(tag);
+    if (text !== undefined) node.textContent = text;
+    if (className) node.className = className;
+    return node;
+  }
+
+  const runningJob = () => state.jobs.find(job => job.status === "running");
+  // "disabled" means a removed or half-written config: treat it like none.
+  const autoMode = () => {
+    const status = state.webvpn_auto_login.status;
+    if (status === "enabled" || status === "paused") return status;
+    return status === "not_configured" || status === "disabled" ? "none" : "broken";
+  };
+
+  function sourceState(id) {
+    const source = state.sources.find(item => item.source === id);
+    const fresh = state.freshness.find(item => item.source === id);
+    return {auth: source ? source.auth.status : "needs_login", last: fresh ? fresh.status : null};
+  }
+
+  // ---- accounts --------------------------------------------------------
+
+  function oaView(job) {
+    const mode = autoMode();
+    const {auth, last} = sourceState("oa");
+    if (job && job.service === "oa") return ["请在弹出的窗口中登录", "busy", "等待中"];
+    if (mode === "enabled") return ["已保存账号，过期自动登录", "ok", "管理"];
+    if (mode === "paused") return ["自动登录已暂停，需要更新账号", "warn", "更新"];
+    if (mode === "broken") return ["保存的账号无法读取", "warn", "管理"];
+    if (auth === "session_saved" && !EXPIRED.has(last)) return ["已登录", "ok", "管理"];
+    if (auth === "session_saved" || EXPIRED.has(auth)) return ["登录已过期", "warn", "设置"];
+    return [null, "", "设置"];
+  }
+
+  function accountView(id, job) {
+    const {auth, last} = sourceState(id);
+    if (job && job.service === id) {
+      return [job.phase === "preparing_browser" ? "正在准备登录窗口…" : "请在弹出的窗口中登录", "busy", "等待中"];
+    }
+    if (auth === "session_saved" && !EXPIRED.has(last)) return ["已登录", "ok", "退出"];
+    if (auth === "session_saved" || EXPIRED.has(auth)) return ["登录已过期", "warn", "重新登录"];
+    if (auth === "secure_storage_unavailable") return ["无法访问系统钥匙串", "bad", "登录"];
+    return [null, "", "登录"];
+  }
+
+  function renderRows() {
+    const job = runningJob();
+    for (const row of rows) {
+      const id = row.dataset.service;
+      const [text, tone, label] = id === "oa" ? oaView(job) : accountView(id, job);
+      const meta = row.querySelector(".meta");
+      const button = row.querySelector(".act");
+      const open = button.getAttribute("aria-expanded") === "true";
+      meta.textContent = text || row.dataset.desc;
+      meta.className = "meta" + (tone ? " " + tone : "");
+      button.textContent = open ? "取消" : label;
+      // Accent means "needs you"; signed-in actions stay neutral.
+      button.classList.toggle("quiet", open || label === "退出" || label === "管理");
+      button.classList.toggle("out", !open && label === "退出");
+      button.classList.toggle("wait", Boolean(job) && job.service === id);
+      button.disabled = Boolean(job);
+    }
+  }
+
+  function closePanels() {
+    clearCredentials();
+    for (const panel of document.querySelectorAll(".panel")) panel.hidden = true;
+    for (const button of document.querySelectorAll(".act[aria-controls]")) button.setAttribute("aria-expanded", "false");
+    disarm();
+    if (state) renderRows();
+  }
+
+  function openPanel(id) {
+    const panel = $(id);
+    const wasOpen = !panel.hidden;
+    closePanels();
+    if (wasOpen) return false;
+    panel.hidden = false;
+    document.querySelector(`[aria-controls="${id}"]`).setAttribute("aria-expanded", "true");
+    renderRows();
+    return true;
+  }
+
+  function showVpnPanel() {
+    const mode = autoMode();
+    const {auth, last} = sourceState("oa");
+    const manual = auth === "session_saved" && !EXPIRED.has(last);
+    const manage = mode !== "none" || manual;
+    let note = "";
+    if (mode === "enabled") note = "账号存在系统钥匙串里，会话过期时自动重新登录。";
+    else if (mode === "paused") note = "上次自动登录没有成功，已暂停。请更新账号，或改用浏览器登录。";
+    else if (mode === "broken") note = "保存的账号无法读取，请重新填写或断开。";
+    else if (manual) note = "已通过浏览器登录，过期后需要再登录一次。保存账号后可以自动续期。";
+    $("vpn-status").textContent = note;
+    $("vpn-edit").textContent = mode === "none" ? "保存账号" : "更新账号";
+    $("vpn-manage").hidden = !manage;
+    $("vpn-form").hidden = manage;
+    if (!manage) $("vpn-user").focus();
+  }
+
+  async function login(id) {
+    try {
+      await api("/api/login", {service: id});
+      watching = true;
+      await load();
+    } catch (error) {
+      pollFailure(error);
+    }
+  }
+
+  async function logout(id, message) {
+    try {
+      await api("/api/logout", {service: id});
+      toast(message);
+      closePanels();
+      await load();
+    } catch (error) {
+      toast(error.message, true);
+    }
+  }
+
+  for (const row of rows) {
+    row.querySelector(".act").addEventListener("click", () => {
+      const id = row.dataset.service;
+      if (id === "oa") {
+        if (openPanel("panel-oa")) showVpnPanel();
+        return;
+      }
+      if (row.querySelector(".act").getAttribute("aria-expanded") === "true") {
+        closePanels();
+        return;
+      }
+      const {auth, last} = sourceState(id);
+      if (auth === "session_saved" && !EXPIRED.has(last)) {
+        logout(id, `已退出${NAMES[id]}`);
+      } else if (id === "jw" && !state.transport.jw_http_compat) {
+        openPanel("panel-jw");
+      } else {
+        closePanels();
+        login(id);
+      }
+    });
+  }
+
+  $("jw-continue").addEventListener("click", async event => {
+    const button = event.currentTarget;
+    button.disabled = true;
+    try {
+      await api("/api/transport", {jw_http_compat: true});
+      state.transport.jw_http_compat = true;
+      closePanels();
+      await login("jw");
+    } catch (error) {
+      toast(error.message, true);
+    } finally {
+      button.disabled = false;
+    }
+  });
+
+  $("vpn-edit").addEventListener("click", () => {
+    $("vpn-manage").hidden = true;
+    $("vpn-form").hidden = false;
+    $("vpn-user").focus();
+  });
+
+  $("vpn-alt").addEventListener("click", () => {
+    clearCredentials();
+    closePanels();
+    login("oa");
+  });
+
+  function disarm() {
+    clearTimeout(disarmTimer);
+    const button = $("vpn-logout");
+    delete button.dataset.armed;
+    button.textContent = "断开";
+  }
+
+  $("vpn-logout").addEventListener("click", event => {
+    const button = event.currentTarget;
+    if (!button.dataset.armed) {
+      button.dataset.armed = "1";
+      button.textContent = "确认断开？";
+      disarmTimer = setTimeout(disarm, 4000);
+      return;
+    }
+    disarm();
+    logout("oa", "已断开 WebVPN，保存的账号已删除");
+  });
+
+  function clearCredentials() {
+    for (const id of SECRETS) $(id).value = "";
+  }
+
+  $("vpn-form").addEventListener("submit", async event => {
+    event.preventDefault();
+    const button = $("vpn-save");
+    const data = {enabled: true, username: $("vpn-user").value, password: $("vpn-pass").value,
+                  totp: $("vpn-totp").value, encoding: "auto"};
+    button.disabled = true;
+    try {
+      await api("/api/webvpn-auto", data);
+      clearCredentials();
+      toast("已保存，会话过期时会自动登录");
+      closePanels();
+      await load();
+    } catch (error) {
+      clearCredentials();
+      toast(error.message, true);
+    } finally {
+      data.username = data.password = data.totp = "";
+      button.disabled = false;
+    }
+  });
+
+  // ---- state -----------------------------------------------------------
+
+  function pollFailure(error) {
+    toast(error.message, true);
+    if (watching && error.httpStatus !== 403 && ++pollFailures <= 5) schedulePoll();
+  }
+
+  function schedulePoll() {
+    if (pollTimer) return;
+    pollTimer = setTimeout(async () => {
+      pollTimer = null;
+      try { await load(); } catch (error) { pollFailure(error); }
+    }, Math.min(12000, 1500 * 2 ** pollFailures));
+  }
+
   async function load() {
-    const state=await api("/api/status");
-    document.getElementById("version").textContent=state.version;
-    const container=document.getElementById("sources");container.replaceChildren();
-    for (const source of state.sources) {
-      const row=element("div",undefined,"source"), info=element("div");
-      info.append(element("h3",source.label),element("p",source.features.join(" · "),"description"));row.append(info);
-      const status=source.auth.status;
-      const statusBlock=element("div",undefined,"source-state");
-      let label=names[status] || status;
-      if(source.source==="oa" && status!=="session_saved")label="无需预先登录";
-      statusBlock.append(element("span",label,"state"+(source.login_required&&status!=="session_saved"?" pending":"")));
-      const fresh=state.freshness.find(f=>f.source===source.source);
-      if(fresh)statusBlock.append(element("span",(fresh.success_at?"缓存更新 "+new Date(fresh.success_at).toLocaleString("zh-CN"):"尚未成功刷新")+(fresh.status!=="ok"?" · "+(fresh.status==="partial"?"限定范围 / 部分结果":fresh.status):""),"freshness"));
-      else statusBlock.append(element("span",source.source==="oa"?"先尝试公开访问，需要时再配置 WebVPN":"按需刷新，不运行后台任务","freshness"));
-      row.append(statusBlock);
-      const actions=element("div",undefined,"actions");
-      if(source.login_available)actions.append(button(source.source==="oa"?"WebVPN 登录":status==="session_saved"?"重新登录":"登录","secondary",async b=>{
-        const result=await action(b,"/api/login",{service:source.source},"请在打开的学校页面完成登录。不要把密码发给 agent。");
-        if(result&&!polling)polling=setInterval(async()=>{try{await load();}catch(e){say(e.message,true);clearInterval(polling);polling=null;}},3000);
-      }));
-      if(source.refresh_requires_query)actions.append(element("span","由 agent 按关键词搜索","description"));
-      else actions.append(button("刷新","secondary",b=>action(b,"/api/refresh",{source:source.source},"已获取此来源的最新可读数据；查询时请留意范围和更新时间。")));
-      if(status==="session_saved" || source.source==="oa"&&state.webvpn_auto_login.configured)actions.append(button("退出","secondary forget",b=>action(b,"/api/logout",{service:source.source},source.source==="oa"?"已退出 WebVPN，移除会话、OA 缓存和自动重登凭据。":"已移除此来源的会话和缓存。")));
-      row.append(actions);container.append(row);
+    state = await api("/api/status");
+    pollFailures = 0;
+    $("version").textContent = state.version;
+    renderRows();
+    if (runningJob()) {
+      watching = true;
+      schedulePoll();
+    } else if (watching) {
+      watching = false;
+      const done = state.jobs.find(job => job.status === "finished");
+      if (done) {
+        const result = done.result || {};
+        toast(result.ok ? `${NAMES[done.service]} 已登录` : result.message || "登录没有完成", !result.ok);
+      }
     }
-    const auto=state.webvpn_auto_login;
-    let autoLabel=auto.status==="enabled"?"已启用 · 凭据已保存，尚不代表学校登录已验证":auto.status==="paused"?"自动重登已暂停 · 请重新填写有效凭据，或移除配置后手动登录":auto.status==="not_configured"?"未配置 · 可继续使用公开 OA 和手动登录":"配置无法读取 · 请检查系统密钥库或移除后重新配置";
-    if(auto.enabled&&auto.retry_after_seconds>0)autoLabel+=" · 登录尝试间隔保护中";
-    document.getElementById("webvpn-auto-status").textContent=autoLabel;
-    document.getElementById("remove-webvpn-auto").hidden=!auto.configured&&auto.status==="not_configured";
-    if(initial){
-      document.getElementById("jw-http-compat").checked=state.transport.jw_http_compat;
-      for(const key of ["college","major","entry_year","interests"])document.getElementById(key).value=state.profile[key]||"";
-      clients=state.available_clients;
-      const select=document.getElementById("client");select.replaceChildren();
-      for(const client of clients){const option=element("option",client.label);option.value=client.id;select.append(option);}
-      if(state.clients.length)select.value=state.clients[0];
-      select.disabled=false;document.getElementById("connect").disabled=false;clientChanged();initial=false;
-    }
-    const running=state.jobs.find(j=>j.status==="running");
-    if(polling&&running&&running.phase==="preparing_browser")say("首次使用正在准备登录浏览器。下载完成后会打开学校页面，无需提供任何账密。");
-    if(polling&&running&&running.phase==="waiting_for_login")say("请在打开的学校页面完成登录。验证码或扫码也只在学校页面处理。");
-    const finished=state.jobs.find(j=>j.status==="finished");
-    if(polling&&finished){clearInterval(polling);polling=null;say(finished.result.ok?"登录会话已安全保存，现在可刷新对应来源。":finished.result.message,!finished.result.ok);}
   }
-  function clientChanged(){
-    say("");
-    const spec=clients.find(c=>c.id===document.getElementById("client").value);
-    document.getElementById("connect").textContent=spec.action;
-    document.getElementById("client-guide").textContent=spec.next_step;
-    document.getElementById("generic").hidden=true;document.getElementById("download-skill").hidden=true;
-  }
-  document.getElementById("client").addEventListener("change",clientChanged);
-  document.getElementById("connect").addEventListener("click",async e=>{
-    const client=document.getElementById("client").value;
-    const result=await action(e.target,"/api/connect",{client});
-    if(result){
-      const prefix=result.status==="connected"?"接入配置已保存。 ":result.status==="already_connected"?"接入配置已存在。 ":"";
-      say(prefix+(result.message?result.message+" ":"")+result.next_step);
-      if(result.config){const pre=document.getElementById("generic");pre.textContent=JSON.stringify(result.config,null,2);pre.hidden=false;}
-      if(result.status==="skill_exported")document.getElementById("download-skill").hidden=false;
-    }
+
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden && state) load().catch(() => {});
   });
-  document.getElementById("download-skill").addEventListener("click",async e=>{
-    e.target.disabled=true;
-    try{
-      const res=await fetch("/api/skill",{headers:{"X-STU-Setup":token}});
-      if(!res.ok)throw new Error("技能包无法下载，请重新生成。");
-      const url=URL.createObjectURL(await res.blob()),link=document.createElement("a");
-      link.href=url;link.download="stu-campus.zip";link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
-    }catch(error){say(error.message,true);}finally{e.target.disabled=false;}
-  });
-  document.getElementById("save-profile").addEventListener("click",e=>{const data={};for(const key of ["college","major","entry_year","interests"])data[key]=document.getElementById(key).value;action(e.target,"/api/profile",data,"资料已保存。");});
-  document.getElementById("save-transport").addEventListener("click",e=>action(e.target,"/api/transport",{jw_http_compat:document.getElementById("jw-http-compat").checked},"教务选项已保存。需要成绩时，再登录并刷新教务。"));
-  const credentialIds=["webvpn-username","webvpn-password","webvpn-totp"];
-  function clearCredentials(){for(const id of credentialIds)document.getElementById(id).value="";document.getElementById("webvpn-auto-consent").checked=false;}
-  document.getElementById("webvpn-auto-form").addEventListener("submit",async e=>{
-    e.preventDefault();
-    const data={enabled:document.getElementById("webvpn-auto-consent").checked,username:document.getElementById("webvpn-username").value,password:document.getElementById("webvpn-password").value,totp:document.getElementById("webvpn-totp").value,encoding:document.getElementById("webvpn-encoding").value};
-    try{await action(document.getElementById("save-webvpn-auto"),"/api/webvpn-auto",data);}
-    finally{clearCredentials();for(const key of ["username","password","totp"])data[key]="";}
-  });
-  document.getElementById("remove-webvpn-auto").addEventListener("click",async e=>{clearCredentials();await action(e.target,"/api/webvpn-auto/remove",{});});
-  window.addEventListener("pagehide",clearCredentials);
-  load().catch(error=>say(error.message,true));
+  window.addEventListener("pagehide", clearCredentials);
+  load().catch(error => toast(error.message, true));
 })();

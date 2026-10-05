@@ -26,6 +26,9 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - run: uv sync --locked --extra dev
+      - name: Prepare browser for setup interaction regressions
+        if: matrix.os == 'ubuntu-latest' && matrix.python == '3.13'
+        run: uv run python -m playwright install --with-deps chromium
       - run: uv run --extra dev ruff check .
       - run: uv run --extra dev pytest -q
       - run: uv build
