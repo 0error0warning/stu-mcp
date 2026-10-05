@@ -18,8 +18,7 @@ def test_setup_page_is_local_and_csp_compatible():
     assert {tag.get("src") for tag in page.find_all("script")} == {"/app.js"}
     assert "innerHTML" not in script and "console." not in script
     assert "http://" not in html.replace("http://www.w3.org", "") and "https://" not in html
-    for path in ("/api/status", "/api/login", "/api/logout", "/api/connect", "/api/skill",
-                 "/api/transport", "/api/webvpn-auto"):
+    for path in ("/api/status", "/api/login", "/api/logout", "/api/transport", "/api/webvpn-auto"):
         assert path in script
     assert "const token = location.hash.slice(1);" in script
 
@@ -28,9 +27,11 @@ def test_setup_page_only_asks_for_what_is_needed():
     _, script, page = load()
     services = [row["data-service"] for row in page.select(".row[data-service]")]
     assert services == ["jw", "mystu", "yuketang", "oa"]
-    # Refreshing is the agent's job through MCP; the page has no refresh or profile form.
-    assert "/api/refresh" not in script and "/api/profile" not in script
-    assert not page.find(string=lambda s: s and "刷新" in s)
+    # Connecting, refreshing and the profile are the agent's job; the page only signs in.
+    for path in ("/api/refresh", "/api/profile", "/api/connect", "/api/skill"):
+        assert path not in script
+    assert len(page.find_all("section")) == 1
+    assert not page.find(string=lambda s: s and ("刷新" in s or "接入" in s))
 
 
 def test_credentials_are_never_prefilled_and_always_cleared():

@@ -3,17 +3,11 @@
   const token = location.hash.slice(1);
   const $ = id => document.getElementById(id);
   const NAMES = {jw: "教务系统", mystu: "MySTU", yuketang: "雨课堂", oa: "WebVPN"};
-  const SHORT = {"deepseek-harness": "DeepSeek Harness", "doubao-work": "豆包工作",
-                 "generic": "其他 MCP 客户端", "generic-cli": "其他 agent"};
-  const PRIMARY = ["claude-code", "codex", "cursor"];
   const EXPIRED = new Set(["login_expired", "session_invalid", "session_changed"]);
   const SECRETS = ["vpn-user", "vpn-pass", "vpn-totp"];
   const rows = [...document.querySelectorAll(".row[data-service]")];
 
   let state = null;
-  let clients = [];
-  let chosen = null;
-  let showAll = false;
   let watching = false;
   let pollTimer = null;
   let toastTimer = null;
@@ -261,108 +255,6 @@
     }
   });
 
-  // ---- agent -----------------------------------------------------------
-
-  const nameOf = spec => SHORT[spec.id] || spec.label;
-
-  function renderClients() {
-    const box = $("clients");
-    box.replaceChildren();
-    const detected = new Set(state.clients);
-    const visible = showAll ? clients
-      : clients.filter(c => PRIMARY.includes(c.id) || detected.has(c.id) || c.id === chosen);
-    for (const spec of visible) {
-      const chip = el("button", nameOf(spec), "chip");
-      chip.type = "button";
-      chip.setAttribute("aria-pressed", String(spec.id === chosen));
-      if (detected.has(spec.id)) chip.title = "已在这台电脑上找到";
-      chip.addEventListener("click", () => {
-        chosen = spec.id;
-        $("result").hidden = true;
-        renderClients();
-      });
-      box.append(chip);
-    }
-    if (visible.length < clients.length) {
-      const more = el("button", "更多", "chip more");
-      more.type = "button";
-      more.addEventListener("click", () => { showAll = true; renderClients(); });
-      box.append(more);
-    }
-    const spec = clients.find(c => c.id === chosen);
-    const connect = $("connect");
-    connect.disabled = !spec;
-    connect.textContent = !spec ? "选择一个客户端"
-      : spec.mode === "skill" ? "生成技能包"
-      : spec.mode === "export" ? "显示配置"
-      : `添加到 ${nameOf(spec)}`;
-  }
-
-  function showResult(ok, title, detail, extra = []) {
-    const box = $("result");
-    box.className = "result " + (ok ? "ok" : "bad");
-    box.replaceChildren(el("p", title));
-    if (detail) box.append(el("p", detail));
-    box.append(...extra);
-    box.hidden = false;
-  }
-
-  function actionRow(label, handler) {
-    const wrap = el("div", undefined, "actions");
-    const button = el("button", label, "primary");
-    button.type = "button";
-    button.addEventListener("click", () => handler(button));
-    wrap.append(button);
-    return wrap;
-  }
-
-  async function downloadSkill(button) {
-    button.disabled = true;
-    try {
-      const response = await fetch("/api/skill", {headers: {"X-STU-Setup": token}});
-      if (!response.ok) throw new Error("技能包下载失败，请重新生成。");
-      const url = URL.createObjectURL(await response.blob());
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = "stu-campus.zip";
-      link.click();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-    } catch (error) {
-      toast(error.message, true);
-    } finally {
-      button.disabled = false;
-    }
-  }
-
-  $("connect").addEventListener("click", async event => {
-    const button = event.currentTarget;
-    const spec = clients.find(c => c.id === chosen);
-    if (!spec) return;
-    button.disabled = true;
-    $("result").hidden = true;
-    try {
-      const result = await api("/api/connect", {client: spec.id});
-      if (result.status === "exported") {
-        const text = JSON.stringify(result.config, null, 2);
-        showResult(true, "把这段配置加到客户端的 MCP 设置里", result.next_step, [
-          el("pre", text),
-          actionRow("复制", () => navigator.clipboard.writeText(text)
-            .then(() => toast("已复制"), () => toast("复制失败，请手动选择", true))),
-        ]);
-      } else if (result.status === "skill_exported") {
-        showResult(true, "技能包已生成", result.next_step, [actionRow("下载技能包", downloadSkill)]);
-      } else if (result.status === "already_connected") {
-        showResult(true, `${nameOf(spec)} 已经接入`, result.next_step);
-      } else {
-        showResult(true, `已添加到 ${nameOf(spec)}`, result.next_step);
-      }
-    } catch (error) {
-      showResult(false, "没有添加成功", error.message);
-    } finally {
-      button.disabled = false;
-    }
-  });
-
   // ---- state -----------------------------------------------------------
 
   function schedulePoll() {
@@ -376,12 +268,7 @@
   async function load() {
     state = await api("/api/status");
     $("version").textContent = state.version;
-    if (!clients.length) {
-      clients = state.available_clients;
-      chosen = clients.some(c => c.id === state.clients[0]) ? state.clients[0] : null;
-    }
     renderRows();
-    renderClients();
     if (runningJob()) {
       watching = true;
       schedulePoll();

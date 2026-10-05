@@ -10,16 +10,15 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from .auth import LoginJobs
-from .clients import catalog, connect, detected_clients
-from .runtime import AppError, reject_symlinks
-from .skill_export import skill_path
+from .runtime import AppError
 from .webvpn import WebVPNConfig
 
 
 class SetupServer:
-    def __init__(self, app, *, client_home: Path | None = None):
+    """Sign-in only. Client setup, refresh and profile belong to the agent via CLI/MCP."""
+
+    def __init__(self, app):
         self.app = app
-        self.client_home = client_home
         self.secret = secrets.token_urlsafe(32)
         self.jobs = LoginJobs(app.vault)
         owner = self
@@ -31,8 +30,6 @@ class SetupServer:
                 self.send_response(code)
                 self.send_header("Content-Type", content_type)
                 self.send_header("Content-Length", str(len(body)))
-                if content_type == "application/zip":
-                    self.send_header("Content-Disposition", 'attachment; filename="stu-campus.zip"')
                 self.send_header("Cache-Control", "no-store")
                 self.send_header("X-Content-Type-Options", "nosniff")
                 self.send_header("X-Frame-Options", "DENY")
@@ -62,21 +59,7 @@ class SetupServer:
                     return
                 if self.path == "/api/status":
                     try:
-                        status = owner.app.status()
-                        status["available_clients"] = catalog(owner.client_home)
-                        if owner.client_home is not None:
-                            status["clients"] = detected_clients(owner.client_home)
-                        self.json(200, {**status, "jobs": owner.jobs.snapshot()})
-                    except AppError as exc:
-                        self.json(400, exc.result())
-                    return
-                if self.path == "/api/skill":
-                    path = skill_path(owner.app.runtime)
-                    try:
-                        reject_symlinks(path)
-                        if not path.is_file() or path.stat().st_size > 256 * 1024:
-                            raise AppError("skill_not_exported", "请先生成技能包。")
-                        self.reply(200, path.read_bytes(), "application/zip")
+                        self.json(200, {**owner.app.status(), "jobs": owner.jobs.snapshot()})
                     except AppError as exc:
                         self.json(400, exc.result())
                     return
@@ -101,32 +84,22 @@ class SetupServer:
                     if not isinstance(data, dict):
                         raise ValueError
                     allowed_keys = {"/api/login": {"service"}, "/api/logout": {"service"},
-                                    "/api/refresh": {"source"}, "/api/connect": {"client"},
                                     "/api/transport": {"jw_http_compat"},
                                     "/api/webvpn-auto": {"enabled", "username", "password", "totp", "encoding"},
-                                    "/api/webvpn-auto/remove": set(),
-                                    "/api/profile": {"college", "major", "entry_year", "interests"}}
+                                    "/api/webvpn-auto/remove": set()}
                     if self.path not in allowed_keys or not set(data).issubset(allowed_keys[self.path]):
                         raise ValueError
                     if self.path == "/api/login":
                         result = owner.jobs.start(str(data.get("service", "")))
                     elif self.path == "/api/logout":
                         result = owner.app.logout(str(data.get("service", "")))
-                    elif self.path == "/api/refresh":
-                        result = owner.app.refresh(str(data.get("source", "")))
-                    elif self.path == "/api/connect":
-                        client = str(data.get("client", ""))
-                        result = connect(client, owner.app.runtime, apply=True, home=owner.client_home)
                     elif self.path == "/api/transport":
                         owner.app.runtime.save_preferences(data)
                         result = {"ok": True, "status": "saved"}
                     elif self.path == "/api/webvpn-auto":
                         result = WebVPNConfig(owner.app.vault).configure(data)
-                    elif self.path == "/api/webvpn-auto/remove":
-                        result = WebVPNConfig(owner.app.vault).remove()
                     else:
-                        owner.app.runtime.save_profile(data)
-                        result = {"ok": True, "status": "saved"}
+                        result = WebVPNConfig(owner.app.vault).remove()
                     self.json(200, result)
                 except (ValueError, TypeError, KeyError):
                     self.json(400, {"ok": False, "status": "invalid_request", "message": "请求格式无效。"})

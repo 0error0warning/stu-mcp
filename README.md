@@ -42,12 +42,9 @@ STU MCP 在你的电脑运行，可为 Codex、Claude Code、Cursor、WorkBuddy�
 
 ```sh
 uv tool install --python 3.12 https://github.com/0error0warning/stu-mcp/releases/download/v0.3.0/stu_mcp-0.3.0-py3-none-any.whl
-stu-mcp setup
 ```
 
-在设置页选择客户端并点「添加」。首次点击个人功能的“登录”会自动准备登录浏览器；也可预先运行 `stu-mcp browser install`。Python 和登录浏览器只需要首次准备。Linux 还需可用的 Secret Service/KWallet 和桌面环境；公开查询不依赖密钥库。
-
-也可以在终端完成接入：
+然后接入你用的客户端：
 
 ```sh
 stu-mcp connect codex --apply
@@ -59,11 +56,13 @@ stu-mcp connect grok-build --apply
 stu-mcp connect deepseek-harness --apply
 ```
 
-只运行自己需要的一条。省略 `--apply` 只预览；重复运行不产生重复配置。已存在其他同名服务时停止，检查后才使用 `--replace`。配置变更会保留原文件备份。保存后按客户端要求重新加载 MCP、重启或启用服务。
+只运行自己需要的一条。需要成绩、课程或作业时，运行 `stu-mcp setup` 打开本机设置页登录学校账号。首次点「登录」会自动准备登录浏览器；也可预先运行 `stu-mcp browser install`。Linux 还需可用的 Secret Service/KWallet 和桌面环境；公开查询不依赖密钥库。
+
+省略 `--apply` 只预览；重复运行不产生重复配置。已存在其他同名服务时停止，检查后才使用 `--replace`。配置变更会保留原文件备份。保存后按客户端要求重新加载 MCP、重启或启用服务。
 
 其他客户端：`stu-mcp connect generic` 输出不含凭据的标准 `mcpServers` 配置，选择本地 stdio 接入。
 
-豆包工作：`stu-mcp connect doubao-work --apply` 生成可导入的本机 Skill；其他可执行本机命令的 agent 可用 `generic-cli`。设置页提供技能包下载。导入技能、允许本机执行后再验证；豆包工作的原生 MCP 接入尚未确认。[各客户端说明](docs/clients.md)
+豆包工作：`stu-mcp connect doubao-work --apply` 生成可导入的本机 Skill；其他可执行本机命令的 agent 可用 `generic-cli`。导入技能、允许本机执行后再验证；豆包工作的原生 MCP 接入尚未确认。[各客户端说明](docs/clients.md)
 
 ## 开始使用
 
