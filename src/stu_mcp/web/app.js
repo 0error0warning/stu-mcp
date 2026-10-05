@@ -37,11 +37,12 @@
       else statusBlock.append(element("span",source.source==="oa"?"先尝试公开访问，需要时再配置 WebVPN":"按需刷新，不运行后台任务","freshness"));
       row.append(statusBlock);
       const actions=element("div",undefined,"actions");
-      if(source.source!=="public")actions.append(button(source.source==="oa"?"WebVPN 登录":status==="session_saved"?"重新登录":"登录","secondary",async b=>{
+      if(source.login_available)actions.append(button(source.source==="oa"?"WebVPN 登录":status==="session_saved"?"重新登录":"登录","secondary",async b=>{
         const result=await action(b,"/api/login",{service:source.source},"请在打开的学校页面完成登录。不要把密码发给 agent。");
         if(result&&!polling)polling=setInterval(async()=>{try{await load();}catch(e){say(e.message,true);clearInterval(polling);polling=null;}},3000);
       }));
-      actions.append(button("刷新","secondary",b=>action(b,"/api/refresh",{source:source.source},"已获取此来源的最新可读数据；查询时请留意范围和更新时间。")));
+      if(source.refresh_requires_query)actions.append(element("span","由 agent 按关键词搜索","description"));
+      else actions.append(button("刷新","secondary",b=>action(b,"/api/refresh",{source:source.source},"已获取此来源的最新可读数据；查询时请留意范围和更新时间。")));
       if(status==="session_saved" || source.source==="oa"&&state.webvpn_auto_login.configured)actions.append(button("退出","secondary forget",b=>action(b,"/api/logout",{service:source.source},source.source==="oa"?"已退出 WebVPN，移除会话、OA 缓存和自动重登凭据。":"已移除此来源的会话和缓存。")));
       row.append(actions);container.append(row);
     }

@@ -7,6 +7,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import UTC, datetime
 
+from .huyou import merge_post, searchable_text
 from .runtime import AppError, Runtime, reject_symlinks
 from .sync import COURSE_KINDS, CourseSync, in_scope
 from .vault import Vault
@@ -51,12 +52,16 @@ class Store:
 
     def save_batch(self, source: str, records: list[dict], *, private: bool = False,
                    sync: CourseSync | None = None) -> int:
-        if source not in ("public", "oa", "jw", "mystu", "yuketang", "local"):
+        if source not in ("public", "oa", "jw", "mystu", "yuketang", "huyou", "local"):
             raise AppError("unknown_source", "不支持此数据来源。")
         if source in {"jw", "mystu", "yuketang"} and not private:
             raise AppError("private_storage_required", "此来源必须加密保存。", source)
         if sync is not None and source not in {"mystu", "yuketang"}:
             raise AppError("invalid_sync", "此来源不支持课程范围同步。", source)
+        if source == "huyou":
+            if private:
+                raise AppError("unsupported_auth", "狐友来源仅缓存匿名读取的公开帖子。", source)
+            return len(self.save_community(records))
         timestamp = now()
         cipher = self.vault._cipher(create=True) if private and (records or sync is not None) else None
         rows = []
@@ -82,6 +87,23 @@ class Store:
                               (source, self.vault.protect(scope, cipher=cipher)))
             c.executemany("INSERT OR REPLACE INTO records VALUES (?,?,?,?,?,?)", rows)
         return len(rows)
+
+    def save_community(self, records: list[dict]) -> list[dict]:
+        """Atomic public-post merge: a search snippet never replaces a fetched body/thread."""
+        timestamp, saved = now(), []
+        with self.connect() as c:
+            c.execute("BEGIN IMMEDIATE")
+            for incoming in records:
+                if incoming.get("source") != "huyou" or incoming.get("kind") != "post":
+                    raise AppError("invalid_post", "此缓存入口仅接受狐友公开帖子。", "huyou")
+                row = c.execute("SELECT payload FROM records WHERE source='huyou' AND kind='post' AND id=?",
+                                (incoming["id"],)).fetchone()
+                item = merge_post(json.loads(row[0]), incoming) if row else incoming.copy()
+                item.update(source="huyou", collected_at=timestamp)
+                c.execute("INSERT OR REPLACE INTO records VALUES (?,?,?,?,?,?)",
+                          ("huyou", "post", item["id"], json.dumps(item, ensure_ascii=False).encode(), 0, timestamp))
+                saved.append(item)
+        return saved
 
     def record_status(self, source: str, status: str, saved: int = 0) -> None:
         with self.connect() as c:
@@ -138,8 +160,8 @@ class Store:
             if row["source"] in scopes and not in_scope(item, scopes[row["source"]]):
                 unverified_count += 1
                 continue
-            if query and not all(t.casefold() in json.dumps(item, ensure_ascii=False).casefold()
-                                 for t in query.split()):
+            haystack = searchable_text(item) if item["kind"] == "post" else json.dumps(item, ensure_ascii=False)
+            if query and not all(t.casefold() in haystack.casefold() for t in query.split()):
                 continue
             if item["kind"] == "task" and item["id"] in overrides:
                 item["status"] = overrides[item["id"]]

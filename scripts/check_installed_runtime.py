@@ -65,7 +65,7 @@ async def handshake(config: dict, env: dict, cwd: Path) -> None:
     async with stdio_client(params) as (read, write), ClientSession(read, write) as session:
         initialized = await session.initialize()
         assert initialized.server_info.name == "stu-mcp"
-        assert len((await session.list_tools()).tools) == 16
+        assert len((await session.list_tools()).tools) == 19
 
 
 def main() -> None:

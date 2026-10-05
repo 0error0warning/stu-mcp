@@ -5,11 +5,16 @@ import pytest
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
+from stu_mcp.app import App
 from stu_mcp.clients import server_config
+from stu_mcp.huyou import post_record
+from stu_mcp.runtime import Runtime
 
 
 @pytest.mark.asyncio
 async def test_real_stdio_handshake_schema_and_feature_gating(tmp_path):
+    app = App(Runtime(tmp_path / "stdio-data"))
+    app.store.save_community([post_record({"feedId": "101", "content": "合成公开树洞内容", "status": 1})])
     config = server_config()
     params = StdioServerParameters(command=config["command"], args=config["args"],
                                   env={**os.environ, "STU_MCP_HOME": str(tmp_path / "stdio-data")})
@@ -19,7 +24,8 @@ async def test_real_stdio_handshake_schema_and_feature_gating(tmp_path):
         tools = await client.list_tools()
         names = {t.name for t in tools.tools}
         assert {"get_capabilities", "refresh_source", "get_grades", "get_tasks", "open_setup"}.issubset(names)
-        assert len(names) == 16
+        assert len(names) == 19
+        assert {"search_huyou_posts", "get_huyou_post", "search_huyou_circles"}.issubset(names)
         for tool in tools.tools:
             schema = tool.input_schema
             assert not {"password", "username", "cookie", "cookies", "token", "api_key", "totp", "secret", "encoding"}.intersection(schema.get("properties", {}))
@@ -36,4 +42,9 @@ async def test_real_stdio_handshake_schema_and_feature_gating(tmp_path):
         assert unknown.model_dump(by_alias=True)["structuredContent"]["status"] == "invalid_source"
         public = await client.call_tool("search_notices", {"source": "public"})
         assert public.model_dump(by_alias=True)["structuredContent"]["items"] == []
+        invalid_plan = await client.call_tool("search_huyou_posts", {"query": "合成问题", "keywords": []})
+        assert invalid_plan.model_dump(by_alias=True)["structuredContent"]["status"] == "invalid_keywords"
+        cached_post = await client.call_tool("get_huyou_post", {"target": "101", "refresh": False})
+        community = cached_post.model_dump(by_alias=True)["structuredContent"]
+        assert community["item"]["body"] == "合成公开树洞内容" and community["item"]["official"] is False
         assert "password" not in json.dumps(result).lower()
