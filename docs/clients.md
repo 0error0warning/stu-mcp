@@ -4,6 +4,8 @@
 
 ## 支持范围
 
+Codex、Claude Code、Cursor 是优先维护的核心适配；`generic` 是其他本地 stdio 客户端的通用导出。WorkBuddy、ZCode、Grok Build、DeepSeek Harness 保留为额外适配；豆包工作与 `generic-cli` 属于 Skill 候选方式。当前验证覆盖配置合并、导出命令实际执行和 MCP 握手，没有把这些结果等同于任何客户端应用内的完整验收。客户端或配置版本变化时，额外适配可能需要跟进；不确定时优先通用导出。
+
 | 客户端 | 接入命令 | 本版本行为 |
 | --- | --- | --- |
 | Codex | `stu-mcp connect codex --apply` | 合并当前 `CODEX_HOME/config.toml`，默认 `~/.codex/config.toml` |

@@ -4,15 +4,15 @@
 
 ## 1. 环境与发行包
 
-使用 `https://github.com/0error0warning/stu-mcp` 的 `v0.3.0` 版本。[发行页](https://github.com/0error0warning/stu-mcp/releases/tag/v0.3.0) 包含 wheel、源码与 SHA256 校验文件。不要安装未知 PyPI 同名包；当前未发布到 PyPI。
+使用 `https://github.com/0error0warning/stu-mcp` 的 `v0.3.1` 版本。[发行页](https://github.com/0error0warning/stu-mcp/releases/tag/v0.3.1) 包含 wheel、源码与 SHA256 校验文件。不要安装未知 PyPI 同名包；当前未发布到 PyPI。
 
 检查 `uv`。缺少时参考 [uv 官方安装文档](https://docs.astral.sh/uv/getting-started/installation/)，使用官方安装器或系统已有的软件包管理器。优先用户目录安装；不需要管理员权限、不改全局 Python、不修改其他项目依赖。若终端还未刷新 PATH，使用安装好的 `uv` 绝对路径。
 
 ```sh
-uv tool install --python 3.12 https://github.com/0error0warning/stu-mcp/releases/download/v0.3.0/stu_mcp-0.3.0-py3-none-any.whl
+uv tool install --python 3.12 https://github.com/0error0warning/stu-mcp/releases/download/v0.3.1/stu_mcp-0.3.1-py3-none-any.whl
 ```
 
-从旧版升级时，在上述命令加入 `--force`。升级后重新加载 MCP 或重启客户端，关闭旧设置页，再执行 `stu-mcp setup` 打开新版。保存的来源会话和独立用户数据目录保留；WebVPN 自动重登仍需本人主动配置。
+从旧版升级时，在上述命令加入 `--force`。安装后重新运行当前客户端的 `connect ... --apply`，让旧的启动路径更新为安装环境内的 Python，再重新加载 MCP 或重启客户端。关闭旧设置页，再执行 `stu-mcp setup` 打开新版。保存的来源会话和独立用户数据目录保留；WebVPN 自动重登仍需本人主动配置。
 
 Python 3.12 缺失时，uv 可以按自己的受管理 Python 流程准备。安装后找到 `stu-mcp` 的用户级可执行文件；如果 PATH 未刷新，使用绝对路径执行接下来的命令。不要为了“修复安装”删除用户已有工具或配置。
 
