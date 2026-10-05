@@ -52,8 +52,11 @@ print(json.dumps({"configs": configs, "skills": skills}))
 
 
 def run(command: list[str], env: dict, cwd: Path) -> str:
-    completed = subprocess.run(command, env=env, cwd=cwd, check=True, capture_output=True,
+    completed = subprocess.run(command, env=env, cwd=cwd, capture_output=True,
                                text=True, encoding="utf-8", timeout=180)
+    if completed.returncode:
+        # This check owns a fresh sandbox and contains no student credentials.
+        raise RuntimeError("Installed runtime check failed:\n" + completed.stdout[-4000:] + completed.stderr[-4000:])
     return completed.stdout
 
 
@@ -72,7 +75,9 @@ def main() -> None:
     wheel = Path(sys.argv[1]).absolute() if len(sys.argv) > 1 else (
         Path(__file__).resolve().parents[1] / "dist" / f"stu_mcp-{__version__}-py3-none-any.whl")
     with tempfile.TemporaryDirectory(prefix="stu-mcp-installed-runtime-") as directory:
-        root = Path(directory)
+        # macOS's system /var alias is a symlink; fixture writes use its physical directory.
+        # Only the disposable data directory is canonicalized, never the Python entry point.
+        root = Path(directory).resolve()
         env = {**os.environ, "UV_TOOL_DIR": str(root / "tools"), "UV_TOOL_BIN_DIR": str(root / "bin"),
                "STU_MCP_HOME": str(root / "runtime")}
         env.pop("PYTHONPATH", None)
