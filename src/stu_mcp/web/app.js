@@ -10,6 +10,7 @@
   let state = null;
   let watching = false;
   let pollTimer = null;
+  let pollFailures = 0;
   let toastTimer = null;
   let disarmTimer = null;
 
@@ -24,8 +25,10 @@
     let body = {};
     try { body = await response.json(); } catch (_) { /* non-JSON error page */ }
     if (!response.ok || body.ok === false) {
-      throw new Error(body.message || (response.status === 403
+      const error = new Error(body.message || (response.status === 403
         ? "页面已失效，请重新运行 stu-mcp setup。" : "操作没有完成，请重试。"));
+      error.httpStatus = response.status;
+      throw error;
     }
     return body;
   }
@@ -105,6 +108,7 @@
   }
 
   function closePanels() {
+    clearCredentials();
     for (const panel of document.querySelectorAll(".panel")) panel.hidden = true;
     for (const button of document.querySelectorAll(".act[aria-controls]")) button.setAttribute("aria-expanded", "false");
     disarm();
@@ -145,7 +149,7 @@
       watching = true;
       await load();
     } catch (error) {
-      toast(error.message, true);
+      pollFailure(error);
     }
   }
 
@@ -246,8 +250,7 @@
       closePanels();
       await load();
     } catch (error) {
-      $("vpn-pass").value = "";
-      $("vpn-totp").value = "";
+      clearCredentials();
       toast(error.message, true);
     } finally {
       data.username = data.password = data.totp = "";
@@ -257,16 +260,22 @@
 
   // ---- state -----------------------------------------------------------
 
+  function pollFailure(error) {
+    toast(error.message, true);
+    if (watching && error.httpStatus !== 403 && ++pollFailures <= 5) schedulePoll();
+  }
+
   function schedulePoll() {
     if (pollTimer) return;
     pollTimer = setTimeout(async () => {
       pollTimer = null;
-      try { await load(); } catch (error) { toast(error.message, true); }
-    }, 1500);
+      try { await load(); } catch (error) { pollFailure(error); }
+    }, Math.min(12000, 1500 * 2 ** pollFailures));
   }
 
   async function load() {
     state = await api("/api/status");
+    pollFailures = 0;
     $("version").textContent = state.version;
     renderRows();
     if (runningJob()) {
