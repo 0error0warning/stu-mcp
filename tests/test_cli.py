@@ -1,4 +1,6 @@
 import json
+import os
+import subprocess
 import zipfile
 from pathlib import Path
 
@@ -55,3 +57,8 @@ def test_skill_preview_and_export_never_claim_native_mcp(app, tmp_path, client):
         assert runtime["args"] == ["-m", "stu_mcp"]
         assert set(runtime) == {"command", "args"}
         assert "academic-summary" in archive.read("stu-campus/SKILL.md").decode()
+    executed = subprocess.run([runtime["command"], *runtime["args"], "--version"],
+                              env={**os.environ, "STU_MCP_HOME": str(app.runtime.home)},
+                              capture_output=True, text=True, check=True, timeout=30)
+    from stu_mcp import __version__
+    assert executed.stdout.strip() == __version__

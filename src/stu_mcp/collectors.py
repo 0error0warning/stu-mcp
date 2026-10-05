@@ -34,6 +34,7 @@ from .sources import (
     PUBLIC_LISTINGS,
     YUKETANG_BASE,
 )
+from .sync import CourseSync
 from .vault import Vault
 from .webvpn import protected_access
 
@@ -46,6 +47,7 @@ class Collection:
     limited: bool = False
     coverage: dict = field(default_factory=dict)
     session_version: bytes | None = None
+    sync: CourseSync | None = None
 
     def fail(self, part: str, exc: AppError):
         self.errors.append({"part": part, **exc.result()})
@@ -129,6 +131,28 @@ def default_semester() -> str:
     return f"{year}-{year + 1}-{'1' if today.month >= 8 or today.month == 1 else '2'}"
 
 
+def complete_list(payload: dict, size: int, capacity: int | None = None) -> bool:
+    """A full page or explicit remaining results is never a replacement snapshot."""
+    if capacity is not None and size >= capacity:
+        return False
+    for key in ("has_more", "hasMore", "has_next", "hasNext", "has_next_page", "next", "nextPage"):
+        if payload.get(key):
+            return False
+    for key in ("total", "total_count", "totalCount", "count"):
+        value = payload.get(key)
+        if value is not None:
+            try:
+                if int(value) > size or int(value) < 0:
+                    return False
+            except (TypeError, ValueError):
+                return False
+    for key in ("total_pages", "totalPages", "page_count", "pageCount"):
+        if payload.get(key, 1) != 1:
+            return False
+    pagination = payload.get("pagination")
+    return not isinstance(pagination, dict) or complete_list(pagination, size)
+
+
 def mystu(vault: Vault, limit: int) -> Collection:
     result = Collection(private=True, coverage={"scope": "latest_term", "max_courses": limit,
                                                 "activities_per_course": 50, "detail_limit": 20})
@@ -136,10 +160,24 @@ def mystu(vault: Vault, limit: int) -> Collection:
     with CampusHTTP("mystu", vault.load("mystu")) as http:
         http.json(MYSTU_API + "/user/validate?ver=1.1")
         payload = http.json(MYSTU_API + "/course/query")
-        if "items" not in payload:
+        raw_courses = payload.get("items")
+        if not isinstance(raw_courses, list):
             raise AppError("schema_changed", "MySTU 的课程字段发生变化。", "mystu")
-        selected = current_courses(payload_records(payload))
-        result.limited = len(selected) > limit
+        courses = payload_records(payload)
+        if len(courses) != len(raw_courses) or any(not (c.get("id") or c.get("url")) for c in courses):
+            raise AppError("schema_changed", "MySTU 课程缺少可识别的记录。", "mystu")
+        selected = current_courses(courses)
+        dated = [c for c in courses if isinstance(c.get("attendanceYear"), int)
+                 and isinstance(c.get("attendanceSemester"), int)]
+        inventory_complete = complete_list(payload, len(courses)) and len(dated) == len(courses)
+        semester = (f"{selected[0]['attendanceYear']}-{selected[0]['attendanceSemester']}"
+                    if selected and dated else None)
+        result.sync = CourseSync(
+            course_ids=frozenset(str(c.get("id") or c["url"]) for c in selected) if inventory_complete else None,
+            semester=semester)
+        result.coverage.update(semester=semester, inventory_complete=inventory_complete,
+                               selected_courses=len(selected))
+        result.limited = len(selected) > limit or not inventory_complete
         for course in selected[:limit]:
             name = clean(course.get("name") or course.get("groupName"))
             url = str(course.get("url") or "")
@@ -147,28 +185,42 @@ def mystu(vault: Vault, limit: int) -> Collection:
                 if url:
                     checked_url("mystu", url)
                 cid = str(course.get("id") or url)
+                provenance = {"course_id": cid, "semester": semester,
+                              "year": course.get("attendanceYear"), "term": course.get("attendanceSemester")}
                 result.items.append({"id": item_id("mystu", "course", cid), "kind": "course", "title": name,
-                                     "url": url or None, "year": course.get("attendanceYear"),
-                                     "term": course.get("attendanceSemester"), "teacher": clean(course.get("teacher"))})
+                                     "url": url or None, **provenance, "teacher": clean(course.get("teacher"))})
                 if "/courses/elc/" in url:
                     html = http.text(url)
                     if is_login(html):
                         raise AppError("needs_elc_login", "ELC 还需在学校页面完成登录；请重新打开 MySTU 登录。", "mystu")
+                    soup = BeautifulSoup(html, "html.parser")
+                    if not soup.select_one(".course-content"):
+                        raise AppError("schema_changed", "ELC 未返回可识别的课程内容。", "mystu")
                     activities = parse_elc(html, url)
+                    nodes = soup.select(".course-content li.activity, .course-content .activity[class*='modtype_']")
+                    if len(nodes) != len(activities):
+                        raise AppError("schema_changed", "ELC 部分活动未能解析，保留其旧缓存。", "mystu")
+                    # HTML may contain just one section or lazily loaded activities.
+                    # Recognizing a page is not proof of a complete course snapshot.
+                    activity_complete = False
                 else:
                     moodle_id = parse_qs(urlparse(url).query).get("id", [""])[0]
                     if not moodle_id:
+                        result.limited = True
                         continue
-                    activities = http.json(MYSTU_API + "/courseactivity/query?" +
-                                           urlencode({"moodleCourseId": moodle_id, "category": "undefined",
-                                                      "lang": "zh-CN"})).get("courseActivities", [])
-                if not isinstance(activities, list):
+                    activity_payload = http.json(MYSTU_API + "/courseactivity/query?" +
+                                                 urlencode({"moodleCourseId": moodle_id, "category": "undefined",
+                                                            "lang": "zh-CN"}))
+                    activities = activity_payload.get("courseActivities")
+                    activity_complete = isinstance(activities, list) and complete_list(
+                        activity_payload, len(activities), 50)
+                if not isinstance(activities, list) or any(not isinstance(a, dict) for a in activities):
                     raise AppError("schema_changed", "MySTU 活动字段发生变化。", "mystu")
-                result.limited |= len(activities) > 50
+                result.limited |= not activity_complete
                 for activity in activities[:50]:
                     title = clean(activity.get("activityTitle"))
                     if not title:
-                        continue
+                        raise AppError("schema_changed", "MySTU 活动缺少标题，未把解析失败当作空列表。", "mystu")
                     link = str(activity.get("activityUrl") or "")
                     category = str(activity.get("activityCategory") or "resource")
                     kind = "task" if category in {"assignment", "assign", "quiz"} else "resource"
@@ -187,11 +239,13 @@ def mystu(vault: Vault, limit: int) -> Collection:
                     elif kind == "task" and link:
                         result.limited = True
                     result.items.append({"id": item_id("mystu", kind, cid, link or title), "kind": kind,
-                                         "title": title, "course": name, "url": link or None,
+                                         "title": title, "course": name, **provenance, "url": link or None,
                                          "category": category, "due_at": detail.get("due_at") or
                                          stamp(activity.get("additionalDueDate")),
                                          "school_status": detail.get("school_status"), "status": "todo",
                                          "body": detail.get("description") or clean(activity.get("description"))[:6000]})
+                if activity_complete:
+                    result.sync.complete_courses.add(cid)
             except AppError as exc:
                 result.fail("课程活动", exc)
         # Calendar data is optional and independent of successful course collection.
@@ -200,7 +254,9 @@ def mystu(vault: Vault, limit: int) -> Collection:
             schedule = http.json(MYSTU_API + "/userschedule/query?" +
                                  urlencode({"startTime": int(start.timestamp() * 1000),
                                             "endTime": int(end.timestamp() * 1000), "category": "all"}))
-            for event in payload_records(schedule)[:50]:
+            events = payload_records(schedule)
+            result.limited |= len(events) > 50
+            for event in events[:50]:
                 title = clean(event.get("title") or event.get("name"))
                 if title:
                     result.items.append({"id": item_id("mystu", "event", event.get("id"), title),
@@ -210,6 +266,8 @@ def mystu(vault: Vault, limit: int) -> Collection:
                                          "location": clean(event.get("location"))})
         except AppError as exc:
             result.fail("个人日程", exc)
+    result.coverage.update(complete_activity_courses=len(result.sync.complete_courses),
+                           course_snapshot_complete=result.sync.complete)
     return result
 
 
@@ -222,10 +280,20 @@ def yuketang(vault: Vault, limit: int) -> Collection:
         if not isinstance(data, dict) or not isinstance(data.get("list"), list):
             raise AppError("schema_changed", "雨课堂未返回课程列表。", "yuketang")
         courses = data["list"]
+        if any(not isinstance(c, dict) or not str(c.get("classroom_id") or "").isdigit() for c in courses):
+            raise AppError("schema_changed", "雨课堂课程缺少可识别的记录。", "yuketang")
         terms = [c.get("term") for c in courses if isinstance(c.get("term"), int)]
+        inventory_complete = complete_list(data, len(courses)) and complete_list(payload, len(courses))
+        inventory_complete &= len(terms) == len(courses)
+        semester = str(max(terms)) if terms else None
         if terms:
             latest = max(terms)
             courses = [c for c in courses if c.get("term") == latest]
+        result.sync = CourseSync(
+            course_ids=frozenset(str(c["classroom_id"]) for c in courses) if inventory_complete else None,
+            semester=semester)
+        result.coverage.update(semester=semester, inventory_complete=inventory_complete,
+                               selected_courses=len(courses))
         for c in courses[:limit]:
             cid = str(c.get("classroom_id") or "")
             if not cid.isdigit():
@@ -233,22 +301,33 @@ def yuketang(vault: Vault, limit: int) -> Collection:
             name = clean((c.get("course") or {}).get("name") or c.get("name"))
             course_url = YUKETANG_BASE + f"/v2/web/studentLog/{cid}"
             result.items.append({"id": item_id("yuketang", "course", cid), "kind": "course", "title": name,
-                                 "url": course_url, "term": c.get("term"),
+                                 "url": course_url, "term": c.get("term"), "semester": semester, "course_id": cid,
                                  "teacher": clean((c.get("teacher") or {}).get("name"))})
             try:
                 feed = http.json(YUKETANG_BASE + f"/v2/api/web/logs/learn/{cid}?actype=-1&page=0&offset=50&sort=-1")
-                for activity in (feed.get("data") or {}).get("activities", [])[:50]:
+                feed_data = feed.get("data")
+                if not isinstance(feed_data, dict) or not isinstance(feed_data.get("activities"), list):
+                    raise AppError("schema_changed", "雨课堂未返回可识别的课程活动列表。", "yuketang")
+                activities = feed_data["activities"]
+                activity_complete = complete_list(feed_data, len(activities), 50) and complete_list(
+                    feed, len(activities))
+                for activity in activities[:50]:
+                    if not isinstance(activity, dict):
+                        raise AppError("schema_changed", "雨课堂活动记录结构发生变化。", "yuketang")
                     title = clean(activity.get("title"))
                     if not title:
-                        continue
+                        raise AppError("schema_changed", "雨课堂活动缺少标题，未把解析失败当作空列表。", "yuketang")
                     content = activity.get("content") or {}
                     kind = "task" if activity.get("type") in (19, 3) else "resource"
                     leaf = str(content.get("leaf_id") or "")
                     url = YUKETANG_BASE + f"/ai-workspace/lms-graph/{cid}/exercise/{leaf}?is_chapter=1" if leaf.isdigit() else course_url
                     result.items.append({"id": item_id("yuketang", kind, cid, activity.get("id") or title),
                                          "kind": kind, "title": title, "course": name, "url": url,
+                                         "course_id": cid, "semester": semester, "term": c.get("term"),
                                          "due_at": stamp(content.get("score_d")), "status": "todo",
                                          "published_at": stamp(activity.get("create_time"))})
+                if activity_complete:
+                    result.sync.complete_courses.add(cid)
                 announcement = http.json(YUKETANG_BASE +
                                          f"/v/discussion/v2/announcements/?cid={cid}&limit=20&offset=0&type=9")
                 for ann in (announcement.get("data") or {}).get("data", [])[:20]:
@@ -259,6 +338,8 @@ def yuketang(vault: Vault, limit: int) -> Collection:
                                          "published_at": stamp(ann.get("publish_time") or ann.get("create_time"))})
             except AppError as exc:
                 result.fail("课程内容", exc)
+    result.coverage.update(complete_activity_courses=len(result.sync.complete_courses),
+                           course_snapshot_complete=result.sync.complete)
     return result
 
 

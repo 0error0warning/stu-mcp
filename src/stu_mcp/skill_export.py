@@ -16,7 +16,7 @@ def skill_path(runtime: Runtime) -> Path:
 
 def export_skill(runtime: Runtime, *, apply: bool = False) -> dict:
     source = Path(__file__).parent / "skills" / "stu-campus" / "SKILL.md"
-    command = {"command": str(Path(sys.executable).resolve()), "args": ["-m", "stu_mcp"]}
+    command = {"command": sys.executable, "args": ["-m", "stu_mcp"]}
     result = {"ok": True, "status": "preview", "artifact": str(skill_path(runtime)),
               "runtime": command, "message": "生成供本地命令调用的 Skill；导入后仍需验证 agent 的本机执行权限。"}
     if apply:

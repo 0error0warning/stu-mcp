@@ -71,7 +71,7 @@ class App:
                 expected = result.session_version if result.session_version is not None else initial_session
                 if result.private and expected != session_version():
                     raise AppError("session_changed", "登录状态在刷新期间改变；已丢弃此次个人结果，请重新刷新。", source)
-                saved = self.store.save_batch(source, list(unique.values()), private=result.private)
+                saved = self.store.save_batch(source, list(unique.values()), private=result.private, sync=result.sync)
             self.store.record_status(source, result.status, saved)
             return {"ok": True, "status": result.status, "source": source, "saved": saved,
                     "limited": result.limited, "coverage": result.coverage, "errors": result.errors,
@@ -105,6 +105,8 @@ class App:
                 raise AppError(auth["status"], "此来源还需要本地登录和刷新；其他功能可独立使用。", auth["source"])
         if not result["total_count"]:
             result["message"] = "缓存中没有匹配记录；请按需刷新对应来源，不能据此判断学校没有该事项。"
+        if result["unverified_count"]:
+            result["scope_message"] = "旧缓存有记录无法确认属于最新课程范围，未列为当前待办/资料；请完整刷新对应来源。"
         result["content_trust"] = "untrusted_source_data"
         return result
 
