@@ -110,7 +110,11 @@ class CampusHTTP:
                         if not location:
                             raise AppError("network_error", "来源返回了无效跳转。", self.source)
                         target = urljoin(current, location)
-                        if "sso.stu.edu.cn" in target or "/login" in urlparse(target).path.lower():
+                        destination = urlparse(target)
+                        webvpn_login = (self.source == "oa" and self.authenticated
+                                        and destination.hostname == "webvpn.stu.edu.cn"
+                                        and destination.path.startswith("/portal"))
+                        if "sso.stu.edu.cn" in target or "/login" in destination.path.lower() or webvpn_login:
                             raise AppError("login_expired" if self.authenticated else "needs_login",
                                            "此来源需要在本地浏览器登录。", self.source)
                         if response.status_code not in (301, 302, 303) and urlparse(target).netloc != urlparse(current).netloc:

@@ -13,6 +13,7 @@ from .auth import LoginJobs
 from .clients import catalog, connect, detected_clients
 from .runtime import AppError, reject_symlinks
 from .skill_export import skill_path
+from .webvpn import WebVPNConfig
 
 
 class SetupServer:
@@ -102,6 +103,8 @@ class SetupServer:
                     allowed_keys = {"/api/login": {"service"}, "/api/logout": {"service"},
                                     "/api/refresh": {"source"}, "/api/connect": {"client"},
                                     "/api/transport": {"jw_http_compat"},
+                                    "/api/webvpn-auto": {"enabled", "username", "password", "totp", "encoding"},
+                                    "/api/webvpn-auto/remove": set(),
                                     "/api/profile": {"college", "major", "entry_year", "interests"}}
                     if self.path not in allowed_keys or not set(data).issubset(allowed_keys[self.path]):
                         raise ValueError
@@ -117,6 +120,10 @@ class SetupServer:
                     elif self.path == "/api/transport":
                         owner.app.runtime.save_preferences(data)
                         result = {"ok": True, "status": "saved"}
+                    elif self.path == "/api/webvpn-auto":
+                        result = WebVPNConfig(owner.app.vault).configure(data)
+                    elif self.path == "/api/webvpn-auto/remove":
+                        result = WebVPNConfig(owner.app.vault).remove()
                     else:
                         owner.app.runtime.save_profile(data)
                         result = {"ok": True, "status": "saved"}

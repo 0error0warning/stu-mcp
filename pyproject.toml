@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "stu-mcp"
-version = "0.2.0"
+version = "0.3.0"
 description = "汕头大学学生的校园工具，供 MCP agents 按需调用"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -13,6 +13,7 @@ dependencies = [
   "mcp>=2.3,<3", "httpx>=0.28,<1", "beautifulsoup4>=4.13,<5",
   "keyring>=25.6,<26", "cryptography>=45", "platformdirs>=4.3,<5",
   "tomlkit>=0.13,<1", "ruamel.yaml>=0.18,<0.20", "pypdf>=5,<7", "playwright>=1.55,<2",
+  "pyotp>=2.9,<3",
 ]
 
 [project.optional-dependencies]

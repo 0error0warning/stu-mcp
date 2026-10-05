@@ -4,7 +4,7 @@
 
 STU MCP 在你的电脑运行，可为 Codex、Claude Code、Cursor、WorkBuddy、ZCode、Grok Build 和 DeepSeek Harness 桌面端生成接入配置；豆包工作与其他能执行本机命令的 agent 可使用导出的 Skill。无需 Hermes、自建服务器或模型 API key。公开功能可以直接使用，个人功能在需要时才登录。[接入方式与官方文档](docs/clients.md)
 
-**0.2.0 是预览版本。** 新增客户端配置适配与 CLI + Skill 接入。公开网站与匿名 OA 已实际验证；新增客户端端到端接入、教务、MySTU、雨课堂的真实账号登录还需要学生参与验证。[验证范围](docs/verification.md)
+**0.3.0 是预览版本。** 新增可选 WebVPN 自动重登：会话失效时用本机安全保存的账号密码和令牌密钥按需重新登录。公开网站与匿名 OA 已实际验证；WebVPN 自动认证、教务、MySTU、雨课堂的真实账号流程及新增客户端端到端接入仍需要学生参与验证。[验证范围](docs/verification.md)
 
 ## 复制这段话给你的 agent
 
@@ -12,7 +12,7 @@ STU MCP 在你的电脑运行，可为 Codex、Claude Code、Cursor、WorkBuddy�
 
 ```text
 请在我的电脑安装并接入 STU MCP，仓库是 https://github.com/0error0warning/stu-mcp 。
-请读取仓库 v0.2.0 的 README、docs/install.md 和 docs/clients.md，使用该版本的官方发行包；缺少 uv/Python 时按文档处理。
+请读取仓库 v0.3.0 的 README、docs/install.md 和 docs/clients.md，使用该版本的官方发行包；缺少 uv/Python 时按文档处理。
 根据你当前所在的客户端，只配置 STU MCP，保留其他配置并备份。豆包工作用本机 Skill；需要我导入或授权时说明。不要展示或上传我现有配置里的密钥。
 先验证无需登录的校园公开信息与 OA。需要成绩或课程时，再打开本地设置页让我在学校官方页面登录。
 不要在对话里索要密码、cookie、token，不要配置模型 API key，不要接入微信私聊或群聊。
@@ -41,7 +41,7 @@ STU MCP 在你的电脑运行，可为 Codex、Claude Code、Cursor、WorkBuddy�
 先安装 [uv](https://docs.astral.sh/uv/getting-started/installation/)，随后运行：
 
 ```sh
-uv tool install --python 3.12 https://github.com/0error0warning/stu-mcp/releases/download/v0.2.0/stu_mcp-0.2.0-py3-none-any.whl
+uv tool install --python 3.12 https://github.com/0error0warning/stu-mcp/releases/download/v0.3.0/stu_mcp-0.3.0-py3-none-any.whl
 stu-mcp setup
 ```
 
@@ -88,9 +88,13 @@ CLI 别名为 `stu`。学校服务对校园网络、VPN、验证码或多因素�
 
 ## 凭据与隐私
 
-账密只在学校页面输入，不保存在 STU MCP，也不需要发给 agent。登录会话、成绩和个人课程缓存加密保存，密钥放在系统密钥库中。密钥库不可用时停止对应个人功能，不退回明文。来源独立配置、独立退出；重新登录会清除该来源旧缓存，避免混入旧账号数据。
+默认在学校页面手动登录，账密无需发给 agent。OA 的 WebVPN 还可以选择自动重登：在本机设置页展开相应选项，填写学校账号、密码和已绑定令牌的密钥（或完整 `otpauth://totp/` 地址），主动勾选允许后保存。保存的是能生成动态验证码的密钥，不能填写当前六位验证码。密钥支持 Base32、Base64、十六进制，可明确指定格式。
 
-`stu-mcp logout jw`、`stu-mcp logout mystu`、`stu-mcp logout yuketang`、`stu-mcp logout webvpn` 移除相应会话及缓存。公开数据与可选兴趣资料不含登录凭据。数据默认位于当前用户的系统数据目录，开发时可用 `STU_MCP_HOME` 指定独立目录。
+这份可选配置直接存系统密钥库，不写入文件、MCP 参数、客户端配置或日志。读取受保护 OA 列表、正文或附件时，先复用会话，失效后自动登录并验证读取；匿名 OA 不触发登录。凭据错误或学校要求人工验证时暂停自动尝试，需重新配置或手动登录；网络问题设有尝试间隔，不反复提交凭据，也不运行定时保活。
+
+登录会话、成绩和个人课程缓存加密保存，密钥放在系统密钥库中。密钥库不可用时停止对应个人功能，不退回明文。来源独立配置、独立退出；重新登录会清除该来源旧缓存，避免混入旧账号数据。
+
+`stu-mcp logout jw`、`stu-mcp logout mystu`、`stu-mcp logout yuketang`、`stu-mcp logout webvpn` 移除相应会话及缓存。退出 WebVPN 同时移除自动重登凭据；手动重新登录 WebVPN 会移除旧自动配置，避免自动切回旧账号。设置页可单独关闭自动重登并移除凭据，保留当前会话。公开数据与可选兴趣资料不含登录凭据。数据默认位于当前用户的系统数据目录，开发时可用 `STU_MCP_HOME` 指定独立目录。
 
 OA 的公开接口目前是 HTTP，程序仅匿名读取，绝不向该地址发送登录态。HTTPS 认证代理是否可用取决于学校环境，首版尚未完成真实 WebVPN 验证。
 

@@ -45,7 +45,7 @@ def reject_symlinks(path: Path) -> None:
 @contextmanager
 def key_lock(home: Path, name: str = "key"):
     """Serialize key creation / short session mutations across MCP processes."""
-    if name not in {"key", "webvpn", "jw", "mystu", "yuketang"}:
+    if name not in {"key", "webvpn", "webvpn-login", "jw", "mystu", "yuketang"}:
         raise AppError("unknown_lock", "不支持此本地状态锁。")
     path = home / f".{name}-lock"
     reject_symlinks(path)

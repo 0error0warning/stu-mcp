@@ -20,11 +20,12 @@ async def test_real_stdio_handshake_schema_and_feature_gating(tmp_path):
         assert len(names) == 16
         for tool in tools.tools:
             schema = tool.input_schema
-            assert not {"password", "username", "cookie", "cookies", "token", "api_key"}.intersection(schema.get("properties", {}))
+            assert not {"password", "username", "cookie", "cookies", "token", "api_key", "totp", "secret", "encoding"}.intersection(schema.get("properties", {}))
         capabilities = await client.call_tool("get_capabilities", {})
         result = capabilities.model_dump(by_alias=True)["structuredContent"]
         assert result["privacy"]["model_api_key_required"] is False
         assert result["privacy"]["private_wechat"] is False
+        assert result["webvpn_auto_login"]["configured"] is False
         unavailable = await client.call_tool("refresh_source", {"source": "jw"})
         assert unavailable.model_dump(by_alias=True)["structuredContent"]["status"] == "needs_login"
         grade = await client.call_tool("get_grades", {})

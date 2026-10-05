@@ -42,9 +42,14 @@
         if(result&&!polling)polling=setInterval(async()=>{try{await load();}catch(e){say(e.message,true);clearInterval(polling);polling=null;}},3000);
       }));
       actions.append(button("刷新","secondary",b=>action(b,"/api/refresh",{source:source.source},"已获取此来源的最新可读数据；查询时请留意范围和更新时间。")));
-      if(status==="session_saved")actions.append(button("退出","secondary forget",b=>action(b,"/api/logout",{service:source.source},"已移除此来源的会话和缓存。")));
+      if(status==="session_saved" || source.source==="oa"&&state.webvpn_auto_login.configured)actions.append(button("退出","secondary forget",b=>action(b,"/api/logout",{service:source.source},source.source==="oa"?"已退出 WebVPN，移除会话、OA 缓存和自动重登凭据。":"已移除此来源的会话和缓存。")));
       row.append(actions);container.append(row);
     }
+    const auto=state.webvpn_auto_login;
+    let autoLabel=auto.status==="enabled"?"已启用 · 凭据已保存，尚不代表学校登录已验证":auto.status==="paused"?"自动重登已暂停 · 请重新填写有效凭据，或移除配置后手动登录":auto.status==="not_configured"?"未配置 · 可继续使用公开 OA 和手动登录":"配置无法读取 · 请检查系统密钥库或移除后重新配置";
+    if(auto.enabled&&auto.retry_after_seconds>0)autoLabel+=" · 登录尝试间隔保护中";
+    document.getElementById("webvpn-auto-status").textContent=autoLabel;
+    document.getElementById("remove-webvpn-auto").hidden=!auto.configured&&auto.status==="not_configured";
     if(initial){
       document.getElementById("jw-http-compat").checked=state.transport.jw_http_compat;
       for(const key of ["college","major","entry_year","interests"])document.getElementById(key).value=state.profile[key]||"";
@@ -89,5 +94,15 @@
   });
   document.getElementById("save-profile").addEventListener("click",e=>{const data={};for(const key of ["college","major","entry_year","interests"])data[key]=document.getElementById(key).value;action(e.target,"/api/profile",data,"资料已保存。");});
   document.getElementById("save-transport").addEventListener("click",e=>action(e.target,"/api/transport",{jw_http_compat:document.getElementById("jw-http-compat").checked},"教务选项已保存。需要成绩时，再登录并刷新教务。"));
+  const credentialIds=["webvpn-username","webvpn-password","webvpn-totp"];
+  function clearCredentials(){for(const id of credentialIds)document.getElementById(id).value="";document.getElementById("webvpn-auto-consent").checked=false;}
+  document.getElementById("webvpn-auto-form").addEventListener("submit",async e=>{
+    e.preventDefault();
+    const data={enabled:document.getElementById("webvpn-auto-consent").checked,username:document.getElementById("webvpn-username").value,password:document.getElementById("webvpn-password").value,totp:document.getElementById("webvpn-totp").value,encoding:document.getElementById("webvpn-encoding").value};
+    try{await action(document.getElementById("save-webvpn-auto"),"/api/webvpn-auto",data);}
+    finally{clearCredentials();for(const key of ["username","password","totp"])data[key]="";}
+  });
+  document.getElementById("remove-webvpn-auto").addEventListener("click",async e=>{clearCredentials();await action(e.target,"/api/webvpn-auto/remove",{});});
+  window.addEventListener("pagehide",clearCredentials);
   load().catch(error=>say(error.message,true));
 })();

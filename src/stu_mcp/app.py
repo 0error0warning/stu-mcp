@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import io
 import math
 import re
@@ -18,6 +17,7 @@ from .runtime import AppError, Runtime, key_lock
 from .sources import SOURCES
 from .store import Store
 from .vault import Vault
+from .webvpn import WebVPNConfig, protected_access
 
 
 class App:
@@ -36,6 +36,7 @@ class App:
                              "access": "anonymous_first" if name == "oa" else "public" if name == "public" else "personal"})
         return {"ok": True, "version": __version__, "sources": features, "freshness": self.store.freshness(),
                 "clients": detected_clients(), "profile": self.runtime.profile(), "transport": self.runtime.preferences(),
+                "webvpn_auto_login": WebVPNConfig(self.vault).status(),
                 "privacy": {"model_api_key_required": False, "background_ai": False,
                             "private_wechat": False, "storage": "os_keyring_and_encrypted_sessions"}}
 
@@ -49,8 +50,7 @@ class App:
         try:
             service = SOURCES[source].session
             def session_version():
-                path = self.runtime.session_file(service) if service else None
-                return hashlib.sha256(path.read_bytes()).digest() if path and path.is_file() else None
+                return self.vault.fingerprint(service) if service else None
             initial_session = session_version()
             if source in {"jw", "mystu", "yuketang"}:
                 auth = self.vault.status(SOURCES[source].session)
@@ -68,7 +68,8 @@ class App:
                 result = collectors.yuketang(self.vault, limit)
             unique = {item["id"]: item for item in result.items}
             with key_lock(self.runtime.home, service) if service else nullcontext():
-                if result.private and initial_session != session_version():
+                expected = result.session_version if result.session_version is not None else initial_session
+                if result.private and expected != session_version():
                     raise AppError("session_changed", "登录状态在刷新期间改变；已丢弃此次个人结果，请重新刷新。", source)
                 saved = self.store.save_batch(source, list(unique.values()), private=result.private)
             self.store.record_status(source, result.status, saved)
@@ -112,9 +113,13 @@ class App:
         if record["kind"] != "notice":
             raise AppError("invalid_notice", "请选择通知记录。")
         if refresh:
-            record.update(collectors.article(record, self.vault))
+            parsed = collectors.article(record, self.vault)
+            record.update(parsed.item)
             private = record["source"] == "oa" and str(record.get("url", "")).startswith("https:")
-            self.store.save_batch(record["source"], [record], private=private)
+            with key_lock(self.runtime.home, "webvpn") if private else nullcontext():
+                if private and parsed.session_version != self.vault.fingerprint("webvpn"):
+                    raise AppError("session_changed", "WebVPN 登录状态已改变，请重新读取通知。", "oa")
+                self.store.save_batch(record["source"], [record], private=private)
         return {"ok": True, "item": record, "cached": not refresh, "content_trust": "untrusted_source_data"}
 
     def attachment(self, item_id: str, index: int = 0) -> dict:
@@ -126,9 +131,13 @@ class App:
         if source not in {"public", "oa"}:
             raise AppError("unsupported_source", "此来源暂不支持附件文字提取。")
         url = urljoin(record["url"], attachments[index]["url"])
-        state = self.vault.load("webvpn") if source == "oa" and url.startswith("https:") else None
-        with CampusHTTP(source, state) as http:
-            response = http.request(url)
+        accessed = None
+        if source == "oa" and url.startswith("https:"):
+            accessed = protected_access(self.vault, url, lambda response: response)
+            response = accessed.value
+        else:
+            with CampusHTTP(source) as http:
+                response = http.request(url)
         content_type = response.headers.get("content-type", "").lower()
         data = response.content
         if data.startswith(b"%PDF"):
@@ -147,6 +156,8 @@ class App:
             text = response.text[:60000]
         else:
             raise AppError("unsupported_attachment", "首版支持 PDF 和文本附件；其他格式请通过学校原链接查看。")
+        if accessed and accessed.session_version != self.vault.fingerprint("webvpn"):
+            raise AppError("session_changed", "WebVPN 登录状态已改变，请重新读取附件。", "oa")
         return {"ok": True, "name": attachments[index]["name"], "text": text,
                 "url": url, "content_trust": "untrusted_source_data", "truncated": len(text) >= 60000}
 
@@ -180,6 +191,10 @@ class App:
         if source not in SOURCES or not SOURCES[source].session:
             raise AppError("unknown_service", "此来源没有需要移除的登录态。")
         with key_lock(self.runtime.home, SOURCES[source].session):
-            result = self.vault.logout(SOURCES[source].session)
-            self.store.forget(source)
+            try:
+                if source == "oa":
+                    WebVPNConfig(self.vault).remove_locked()
+            finally:
+                result = self.vault.logout(SOURCES[source].session)
+                self.store.forget(source)
         return result

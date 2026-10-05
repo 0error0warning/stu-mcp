@@ -15,6 +15,7 @@ from .runtime import AppError, Runtime, key_lock, private_write, reject_symlinks
 class KeyStore(Protocol):
     def get_password(self, service: str, username: str) -> str | None: ...
     def set_password(self, service: str, username: str, password: str) -> None: ...
+    def delete_password(self, service: str, username: str) -> None: ...
 
 
 class SystemKeyStore:
@@ -37,15 +38,31 @@ class SystemKeyStore:
     def set_password(self, service: str, username: str, password: str) -> None:
         self.backend.set_password(service, username, password)
 
+    def delete_password(self, service: str, username: str) -> None:
+        from keyring.errors import PasswordDeleteError
+        try:
+            self.backend.delete_password(service, username)
+        except PasswordDeleteError:
+            if self.backend.get_password(service, username) is not None:
+                raise
+
 
 class Vault:
     def __init__(self, runtime: Runtime, store: KeyStore | None = None):
         self.runtime, self._store = runtime, store
         self.account = hashlib.sha256(str(runtime.home.resolve()).encode()).hexdigest()[:24]
 
+    def key_store(self) -> KeyStore:
+        return self._store or SystemKeyStore()
+
+    def fingerprint(self, service: str) -> bytes | None:
+        path = self.runtime.session_file(service)
+        reject_symlinks(path)
+        return hashlib.sha256(path.read_bytes()).digest() if path.is_file() else None
+
     def _key(self, create: bool = False) -> bytes:
         try:
-            store = self._store or SystemKeyStore()
+            store = self.key_store()
             with key_lock(self.runtime.home):
                 value = store.get_password("stu-mcp.session-key", self.account)
                 if not value and create:
@@ -74,16 +91,20 @@ class Vault:
         except (InvalidToken, ValueError, UnicodeError):
             raise AppError("session_invalid", "本地加密数据无效，请重新登录相关服务。") from None
 
-    def save(self, service: str, state: dict, *, on_relogin: Callable[[], None] | None = None) -> None:
+    def save(self, service: str, state: dict, *, on_relogin: Callable[[], None] | None = None,
+             guard: Callable[[], None] | None = None) -> bytes:
         if not isinstance(state, dict) or not isinstance(state.get("cookies"), list):
             raise AppError("session_invalid", "无法保存无效的登录态。", service)
         path = self.runtime.session_file(service)
         reject_symlinks(path)
         with key_lock(self.runtime.home, service):
+            if guard:
+                guard()
             payload = self.protect({"saved_at": time.time(), "state": state})
             if on_relogin:
                 on_relogin()
             private_write(path, payload)
+            return hashlib.sha256(payload).digest()
 
     def load(self, service: str) -> dict:
         path = self.runtime.session_file(service)

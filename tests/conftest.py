@@ -19,6 +19,9 @@ class MemoryKeys:
         self.values[(service, username)] = password
         self.writes += 1
 
+    def delete_password(self, service, username):
+        self.values.pop((service, username), None)
+
 
 @pytest.fixture
 def keys():

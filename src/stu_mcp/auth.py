@@ -68,6 +68,21 @@ def browser_http_allowed(url: str, post_data: str | None, *, legacy_jw: bool) ->
     return not (isinstance(payload, dict) and any(k.lower() in PASSWORD_KEYS for k in payload))
 
 
+def prepare_browser(playwright, on_phase: Callable[[str], None] | None = None):
+    if not Path(playwright.chromium.executable_path).is_file():
+        if on_phase:
+            on_phase("preparing_browser")
+        try:
+            installed = subprocess.run([sys.executable, "-m", "playwright", "install", "chromium"],
+                                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                                       timeout=300, check=False,
+                                       creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
+        except (OSError, subprocess.TimeoutExpired):
+            raise AppError("browser_install_failed", "登录浏览器准备失败，请检查下载网络后重新登录。") from None
+        if installed.returncode:
+            raise AppError("browser_install_failed", "登录浏览器下载失败；可执行 stu-mcp browser install 检查。")
+
+
 def interactive_login(vault: Vault, service: str, *, timeout: int = 300,
                       on_phase: Callable[[str], None] | None = None) -> dict:
     source = login_service(service)
@@ -76,21 +91,15 @@ def interactive_login(vault: Vault, service: str, *, timeout: int = 300,
     login_url = ("https://sso.stu.edu.cn/login?" + urlencode({"service": "http://jw.stu.edu.cn/jsxsd/"})
                  if legacy_jw else spec.login_url)
     vault._key(create=True)  # Verify secure storage before asking the user to log in.
+    webvpn_config = webvpn_snapshot = None
+    if source == "oa":
+        from .webvpn import WebVPNConfig
+        webvpn_config = WebVPNConfig(vault)
+        webvpn_snapshot = webvpn_config.snapshot()
     insecure_navigation = [False]
     try:
         with sync_playwright() as p:
-            if not Path(p.chromium.executable_path).is_file():
-                if on_phase:
-                    on_phase("preparing_browser")
-                try:
-                    installed = subprocess.run([sys.executable, "-m", "playwright", "install", "chromium"],
-                                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                                               timeout=300, check=False,
-                                               creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
-                except (OSError, subprocess.TimeoutExpired):
-                    raise AppError("browser_install_failed", "登录浏览器准备失败，请检查下载网络后重新登录。", source) from None
-                if installed.returncode:
-                    raise AppError("browser_install_failed", "登录浏览器下载失败；可让 agent 执行 stu-mcp browser install 检查。", source)
+            prepare_browser(p, on_phase)
             if on_phase:
                 on_phase("waiting_for_login")
             browser = p.chromium.launch(headless=False)
@@ -138,7 +147,12 @@ def interactive_login(vault: Vault, service: str, *, timeout: int = 300,
                     if is_login(page.content()) or urlparse(page.url).hostname == "sso.stu.edu.cn":
                         continue
                     state = scoped_state(context.storage_state(), source)
-                vault.save(spec.session, state, on_relogin=lambda: Store(vault.runtime, vault).forget(source))
+                def forget_previous():
+                    Store(vault.runtime, vault).forget(source)
+                    if webvpn_config:
+                        webvpn_config.remove_locked()
+                vault.save(spec.session, state, on_relogin=forget_previous,
+                           guard=(lambda: webvpn_config.check(webvpn_snapshot)) if webvpn_config else None)
                 browser.close()
                 return {"ok": True, "service": spec.session, "status": "session_saved",
                         "verified_live": source != "oa", "next_step": "现在可刷新此来源。"}

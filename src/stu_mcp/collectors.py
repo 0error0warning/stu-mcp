@@ -35,6 +35,7 @@ from .sources import (
     YUKETANG_BASE,
 )
 from .vault import Vault
+from .webvpn import protected_access
 
 
 @dataclass
@@ -44,6 +45,7 @@ class Collection:
     private: bool = False
     limited: bool = False
     coverage: dict = field(default_factory=dict)
+    session_version: bytes | None = None
 
     def fail(self, part: str, exc: AppError):
         self.errors.append({"part": part, **exc.result()})
@@ -79,7 +81,7 @@ def public(limit: int) -> Collection:
 
 def oa(vault: Vault, limit: int) -> Collection:
     # The published OA board currently works anonymously. Never send a session to its HTTP endpoint.
-    base, private = OA_DIRECT, False
+    base, private, session_version = OA_DIRECT, False, None
     http = CampusHTTP("oa")
     url = base + "/login/Login.jsp?logintype=1"
     try:
@@ -87,13 +89,13 @@ def oa(vault: Vault, limit: int) -> Collection:
         records = parse_oa(html, base, limit)
     except AppError:
         http.client.close()
-        state = vault.load("webvpn")
-        http = CampusHTTP("oa", state)
         base, private = OA_SECURE_PROXY, True
-        records = parse_oa(http.text(base + "/login/Login.jsp?logintype=1"), base, limit)
+        accessed = protected_access(vault, base + "/login/Login.jsp?logintype=1",
+                                    lambda response: parse_oa(response.text, base, limit))
+        records, session_version = accessed.value, accessed.session_version
     finally:
         http.client.close()
-    return Collection(records, private=private, limited=True,
+    return Collection(records, private=private, limited=True, session_version=session_version,
                       coverage={"scope": "first_listing_page", "limit": limit,
                                 "access": "authenticated_https" if private else "anonymous_http"})
 
@@ -260,19 +262,29 @@ def yuketang(vault: Vault, limit: int) -> Collection:
     return result
 
 
-def article(record: dict, vault: Vault) -> dict:
+@dataclass
+class Article:
+    item: dict
+    session_version: bytes | None = None
+
+
+def article(record: dict, vault: Vault) -> Article:
     source, url = record["source"], record.get("url")
     if source not in {"public", "oa"} or not url:
         raise AppError("unsupported_article", "请通过对应课程工具读取此来源。", source)
-    state = vault.load("webvpn") if source == "oa" and urlparse(url).scheme == "https" else None
-    with CampusHTTP(source, state) as http:
-        html = http.text(url)
+    session_version = None
+    if source == "oa" and urlparse(url).scheme == "https":
+        accessed = protected_access(vault, url, lambda response: response.text)
+        html, session_version = accessed.value, accessed.session_version
+    else:
+        with CampusHTTP(source) as http:
+            html = http.text(url)
     if is_login(html):
         raise AppError("needs_login", "正文需要在学校页面登录。", source)
     if source == "oa":
         parsed = urlparse(url)
-        return parse_oa_article(html, f"{parsed.scheme}://{parsed.netloc}")
+        return Article(parse_oa_article(html, f"{parsed.scheme}://{parsed.netloc}"), session_version)
     soup = BeautifulSoup(html, "html.parser")
-    return {"body": text_body(html), "attachments": [
+    return Article({"body": text_body(html), "attachments": [
         {"name": clean(a.get_text(" ", strip=True)) or "附件", "url": str(a["href"])}
-        for a in soup.select('a[href*="download"], a[href$=".pdf"], a[href$=".docx"]')][:30]}
+        for a in soup.select('a[href*="download"], a[href$=".pdf"], a[href$=".docx"]')][:30]})

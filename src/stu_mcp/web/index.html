@@ -18,8 +18,24 @@
       <button id="download-skill" class="secondary" hidden>下载技能包</button>
     </section>
     <section class="features" aria-labelledby="features-title">
-      <div class="section-heading"><div><span class="step">02 / 功能</span><h2 id="features-title">只登录你需要的来源</h2></div><p>登录在学校页面完成，账密无需发给 agent。</p></div>
+      <div class="section-heading"><div><span class="step">02 / 功能</span><h2 id="features-title">只登录你需要的来源</h2></div><p>手动登录在学校页面完成；可选凭据仅在本机配置，账密无需发给 agent。</p></div>
       <div id="sources" aria-live="polite"><p>正在读取本地状态…</p></div>
+      <details class="webvpn-auto">
+        <summary>WebVPN 会话失效后自动重新登录 <span>可选</span></summary>
+        <p class="auto-intro">OA 能公开读取时无需配置。启用后，只有读取受保护 OA 信息时才使用保存的凭据，自动生成动态码并重新登录。</p>
+        <p id="webvpn-auto-status" class="auto-status" role="status">正在读取状态…</p>
+        <form id="webvpn-auto-form" autocomplete="off">
+          <div class="fields auto-fields">
+            <label>学校账号<input id="webvpn-username" autocomplete="off" maxlength="128" required></label>
+            <label>学校密码<input id="webvpn-password" type="password" autocomplete="off" maxlength="1024" required></label>
+            <label class="wide">令牌密钥或完整 otpauth://totp/ 地址<input id="webvpn-totp" type="password" autocomplete="off" maxlength="2048" placeholder="填写已绑定令牌的密钥，不是当前六位验证码" required></label>
+            <label class="wide">密钥格式<select id="webvpn-encoding"><option value="auto">自动识别 / otpauth 地址</option><option value="base32">Base32</option><option value="base64">Base64</option><option value="hex">十六进制</option></select></label>
+          </div>
+          <label class="auto-consent"><input id="webvpn-auto-consent" type="checkbox" required> 将凭据保存到本机系统密钥库，允许按需自动重新登录 WebVPN</label>
+          <p class="auto-help">需要修改时重新填写，已保存的值不会显示。退出 WebVPN 会移除凭据；手动重新登录也会移除旧配置，避免自动切回旧账号。学校要求人工验证时，自动尝试会暂停。</p>
+          <div class="auto-actions"><button id="save-webvpn-auto" type="submit">保存并启用</button><button id="remove-webvpn-auto" type="button" class="secondary" hidden>关闭并移除凭据</button></div>
+        </form>
+      </details>
       <div class="compat">
         <label><input id="jw-http-compat" type="checkbox"> 使用学校现有教务 HTTP 接口</label>
         <p>教务目前会跳转到 HTTP。开启后，教务会话和成绩会经过未加密连接；账号密码仍只在 HTTPS 统一认证页输入。这项兼容只影响教务。</p>
@@ -30,7 +46,7 @@
       <div class="fields"><label>学院<input id="college" maxlength="100" autocomplete="off"></label><label>专业<input id="major" maxlength="100" autocomplete="off"></label><label>入学年份<input id="entry_year" type="number" min="2000" max="2100"></label><label class="wide">关注方向<input id="interests" maxlength="300" placeholder="例如：竞赛、科研、实习" autocomplete="off"></label></div>
       <button id="save-profile" class="secondary">保存资料</button>
     </details>
-    <div class="privacy"><span class="privacy-marker">●</span><p>登录会话保存在本机，加密密钥放在系统密钥库中。没有独立后台 AI，也不获取微信私聊和群聊。</p></div>
+    <div class="privacy"><span class="privacy-marker">●</span><p>登录会话加密保存在本机；加密密钥和可选 WebVPN 凭据放在系统密钥库中。没有独立后台 AI，也不获取微信私聊和群聊。</p></div>
     <p id="feedback" role="status" aria-live="polite"></p>
   </main>
   <footer><span>STU MCP <span id="version"></span></span><span>独立开源项目 · 非学校官方服务</span></footer>
