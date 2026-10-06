@@ -17,7 +17,7 @@ from playwright.sync_api import sync_playwright
 
 from .network import PASSWORD_KEYS, CampusHTTP, scoped_state
 from .parsers import is_login, parse_jw
-from .runtime import AppError
+from .runtime import AppError, key_lock
 from .sources import JW_BASE, MYSTU_API, MYSTU_BASE, SOURCES, YUKETANG_BASE
 from .store import Store
 from .vault import Vault
@@ -84,9 +84,13 @@ def prepare_browser(playwright, on_phase: Callable[[str], None] | None = None):
 
 
 def interactive_login(vault: Vault, service: str, *, timeout: int = 300,
-                      on_phase: Callable[[str], None] | None = None) -> dict:
+                      on_phase: Callable[[str], None] | None = None,
+                      expected_revision: bytes | None = None) -> dict:
     source = login_service(service)
     spec = SOURCES[source]
+    if expected_revision is None:
+        with key_lock(vault.runtime.home, spec.session):
+            expected_revision = vault.login_revision(spec.session)
     legacy_jw = source == "jw" and vault.runtime.preferences()["jw_http_compat"]
     login_url = ("https://sso.stu.edu.cn/login?" + urlencode({"service": "http://jw.stu.edu.cn/jsxsd/"})
                  if legacy_jw else spec.login_url)
@@ -96,6 +100,11 @@ def interactive_login(vault: Vault, service: str, *, timeout: int = 300,
         from .webvpn import WebVPNConfig
         webvpn_config = WebVPNConfig(vault)
         webvpn_snapshot = webvpn_config.snapshot()
+    def check_login():
+        if vault.login_revision(spec.session) != expected_revision:
+            raise AppError("session_changed", "登录期间已退出或切换账号，此次会话未保存；请重新登录。", source)
+        if webvpn_config:
+            webvpn_config.check(webvpn_snapshot)
     insecure_navigation = [False]
     try:
         with sync_playwright() as p:
@@ -152,7 +161,7 @@ def interactive_login(vault: Vault, service: str, *, timeout: int = 300,
                     if webvpn_config:
                         webvpn_config.remove_locked()
                 vault.save(spec.session, state, on_relogin=forget_previous,
-                           guard=(lambda: webvpn_config.check(webvpn_snapshot)) if webvpn_config else None)
+                           guard=check_login)
                 browser.close()
                 return {"ok": True, "service": spec.session, "status": "session_saved",
                         "verified_live": source != "oa", "next_step": "现在可刷新此来源。"}
@@ -178,6 +187,8 @@ class LoginJobs:
         with self.lock:
             if any(j["status"] == "running" for j in self.jobs.values()):
                 raise AppError("login_running", "已有登录窗口，请先完成或关闭它。")
+            with key_lock(self.vault.runtime.home, SOURCES[source].session):
+                revision = self.vault.login_revision(SOURCES[source].session)
             self.jobs = {k: v for k, v in self.jobs.items() if v["status"] == "running"}
             job_id = uuid.uuid4().hex
             self.jobs[job_id] = {"id": job_id, "service": source, "status": "running", "phase": "starting"}
@@ -186,7 +197,7 @@ class LoginJobs:
                 with self.lock:
                     self.jobs[job_id]["phase"] = phase
             try:
-                result = interactive_login(self.vault, service, on_phase=progress)
+                result = interactive_login(self.vault, service, on_phase=progress, expected_revision=revision)
             except AppError as exc:
                 result = exc.result()
             except Exception:

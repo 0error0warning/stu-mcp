@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import json
 import time
+import uuid
 from collections.abc import Callable
 from typing import Protocol
 
@@ -59,6 +60,13 @@ class Vault:
         path = self.runtime.session_file(service)
         reject_symlinks(path)
         return hashlib.sha256(path.read_bytes()).digest() if path.is_file() else None
+
+    def login_revision(self, service: str) -> bytes:
+        """Caller holds the service lock when taking or comparing a login snapshot."""
+        path = self.runtime.session_file(service).with_suffix(".generation")
+        reject_symlinks(path)
+        generation = path.read_bytes() if path.is_file() else b""
+        return hashlib.sha256(generation + (self.fingerprint(service) or b"")).digest()
 
     def _key(self, create: bool = False) -> bytes:
         try:
@@ -132,10 +140,12 @@ class Vault:
             return {"status": exc.code, "verified_live": False}
 
     def logout(self, service: str) -> dict:
-        # App.logout also removes this source's cache.
+        # Caller holds the service lock; App.logout also removes this source's cache.
         path = self.runtime.session_file(service)
         reject_symlinks(path)
         if path.is_symlink():
             raise AppError("unsafe_path", "登录态文件是符号链接，已停止操作。")
+        # A logout must also cancel a first login that has not saved any session yet.
+        private_write(path.with_suffix(".generation"), uuid.uuid4().hex.encode("ascii"))
         path.unlink(missing_ok=True)
         return {"ok": True, "service": service, "status": "logged_out"}

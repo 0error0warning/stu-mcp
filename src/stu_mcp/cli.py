@@ -10,6 +10,7 @@ from . import __version__
 from .app import App
 from .auth import interactive_login
 from .clients import CLIENTS, catalog, connect
+from .huyou import DEFAULT_CIRCLE
 from .runtime import AppError
 
 
@@ -35,7 +36,7 @@ def parser() -> argparse.ArgumentParser:
     refresh.add_argument("--limit", type=int, default=20)
     refresh.add_argument("--semester", default="")
     query = sub.add_parser("query", help="查询本地缓存，JSON 输出")
-    query.add_argument("kind", choices=("notice", "grade", "exam", "course", "task", "resource", "event", "service"))
+    query.add_argument("kind", choices=("notice", "grade", "exam", "course", "task", "resource", "event", "service", "post"))
     query.add_argument("--source", default="all")
     query.add_argument("--search", default="")
     query.add_argument("--limit", type=int, default=20)
@@ -56,6 +57,26 @@ def parser() -> argparse.ArgumentParser:
         profile.add_argument("--" + field)
     browser = sub.add_parser("browser", help="安装手动登录所需浏览器")
     browser.add_argument("action", choices=("install",))
+    huyou = sub.add_parser("huyou", help="按需搜索狐友公开圈子和讨论，无需登录")
+    community = huyou.add_subparsers(dest="huyou_action", required=True)
+    search = community.add_parser("search", help="圈内字面词搜索；当前 agent 规划关键词")
+    search.add_argument("query")
+    search.add_argument("--keyword", action="append", dest="keywords")
+    search.add_argument("--circle-id", default=DEFAULT_CIRCLE)
+    search.add_argument("--limit", type=int, default=10)
+    search.add_argument("--pages", type=int, default=2)
+    search.add_argument("--with-discussion", action="store_true")
+    search.add_argument("--local", action="store_true")
+    search.add_argument("--offset", type=int, default=0)
+    detail = community.add_parser("detail", help="公开帖子正文、评论和回复")
+    detail.add_argument("target")
+    detail.add_argument("--local", action="store_true")
+    detail.add_argument("--no-comments", action="store_true")
+    detail.add_argument("--comment-limit", type=int, default=20)
+    detail.add_argument("--reply-limit", type=int, default=10)
+    circles = community.add_parser("circles", help="发现公开圈子及 ID")
+    circles.add_argument("query", nargs="?", default="汕大")
+    circles.add_argument("--page", type=int, default=1)
     return p
 
 
@@ -78,6 +99,14 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "clients":
             return emit({"ok": True, "clients": catalog()})
         app = App()
+        if args.command == "huyou":
+            if args.huyou_action == "search":
+                return emit(app.huyou_search(args.query, args.keywords, args.circle_id, args.limit, args.pages,
+                                            args.with_discussion, args.local, args.offset))
+            if args.huyou_action == "detail":
+                return emit(app.huyou_post(args.target, not args.local, not args.no_comments,
+                                          args.comment_limit, args.reply_limit))
+            return emit(app.huyou_circles(args.query, args.page))
         if args.command == "status":
             return emit(app.status())
         if args.command == "setup":

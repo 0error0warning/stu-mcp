@@ -71,7 +71,7 @@ def test_rejected_webvpn_save_clears_every_input(setup_page, keys):
 def synthetic_login(monkeypatch, app, session):
     complete, calls = Event(), []
 
-    def login(vault, service, on_phase):
+    def login(vault, service, on_phase, **_):
         calls.append(service)
         on_phase("waiting_for_login")
         if not complete.wait(20):

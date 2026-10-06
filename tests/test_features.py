@@ -120,3 +120,50 @@ def test_refresh_failure_preserves_cache_and_has_safe_status(app, monkeypatch):
     assert "SYNTHETIC_TOKEN" not in str(error.value)
     assert app.query("notice", source="public")["total_count"] == 1
     assert app.store.freshness()[0]["status"] == "source_error"
+
+
+@pytest.mark.parametrize("source,private", [("public", False), ("oa", False), ("oa", True)])
+def test_notice_listing_preserves_detail_search_and_its_original_freshness(app, session, monkeypatch, source, private):
+    tick = ["2026-10-06T00:00:00+00:00"]
+    monkeypatch.setattr("stu_mcp.store.now", lambda: tick[0])
+    if private:
+        app.vault.save("webvpn", session)
+    version = app.vault.fingerprint("webvpn") if private else None
+    listing = {"id": f"{source}:notice:synthetic", "kind": "notice", "title": "合成通知",
+               "url": ("https://oa-stu-edu-cn.webvpn.stu.edu.cn/synthetic" if private else
+                       "http://oa.stu.edu.cn/synthetic" if source == "oa" else "https://www.stu.edu.cn/info/1/2.htm")}
+    monkeypatch.setattr(collectors, source, lambda *_: collectors.Collection(
+        [listing.copy()], private=private, session_version=version))
+    detail = {"body": "SYNTHETIC_ELIGIBILITY", "attachments": [{"name": "合成附件", "url": "/synthetic.pdf"}]}
+    monkeypatch.setattr(collectors, "article", lambda *_: collectors.Article(detail.copy(), version))
+    app.refresh(source)
+    fetched = app.notice(listing["id"], refresh=True)["item"]
+    assert fetched["detail_collected_at"] == tick[0]
+    tick[0] = "2026-10-06T01:00:00+00:00"
+    listing["title"] = "更新的合成通知标题"
+    app.refresh(source)
+    cached = app.notice(listing["id"])["item"]
+    assert cached["title"] == listing["title"]
+    assert cached["body"] == detail["body"] and cached["attachments"] == detail["attachments"]
+    assert cached["collected_at"] == tick[0]
+    assert cached["detail_collected_at"] == fetched["detail_collected_at"]
+    assert app.query("notice", query="SYNTHETIC_ELIGIBILITY", source=source)["total_count"] == 1
+
+    detail.update(body="", attachments=[])
+    cleared = app.notice(listing["id"], refresh=True)["item"]
+    assert cleared["body"] == "" and cleared["attachments"] == []
+    assert cleared["detail_collected_at"] == tick[0]
+    assert app.query("notice", query="SYNTHETIC_ELIGIBILITY", source=source)["total_count"] == 0
+
+
+@pytest.mark.parametrize("old_private,new_private,same_url", [(True, False, True), (False, True, True),
+                                                            (False, False, False)])
+def test_notice_details_do_not_cross_access_or_url_boundaries(app, old_private, new_private, same_url):
+    listing = {"id": "oa:notice:synthetic", "kind": "notice", "title": "合成通知",
+               "url": "https://oa-stu-edu-cn.webvpn.stu.edu.cn/synthetic"}
+    app.store.save_batch("oa", [{**listing, "body": "SYNTHETIC_PROTECTED_DETAIL", "attachments": []}], private=old_private)
+    if not same_url:
+        listing["url"] = "http://oa.stu.edu.cn/synthetic"
+    app.store.save_batch("oa", [listing], private=new_private)
+    cached = app.store.get(listing["id"])
+    assert not {"body", "attachments", "detail_collected_at"}.intersection(cached)

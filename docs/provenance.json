@@ -16,6 +16,24 @@
       "commit": "70a83069ed3fab9518d5c1b7036c5a5f73a443a8",
       "path": "school_hub/scrapers/webvpn.py",
       "sha256": "dc662cfd5861e9dfa22ade10abaf65aa2f7decb5d660edfc392281b09ca08485"
+    },
+    {
+      "repository": "0error0warning/school-hub",
+      "commit": "3986c4ae49d2ffed4e41582a4f40a2fdd8ef31fa",
+      "path": "school_hub/scrapers/huyou.py",
+      "sha256": "a42f6bc8f7488d97a5f883814de38e5febbad9541bcca5b4faa3663b8d902d65"
+    },
+    {
+      "repository": "0error0warning/school-hub",
+      "commit": "3986c4ae49d2ffed4e41582a4f40a2fdd8ef31fa",
+      "path": "school_hub/huyou_search.py",
+      "sha256": "51bb3a5076bc2d1341c040b1eeeb33ece8976dd2d322672662628089fbf656e2"
+    },
+    {
+      "repository": "0error0warning/school-hub",
+      "commit": "3986c4ae49d2ffed4e41582a4f40a2fdd8ef31fa",
+      "path": "docs/HUYOU_HTTP_API.md",
+      "sha256": "f83d83aa12fc61539d6aa871e400e607f38d377c7cc9de15336618d910a38dc9"
     }
   ],
   "inputs": [

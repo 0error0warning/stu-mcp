@@ -25,6 +25,8 @@ SOURCES = {
                     ("my.stu.edu.cn", "sso.stu.edu.cn"), "mystu"),
     "yuketang": Source("yuketang", "雨课堂", ("课程", "作业", "课程公告"),
                       "https://changjiang.yuketang.cn/", ("changjiang.yuketang.cn",), "yuketang"),
+    "huyou": Source("huyou", "狐友 · 汕大树洞", ("圈内关键词搜索", "公开帖子", "评论和回复"),
+                    hosts=("cs-ol.sns.sohu.com", "hy.sns.sohu.com")),
 }
 
 PUBLIC_LISTINGS = (
