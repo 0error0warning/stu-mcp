@@ -233,6 +233,7 @@ class App:
                 if private and parsed.session_version != self.vault.fingerprint("webvpn"):
                     raise AppError("session_changed", "WebVPN 登录状态已改变，请重新读取通知。", "oa")
                 self.store.save_batch(record["source"], [record], private=private)
+                record = self.store.get(item_id)
         return {"ok": True, "item": record, "cached": not refresh, "content_trust": "untrusted_source_data"}
 
     def attachment(self, item_id: str, index: int = 0) -> dict:

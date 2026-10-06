@@ -64,12 +64,27 @@ class Store:
             return len(self.save_community(records))
         timestamp = now()
         cipher = self.vault._cipher(create=True) if private and (records or sync is not None) else None
-        rows = []
-        for item in records:
-            data = {**item, "source": source, "collected_at": timestamp}
-            payload = self.vault.protect(data, cipher=cipher) if private else json.dumps(data, ensure_ascii=False).encode()
-            rows.append((source, item["kind"], item["id"], payload, int(private), timestamp))
         with self.connect() as c:
+            c.execute("BEGIN IMMEDIATE")
+            rows = []
+            for item in records:
+                data = {**item, "source": source, "collected_at": timestamp}
+                if item["kind"] == "notice":
+                    if "body" in item or "attachments" in item:
+                        data["detail_collected_at"] = timestamp
+                    else:
+                        previous = c.execute("SELECT payload,private FROM records WHERE source=? AND kind='notice' AND id=?",
+                                             (source, item["id"])).fetchone()
+                        # Never copy authenticated details into an anonymous listing or a different URL.
+                        if previous and bool(previous["private"]) == private:
+                            old = (self.vault.unprotect(bytes(previous["payload"]), cipher=cipher)
+                                   if private else json.loads(previous["payload"]))
+                            if old.get("url") == data.get("url"):
+                                data.update({key: old[key] for key in ("body", "attachments") if key in old})
+                                if "body" in data or "attachments" in data:
+                                    data["detail_collected_at"] = old.get("detail_collected_at", old["collected_at"])
+                payload = self.vault.protect(data, cipher=cipher) if private else json.dumps(data, ensure_ascii=False).encode()
+                rows.append((source, item["kind"], item["id"], payload, int(private), timestamp))
             if sync is not None:
                 incoming_ids = {item["id"] for item in records}
                 old = c.execute("SELECT * FROM records WHERE source=? AND kind IN ('course','task','resource')",
