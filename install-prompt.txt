@@ -1,6 +1,6 @@
 请在我的电脑安装并接入 STU MCP，仓库是 https://github.com/0error0warning/stu-mcp 。
 
-请读取仓库 v0.3.1 的 README、docs/install.md 和 docs/clients.md，使用该版本官方发行页的 wheel，并核对发行页的 SHA256 校验文件。缺少 uv/Python 时按文档用官方来源准备，不需要管理员权限或修改其他项目环境。
+请读取仓库 v0.4.0 的 README、docs/install.md 和 docs/clients.md，使用该版本官方发行页的 wheel，并核对发行页的 SHA256 校验文件。缺少 uv/Python 时按文档用官方来源准备，不需要管理员权限或修改其他项目环境。
 
 根据你当前所在的客户端，运行 stu-mcp clients 选择接入方式。只添加 STU MCP；由程序合并并备份，不展示、复制到对话或上传我现有配置里的密钥。无法识别当前客户端时，可以问我正在用哪个。
 

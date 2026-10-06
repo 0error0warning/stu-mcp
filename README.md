@@ -1,10 +1,10 @@
 # STU MCP
 
-把汕头大学的通知、成绩、课程和作业，接入你常用的 agent。
+把汕头大学的通知、成绩、课程、作业和校园公开讨论，接入你常用的 agent。
 
 STU MCP 在你的电脑运行，可为 Codex、Claude Code、Cursor、WorkBuddy、ZCode、Grok Build 和 DeepSeek Harness 桌面端生成接入配置；豆包工作与其他能执行本机命令的 agent 可使用导出的 Skill。无需 Hermes、自建服务器或模型 API key。公开功能可以直接使用，个人功能在需要时才登录。[接入方式与官方文档](docs/clients.md)
 
-**0.3.1 是修复预览版。** 修复 macOS/Linux 的 uv 启动路径、旧学期待办残留，并采用仅负责登录的设置页。保留可选 WebVPN 自动重登。公开网站与匿名 OA 已实际验证；WebVPN 自动认证、教务、MySTU、雨课堂的真实账号流程及客户端应用内的端到端接入仍需要学生参与验证。[验证范围](docs/verification.md)
+**0.4.0 是学生预览版。** 新增狐友匿名公开讨论查询，修复通知列表刷新丢失正文/附件，以及退出后在途登录重新保存会话的问题。公开网站、匿名 OA 和狐友已实际验证；WebVPN 自动认证、教务、MySTU、雨课堂的真实账号流程及客户端应用内的端到端接入仍需要学生参与验证。[更新记录](CHANGELOG.md) · [验证范围](docs/verification.md)
 
 ## 复制这段话给你的 agent
 
@@ -12,7 +12,7 @@ STU MCP 在你的电脑运行，可为 Codex、Claude Code、Cursor、WorkBuddy�
 
 ```text
 请在我的电脑安装并接入 STU MCP，仓库是 https://github.com/0error0warning/stu-mcp 。
-请读取仓库 v0.3.1 的 README、docs/install.md 和 docs/clients.md，使用该版本的官方发行包；缺少 uv/Python 时按文档处理。
+请读取仓库 v0.4.0 的 README、docs/install.md 和 docs/clients.md，使用该版本的官方发行包；缺少 uv/Python 时按文档处理。
 根据你当前所在的客户端，只配置 STU MCP，保留其他配置并备份。豆包工作用本机 Skill；需要我导入或授权时说明。不要展示或上传我现有配置里的密钥。
 先验证无需登录的校园公开信息与 OA。需要成绩或课程时，再打开本地设置页让我在学校官方页面登录。
 不要在对话里索要密码、cookie、token，不要配置模型 API key，不要接入微信私聊或群聊。
@@ -30,12 +30,12 @@ STU MCP 在你的电脑运行，可为 Codex、Claude Code、Cursor、WorkBuddy�
 | 教务 | 本人成绩、学分加权统计、考试安排 | 单独启用旧 HTTP 接口兼容，在 HTTPS 统一认证页手动登录 |
 | MySTU | 最新可用学期课程、作业/测验、Moodle/ELC 活动链接、个人日程 | 单独在学校登录页登录，ELC 可能还需完成一次登录 |
 | 雨课堂 | 最新可用学期课程、作业/测验待办、课程公告 | 在雨课堂页面登录或扫码 |
-| 狐友（开发分支，尚未发行） | 汕大树洞圈内关键词搜索、公开正文、评论和楼中楼回复 | 公开读取，无需账号、Cookie 或密钥库；独立社区来源 |
+| 狐友 | 汕大树洞圈内关键词搜索、公开正文、评论和楼中楼回复 | 公开读取，无需账号、Cookie 或密钥库；独立社区来源 |
 | 本机 | 待办状态、可选学院/专业/年级/兴趣 | 无需模型密钥；资料完全可选 |
 
 这是按需、有界的信息读取工具。刷新会报告获取范围、数量上限和失败部分；查询会报告缓存时间。空缓存不表示学校没有通知或作业。
 
-狐友功能暂在开发分支，v0.3.1 发行包不包含它。使用该分支时可调用 `search_huyou_posts`、`get_huyou_post`、`search_huyou_circles`，或 CLI 的 `stu-mcp huyou search/detail/circles`。默认搜索汕大树洞，当前 agent 规划少量字面关键词，工具不另行调用模型。帖子和回复标为 `official=false`，不混入 OA 通知。[狐友调用与范围](docs/huyou.md)
+狐友功能从 v0.4.0 起随发行包提供。可调用 `search_huyou_posts`、`get_huyou_post`、`search_huyou_circles`，或 CLI 的 `stu-mcp huyou search/detail/circles`。默认搜索汕大树洞，当前 agent 规划少量字面关键词，工具不另行调用模型。帖子和回复标为 `official=false`，不混入 OA 通知。[狐友调用与范围](docs/huyou.md)
 
 不做微信私聊/群聊获取、聊天解密或历史扫描。首版也没有公众号采集、独立后台 AI、自动投递或自动提交作业。
 
@@ -44,7 +44,7 @@ STU MCP 在你的电脑运行，可为 Codex、Claude Code、Cursor、WorkBuddy�
 先安装 [uv](https://docs.astral.sh/uv/getting-started/installation/)，随后运行：
 
 ```sh
-uv tool install --python 3.12 https://github.com/0error0warning/stu-mcp/releases/download/v0.3.1/stu_mcp-0.3.1-py3-none-any.whl
+uv tool install --python 3.12 https://github.com/0error0warning/stu-mcp/releases/download/v0.4.0/stu_mcp-0.4.0-py3-none-any.whl
 ```
 
 已安装旧版时，在安装命令中加入 `--force`；升级后重新运行对应的 `connect ... --apply`，更新客户端中旧的启动路径，然后重新加载 MCP 或重启客户端。
