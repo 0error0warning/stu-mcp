@@ -1,112 +1,75 @@
 # STU MCP
 
-把汕头大学的通知、成绩、课程、作业和校园公开讨论，接入你常用的 agent。
+这个项目的前身，是我在「养」Hermes agent 时，从零搭起来的一个自用信息聚合器。学校通知、课程、作业，散在不同地方的信息，我都想慢慢接进去。自己用的版本里，甚至还接入了微信聊天记录。
 
-STU MCP 在你的电脑运行，可为 Codex、Claude Code、Cursor、WorkBuddy、ZCode、Grok Build 和 DeepSeek Harness 桌面端生成接入配置；豆包工作与其他能执行本机命令的 agent 可使用导出的 Skill。无需 Hermes、自建服务器或模型 API key。公开功能可以直接使用，个人功能在需要时才登录。[接入方式与官方文档](docs/clients.md)
+我折腾它的原因，是希望 agent 在帮我做事时，能拿到足够的个人上下文：我最近在忙什么、有什么通知要看、哪些事情还没做完。和我有关的信息，如果它能在需要时自己查到，我就能少重复一些背景，也不用总在几个网站和聊天窗口之间来回复制粘贴。
 
-**0.4.0 是学生预览版。** 新增狐友匿名公开讨论查询，修复通知列表刷新丢失正文/附件，以及退出后在途登录重新保存会话的问题。公开网站、匿名 OA 和狐友已实际验证；WebVPN 自动认证、教务、MySTU、雨课堂的真实账号流程及客户端应用内的端到端接入仍需要学生参与验证。[更新记录](CHANGELOG.md) · [验证范围](docs/verification.md)
+后来，我把里面和汕大有关的部分整理成了 STU MCP，想让其他同学也能接到自己常用的 agent 上。它负责找信息、读信息，怎么理解和整理，交给你自己的 agent。
 
-## 复制这段话给你的 agent
+微信聊天记录接入留在自用版本里，公开版不包含。用这里的功能也不需要先装 Hermes，或者另外配一份模型 API key。
 
-适用于能在你电脑上执行安装和修改 MCP 配置的 agent。纯网页聊天或不支持本地 MCP 的托管服务，不能靠一段 prompt 自动安装到你的电脑。
+## 想试试的话
+
+找一个能在你电脑上执行命令的 agent，把这两行发给它：
 
 ```text
-请在我的电脑安装并接入 STU MCP，仓库是 https://github.com/0error0warning/stu-mcp 。
-请读取仓库 v0.4.0 的 README、docs/install.md 和 docs/clients.md，使用该版本的官方发行包；缺少 uv/Python 时按文档处理。
-根据你当前所在的客户端，只配置 STU MCP，保留其他配置并备份。豆包工作用本机 Skill；需要我导入或授权时说明。不要展示或上传我现有配置里的密钥。
-先验证无需登录的校园公开信息与 OA。需要成绩或课程时，再打开本地设置页让我在学校官方页面登录。
-不要在对话里索要密码、cookie、token，不要配置模型 API key，不要接入微信私聊或群聊。
-请报告安装和验证结果；如果客户端需要重新加载或重启，明确告诉我下一步。
+帮我安装 STU MCP：https://github.com/0error0warning/stu-mcp
+按 docs/install.md 接入当前客户端，保留已有配置并验证公开查询。需要登录时打开本地设置页，我自己来。
 ```
 
-完整的可复制版本：[安装 prompt](install-prompt.txt)。agent 的安装操作说明：[docs/install.md](docs/install.md)。
+[单独复制这段 prompt](install-prompt.txt) · [安装细节](docs/install.md)
 
-## 已实现的功能
+装好以后，可以直接问它：
 
-| 来源 | 功能 | 需要配置什么 |
+- “最近有什么适合我报名的竞赛？把截止时间和原文找出来。”
+- “整理一下 MySTU 接下来两周的作业，按截止时间排一排。”
+- “树洞里有人聊过这门选修课吗？搜一下大家怎么说。”
+
+## 现在能查些什么
+
+| 来源 | 能查的东西 | 要登录吗 |
 | --- | --- | --- |
-| 学校公开网站 | 学校要闻、综合新闻、活动预告、学生处通知、校园服务入口 | 无需账号 |
-| OA | 近期通知、正文、附件列表、PDF/文本附件文字 | 先匿名访问；受网络/访问限制时才尝试 WebVPN |
-| 教务 | 本人成绩、学分加权统计、考试安排 | 单独启用旧 HTTP 接口兼容，在 HTTPS 统一认证页手动登录 |
-| MySTU | 最新可用学期课程、作业/测验、Moodle/ELC 活动链接、个人日程 | 单独在学校登录页登录，ELC 可能还需完成一次登录 |
-| 雨课堂 | 最新可用学期课程、作业/测验待办、课程公告 | 在雨课堂页面登录或扫码 |
-| 狐友 | 汕大树洞圈内关键词搜索、公开正文、评论和楼中楼回复 | 公开读取，无需账号、Cookie 或密钥库；独立社区来源 |
-| 本机 | 待办状态、可选学院/专业/年级/兴趣 | 无需模型密钥；资料完全可选 |
+| 学校官网、学生处 | 新闻、通知、活动预告、校园服务入口 | 不用 |
+| OA | 近期通知、正文和附件，PDF / 文本附件也能读 | 先匿名读取，受限时再用 WebVPN |
+| 教务 | 自己的成绩、学分加权统计、考试安排 | 需要 |
+| MySTU / ELC | 课程、作业、测验、资料链接、个人日程 | 需要，ELC 可能要再登一次 |
+| 雨课堂 | 课程、作业、测验、课程公告 | 需要 |
+| 狐友 | 汕大树洞里的公开帖子、评论和楼中楼回复 | 不用 |
 
-这是按需、有界的信息读取工具。刷新会报告获取范围、数量上限和失败部分；查询会报告缓存时间。空缓存不表示学校没有通知或作业。
+也可以记一下本地待办，或者告诉 agent 你的学院、专业和兴趣。它们都不是必填项，本地勾选“完成”也不会替你向学校提交作业。
 
-狐友功能从 v0.4.0 起随发行包提供。可调用 `search_huyou_posts`、`get_huyou_post`、`search_huyou_circles`，或 CLI 的 `stu-mcp huyou search/detail/circles`。默认搜索汕大树洞，当前 agent 规划少量字面关键词，工具不另行调用模型。帖子和回复标为 `official=false`，不混入 OA 通知。[狐友调用与范围](docs/huyou.md)
+查到的信息会带来源和缓存时间。想看最新消息时，让 agent 先刷新；没查到也可能只是这次没取全。狐友里是同学们的讨论，学校的正式要求还是要看 OA 或学校原文。[狐友怎么查](docs/huyou.md)
 
-不做微信私聊/群聊获取、聊天解密或历史扫描。首版也没有公众号采集、独立后台 AI、自动投递或自动提交作业。
+## 自己动手安装
 
-## 手动安装
-
-先安装 [uv](https://docs.astral.sh/uv/getting-started/installation/)，随后运行：
+先装好 [uv](https://docs.astral.sh/uv/getting-started/installation/)，然后运行。这里以 Codex 为例：
 
 ```sh
 uv tool install --python 3.12 https://github.com/0error0warning/stu-mcp/releases/download/v0.4.0/stu_mcp-0.4.0-py3-none-any.whl
-```
-
-已安装旧版时，在安装命令中加入 `--force`；升级后重新运行对应的 `connect ... --apply`，更新客户端中旧的启动路径，然后重新加载 MCP 或重启客户端。
-
-然后接入你用的客户端：
-
-```sh
 stu-mcp connect codex --apply
-stu-mcp connect claude-code --apply
-stu-mcp connect cursor --apply
-stu-mcp connect workbuddy --apply
-stu-mcp connect zcode --apply
-stu-mcp connect grok-build --apply
-stu-mcp connect deepseek-harness --apply
 ```
 
-只运行自己需要的一条。需要成绩、课程或作业时，运行 `stu-mcp setup` 打开本机设置页登录学校账号。首次点「登录」会自动准备登录浏览器；也可预先运行 `stu-mcp browser install`。Linux 还需可用的 Secret Service/KWallet 和桌面环境；公开查询不依赖密钥库。
+第二行换成你用的客户端，比如 `claude-code` 或 `cursor`。其他客户端、豆包工作和 Skill 的接法放在[这里](docs/clients.md)。已经装过旧版的话，第一条加上 `--force`，再重新接入、重启或重新加载 MCP。
 
-省略 `--apply` 只预览；重复运行不产生重复配置。已存在其他同名服务时停止，检查后才使用 `--replace`。配置变更会保留原文件备份。保存后按客户端要求重新加载 MCP、重启或启用服务。
+想查成绩、课程或作业，再运行 `stu-mcp setup`，在弹出的学校页面里自己登录。密码不用发给 agent。登录会话和个人缓存加密保存在本机；WebVPN 自动重登可以在本地设置页按需配置。[登录说明](docs/install.md) · [存储与隐私](SECURITY.md)
 
-其他客户端：`stu-mcp connect generic` 输出不含凭据的标准 `mcpServers` 配置，选择本地 stdio 接入。
+教务的 HTTP 兼容需要你在设置页确认。开启后，成绩和教务会话会走 HTTP，密码仍在学校的 HTTPS 登录页输入。
 
-豆包工作：`stu-mcp connect doubao-work --apply` 生成可导入的本机 Skill；其他可执行本机命令的 agent 可用 `generic-cli`。导入技能、允许本机执行后再验证；豆包工作的原生 MCP 接入尚未确认。[各客户端说明](docs/clients.md)
-
-## 开始使用
-
-告诉 agent：
-
-- “看看最近的 OA 通知，找出竞赛和报名截止时间，读原文确认资格。”
-- “先告诉我哪些功能无需登录；我只想启用成绩查询。”
-- “刷新 MySTU，整理接下来两周的作业，区分学校提交状态和本地待办。”
-
-终端也可以直接查询，适合没有 MCP 但可以执行命令的 agent：
+喜欢用终端的话，也可以直接查：
 
 ```sh
-stu-mcp status
 stu-mcp refresh oa --limit 20
 stu-mcp query notice --source oa --search 竞赛
-stu-mcp login jw
-stu-mcp refresh jw
-stu-mcp query grade --source jw
+stu-mcp huyou search 选课
 ```
 
-CLI 别名为 `stu`。学校服务对校园网络、VPN、验证码或多因素认证的要求仍由学校决定。
+## 还在慢慢补
 
-## 凭据与隐私
+目前是 [v0.4.0 预览版](https://github.com/0error0warning/stu-mcp/releases/tag/v0.4.0)。官网、匿名 OA 和狐友已经做过实际读取；教务、MySTU、雨课堂和 WebVPN 的真实学生账号验证还没补齐，各客户端里从安装到使用的完整流程也还需要继续试。具体测过什么、哪里还没测，记在[验证记录](docs/verification.md)里。
 
-默认在学校页面手动登录，账密无需发给 agent。OA 的 WebVPN 还可以选择自动重登：在本机设置页点 WebVPN 的「设置」，填写学校账号、密码和已绑定令牌的密钥（或完整 `otpauth://totp/` 地址）后保存。保存的是能生成动态验证码的密钥，不能填写当前六位验证码。密钥支持 Base32、Base64、十六进制，可明确指定格式。
+如果你用起来了，或者发现某个入口读不动了，欢迎开 issue 聊聊。告诉我用的版本、卡在哪一步就很有帮助，别把真实成绩、密码或登录凭据贴进去。
 
-这份可选配置直接存系统密钥库，不写入文件、MCP 参数、客户端配置或日志。读取受保护 OA 列表、正文或附件时，先复用会话，失效后自动登录并验证读取；匿名 OA 不触发登录。凭据错误或学校要求人工验证时暂停自动尝试，需重新配置或手动登录；网络问题设有尝试间隔，不反复提交凭据，也不运行定时保活。
-
-登录会话、成绩和个人课程缓存加密保存，密钥放在系统密钥库中。密钥库不可用时停止对应个人功能，不退回明文。来源独立配置、独立退出；重新登录会清除该来源旧缓存，避免混入旧账号数据。
-
-`stu-mcp logout jw`、`stu-mcp logout mystu`、`stu-mcp logout yuketang`、`stu-mcp logout webvpn` 移除相应会话及缓存。退出 WebVPN 同时移除自动重登凭据；手动重新登录 WebVPN 会移除旧自动配置，避免自动切回旧账号。设置页的「断开」等同 `stu-mcp logout webvpn`。公开数据与可选兴趣资料不含登录凭据。数据默认位于当前用户的系统数据目录，开发时可用 `STU_MCP_HOME` 指定独立目录。
-
-OA 的公开接口目前是 HTTP，程序仅匿名读取，绝不向该地址发送登录态。HTTPS 认证代理是否可用取决于学校环境，首版尚未完成真实 WebVPN 验证。
-
-2026-10-05 实测教务 HTTPS 入口会跳转到 HTTP。教务 HTTP 兼容默认关闭；在设置页首次登录教务时，页面会先说明这一点，点「继续登录」才开启。密码只在学校 HTTPS 统一认证页输入；开启后，教务会话和成绩会通过 HTTP 传输，保存到本机时仍加密。此例外只允许教务主机，不影响 MySTU、雨课堂或 WebVPN 的 HTTPS 要求。真实学生登录仍需验收。
-
-同一系统账号下拥有完整执行权限的程序仍可能访问你的密钥库或进程内存；加密存储不等于防御已控制电脑的 agent。[详细安全边界](SECURITY.md)
-
-## 开发与贡献
+想自己改也可以：
 
 ```sh
 uv sync --extra dev
@@ -116,6 +79,6 @@ uv run stu-mcp setup
 uv build
 ```
 
-测试只使用合成账号/页面，不包含真实成绩、登录态、私聊数据或部署密钥。CI 覆盖 Windows、macOS、Linux 和 Python 3.11–3.13。[架构](docs/architecture.md) · [验证清单](docs/verification.md) · [代码来源](docs/provenance.json)
+[更新记录](CHANGELOG.md) · [代码结构](docs/architecture.md) · [代码来源](docs/provenance.json)
 
-MIT 许可。独立学生开源项目，非汕头大学官方服务。
+MIT 许可。个人折腾的小项目，和学校官方没有关系。
