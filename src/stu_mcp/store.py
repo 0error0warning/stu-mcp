@@ -8,6 +8,7 @@ from contextlib import contextmanager
 from datetime import UTC, datetime
 
 from .huyou import merge_post, searchable_text
+from .parsers import JW_SCHEMA_VERSION
 from .runtime import AppError, Runtime, reject_symlinks
 from .sync import COURSE_KINDS, CourseSync, in_scope
 from .vault import Vault
@@ -169,6 +170,10 @@ class Store:
                 item = self.vault.unprotect(bytes(row["payload"]), cipher=cipher) if row["private"] else json.loads(row["payload"])
             except AppError as exc:
                 unavailable.append({"source": row["source"], "status": exc.code})
+                continue
+            if (row["source"] == "jw" and item["kind"] in {"grade", "exam"}
+                    and item.get("jw_schema_version") != JW_SCHEMA_VERSION):
+                unverified_count += 1
                 continue
             if row["source"] in blocked_scopes and item["kind"] in COURSE_KINDS:
                 continue

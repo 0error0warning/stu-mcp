@@ -176,8 +176,10 @@ def test_legacy_records_are_unverified_until_complete_snapshot_and_overrides_sur
 
 
 def test_sync_metadata_is_encrypted_jw_history_is_retained_and_logout_clears_scope(app, campus):
-    app.store.save_batch("jw", [{"id": "old-grade", "kind": "grade", "title": "合成旧成绩"}], private=True)
-    app.store.save_batch("jw", [{"id": "new-grade", "kind": "grade", "title": "合成新成绩"}], private=True)
+    app.store.save_batch("jw", [{"id": "old-grade", "kind": "grade", "title": "合成旧成绩",
+                                "jw_schema_version": 2}], private=True)
+    app.store.save_batch("jw", [{"id": "new-grade", "kind": "grade", "title": "合成新成绩",
+                                "jw_schema_version": 2}], private=True)
     app.store.save_batch("yuketang", [{"id": "other-task", "kind": "task", "title": "其他来源"}], private=True)
     app.refresh("mystu")
     with app.store.connect() as conn:

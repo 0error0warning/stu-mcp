@@ -8,6 +8,7 @@ from urllib.parse import parse_qsl, urljoin, urlparse
 
 import httpx
 
+from .parsers import is_login
 from .runtime import AppError
 from .sources import SOURCES
 
@@ -54,6 +55,7 @@ class CampusHTTP:
         if allow_legacy_http and source != "jw":
             raise AppError("unsafe_policy", "HTTP 兼容只允许用于学校教务来源。", source)
         self.allow_legacy_http = allow_legacy_http
+        self.used_legacy_http = False
         cookies = httpx.Cookies()
         for c in scoped_state(state or {}, source)["cookies"]:
             try:
@@ -99,6 +101,7 @@ class CampusHTTP:
             remaining = self.deadline - time.monotonic()
             if remaining <= 0:
                 raise AppError("request_deadline", "此轮读取已达到 45 秒上限，已有结果会注明范围。", self.source)
+            self.used_legacy_http |= urlparse(current).scheme == "http"
             try:
                 with self.client.stream(method, current, data=data if method == "POST" else None,
                                         timeout=httpx.Timeout(min(18, remaining), connect=min(8, remaining))) as response:
@@ -137,8 +140,11 @@ class CampusHTTP:
                     headers = response.headers.copy()
                     headers.pop("content-encoding", None)
                     headers["content-length"] = str(len(content))
-                    return httpx.Response(response.status_code, headers=headers,
-                                          content=content, request=response.request)
+                    result = httpx.Response(response.status_code, headers=headers,
+                                            content=content, request=response.request)
+                    if self.authenticated and content.lstrip().startswith(b"<") and is_login(result.text):
+                        raise AppError("login_expired", "此来源需要在本地浏览器重新登录。", self.source)
+                    return result
             except AppError:
                 raise
             except httpx.HTTPError:

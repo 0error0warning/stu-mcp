@@ -4,12 +4,12 @@
 
 ## 1. 环境与发行包
 
-使用 `https://github.com/0error0warning/stu-mcp` 的 `v0.4.0` 学生预览版。[发行页](https://github.com/0error0warning/stu-mcp/releases/tag/v0.4.0) 包含 wheel、源码与 SHA256 校验文件。不要安装未知 PyPI 同名包；当前未发布到 PyPI。
+使用 `https://github.com/0error0warning/stu-mcp` 的 `v0.4.1` 学生预览版。[发行页](https://github.com/0error0warning/stu-mcp/releases/tag/v0.4.1) 包含 wheel、源码与 SHA256 校验文件。不要安装未知 PyPI 同名包；当前未发布到 PyPI。
 
 检查 `uv`。缺少时参考 [uv 官方安装文档](https://docs.astral.sh/uv/getting-started/installation/)，使用官方安装器或系统已有的软件包管理器。优先用户目录安装；不需要管理员权限、不改全局 Python、不修改其他项目依赖。若终端还未刷新 PATH，使用安装好的 `uv` 绝对路径。
 
 ```sh
-uv tool install --python 3.12 https://github.com/0error0warning/stu-mcp/releases/download/v0.4.0/stu_mcp-0.4.0-py3-none-any.whl
+uv tool install --python 3.12 https://github.com/0error0warning/stu-mcp/releases/download/v0.4.1/stu_mcp-0.4.1-py3-none-any.whl
 ```
 
 从旧版升级时，在上述命令加入 `--force`。安装后重新运行当前客户端的 `connect ... --apply`，让旧的启动路径更新为安装环境内的 Python，再重新加载 MCP 或重启客户端。关闭旧设置页，再执行 `stu-mcp setup` 打开新版。保存的来源会话和独立用户数据目录保留；WebVPN 自动重登仍需本人主动配置。
@@ -59,11 +59,11 @@ stu-mcp setup
 
 受保护 OA 读取会复用会话，失效时尝试一次自动认证；账号密码或令牌被拒绝、学校要求人工验证时会暂停。`auto_login_paused` 表示需本人更新配置或手动登录，`auto_login_cooldown` 表示稍后再试，不能反复刷新登录。手动重新登录会移除旧自动配置；退出 WebVPN 会移除会话、缓存和自动凭据。设置页「断开」与 `stu-mcp logout webvpn` 相同。没有定时保活或后台 AI。
 
-需要教务成绩时，让用户在设置页登录教务；首次登录会先说明 HTTP 兼容，由用户点「继续登录」确认。该选项默认关闭，只兼容教务，开启后教务会话和成绩会经过 HTTP，密码仍在 HTTPS 统一认证页输入。不要让 agent 自动替用户改这个传输选项。
+需要教务成绩时，让用户在设置页登录教务；首次登录会先说明学校的 HTTP 回调，由用户点「继续登录」确认。该选项默认关闭，只兼容教务。成绩和考试优先使用 HTTPS 查询，HTTP 回调中的教务会话与票据仍存在传输风险；密码在 HTTPS 统一认证页输入。不要让 agent 自动替用户改这个传输选项。升级到 0.4.1 后请重新登录教务，再运行 `stu-mcp refresh jw`；旧解析器产生的成绩/考试缓存不再用于查询和统计。
 
 在有桌面的电脑上完成浏览器登录。Linux 安全密钥库未运行或被锁定时，向用户报告 `secure_storage_unavailable`，不要安装明文 keyring 后端作为替代。无账号功能仍能使用。
 
-个人来源的真实登录尚未验收，学校页面也可能改变。报告本次实际成功的来源，不把适配器单元测试当作用户账号验证。账户切换/重新登录会清除此来源缓存，随后重新刷新。
+教务已经完成本机真实账号验收，其他个人来源及更多账号仍需继续测试，学校页面也可能改变。报告本次实际成功的来源，不把适配器单元测试当作用户账号验证。账户切换/重新登录会清除此来源缓存，随后重新刷新。
 
 ## 5. 汇报
 

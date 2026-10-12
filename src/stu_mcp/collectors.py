@@ -14,6 +14,7 @@ from .parsers import (
     current_courses,
     is_login,
     item_id,
+    jw_exam_semester,
     parse_assignment,
     parse_elc,
     parse_jw,
@@ -104,24 +105,28 @@ def oa(vault: Vault, limit: int) -> Collection:
 
 def jw(vault: Vault, limit: int, semester: str) -> Collection:
     legacy = vault.runtime.preferences()["jw_http_compat"]
-    base = JW_BASE.replace("https://", "http://") if legacy else JW_BASE
-    result = Collection(private=True, coverage={"grade_scope": semester or "all_semesters",
-                                                "exam_semester": semester or default_semester(),
-                                                "transport": "school_legacy_http" if legacy else "https"})
+    base = JW_BASE
+    result = Collection(private=True, limited=True, coverage={"grade_scope": semester or "available_table",
+                                                             "max_grade_rows": 200,
+                                                             "exam_semester": semester or None,
+                                                             "transport": "https", "login_entry": "jwglxt"})
     with CampusHTTP("jw", vault.load("jw"), allow_legacy_http=legacy) as http:
-        html = http.text(base + "/kscj/cjcx_list",
-                         data={"kksj": semester, "kcmc": "", "kcxz": "", "kspage": "1", "jspage": "200"})
+        response = http.request(base + "/kscj/cjcx_list",
+                                data={"kksj": semester, "kcmc": "", "kcxz": "", "kspage": "1", "jspage": "200"})
+        html = response.text
         grades = parse_jw(html, "grade")
-        result.items.extend(grades)
-        result.limited = len(grades) >= 200
-        term = semester or default_semester()
+        result.coverage["grade_rows_read"] = len(grades)
+        result.items.extend(g for g in grades[:200] if not semester or g["semester"] == semester)
         try:
-            exams = parse_jw(http.text(base + "/xsks/xsksap_list", data={"xnxqid": term, "kslcdm": ""}),
-                             "exam", term)
+            term = semester or jw_exam_semester(http.text(base + "/xsks/xsksap_query"))
+            result.coverage["exam_semester"] = term
+            response = http.request(base + "/xsks/xsksap_list", data={"xnxqid": term, "xqlb": "", "xqlbmc": ""})
+            exams = parse_jw(response.text, "exam", term)
             result.items.extend(exams[:limit])
-            result.limited |= len(exams) > limit
+            result.coverage["exam_rows_read"] = len(exams)
         except AppError as exc:
             result.fail("考试安排", exc)
+        result.coverage["transport"] = "school_legacy_http" if http.used_legacy_http else "https"
     return result
 
 

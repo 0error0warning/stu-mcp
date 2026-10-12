@@ -58,8 +58,8 @@ class App:
             raise AppError("query_required", "狐友需要关键词；请使用 search_huyou_posts 或 stu-mcp huyou search。", source)
         if source not in SOURCES or not 1 <= limit <= 50:
             raise AppError("invalid_source", "请选择 public、oa、jw、mystu 或 yuketang；数量为 1–50。")
-        if semester and not re.fullmatch(r"20\d{2}-20\d{2}-[12]", semester):
-            raise AppError("invalid_semester", "学期格式为 2026-2027-1；留空时成绩查全部、考试使用推定学期。")
+        if semester and not re.fullmatch(r"20\d{2}-20\d{2}-[123]", semester):
+            raise AppError("invalid_semester", "学期格式为 2026-2027-1，支持 1/2/3 学期；留空时考试使用学校选定学期。")
         if not self._refresh_lock.acquire(blocking=False):
             raise AppError("refresh_running", "已有刷新正在进行，请稍后重试。", source)
         try:
@@ -121,7 +121,9 @@ class App:
         if not result["total_count"]:
             result["message"] = "缓存中没有匹配记录；请按需刷新对应来源，不能据此判断学校没有该事项。"
         if result["unverified_count"]:
-            result["scope_message"] = "旧缓存有记录无法确认属于最新课程范围，未列为当前待办/资料；请完整刷新对应来源。"
+            result["scope_message"] = ("旧教务缓存的列可能错位，未列为成绩/考试；请刷新 jw 后再查询或统计。"
+                                       if kind in {"grade", "exam"} else
+                                       "旧缓存有记录无法确认属于最新课程范围，未列为当前待办/资料；请完整刷新对应来源。")
         if kind == "post":
             result["items"] = [post_preview(i) for i in result["items"]]
             result["official"] = False
@@ -279,6 +281,8 @@ class App:
         # One internal scan; the MCP response contains aggregates, not an unbounded grade list.
         page = self.store.list(sources=("jw",), kind="grade", _all_items=True)
         items = page["items"]
+        if not items and page["unverified_count"]:
+            raise AppError("cache_needs_refresh", "旧教务缓存字段可能错位，请刷新 jw 后再计算成绩统计。", "jw")
         if not items:
             self.query("grade", source="jw")  # Report missing login / inaccessible encryption honestly.
         if semester:
@@ -298,7 +302,8 @@ class App:
         return {"ok": True, "cached": True, "semester": semester or "all", "course_count": len(items),
                 "weighted_score": weighted("score"), "weighted_gpa": weighted("gpa"),
                 "method": "按缓存中每条成绩的学分加权；非数值成绩排除，重修/补考逐条计入。不是学校官方绩点认定。",
-                "freshness": self.store.freshness(), "scan_capped": page["scan_capped"]}
+                "freshness": self.store.freshness(), "scan_capped": page["scan_capped"],
+                "unverified_count": page["unverified_count"]}
 
     def logout(self, service: str) -> dict:
         source = "oa" if service == "webvpn" else service

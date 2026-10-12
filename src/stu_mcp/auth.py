@@ -16,9 +16,9 @@ from playwright.sync_api import Error as BrowserError
 from playwright.sync_api import sync_playwright
 
 from .network import PASSWORD_KEYS, CampusHTTP, scoped_state
-from .parsers import is_login, parse_jw
+from .parsers import is_login, jw_authenticated
 from .runtime import AppError, key_lock
-from .sources import JW_BASE, MYSTU_API, MYSTU_BASE, SOURCES, YUKETANG_BASE
+from .sources import JW_HOME, JW_LOGIN_URL, MYSTU_API, MYSTU_BASE, SOURCES, YUKETANG_BASE
 from .store import Store
 from .vault import Vault
 
@@ -36,8 +36,7 @@ def proof(source: str, state: dict, *, legacy_jw: bool = False) -> bool:
     try:
         with CampusHTTP(source, state, allow_legacy_http=legacy_jw) as http:
             if source == "jw":
-                base = JW_BASE.replace("https://", "http://") if legacy_jw else JW_BASE
-                parse_jw(http.text(base + "/kscj/cjcx_list", data={"kksj": "", "kcmc": "", "kcxz": ""}), "grade")
+                return jw_authenticated(http.text(JW_HOME))
             elif source == "mystu":
                 data = http.json(MYSTU_API + "/user/validate?ver=1.1")
                 if data.get("authenticated") is False or data.get("success") is False:
@@ -49,7 +48,9 @@ def proof(source: str, state: dict, *, legacy_jw: bool = False) -> bool:
                 # WebVPN is only stored provisionally; OA refresh must validate access over HTTPS.
                 return bool(state.get("cookies"))
         return True
-    except AppError:
+    except AppError as exc:
+        if source == "jw" and exc.code not in {"needs_login", "login_expired", "network_error"}:
+            raise
         return False
 
 
@@ -92,7 +93,7 @@ def interactive_login(vault: Vault, service: str, *, timeout: int = 300,
         with key_lock(vault.runtime.home, spec.session):
             expected_revision = vault.login_revision(spec.session)
     legacy_jw = source == "jw" and vault.runtime.preferences()["jw_http_compat"]
-    login_url = ("https://sso.stu.edu.cn/login?" + urlencode({"service": "http://jw.stu.edu.cn/jsxsd/"})
+    login_url = ("https://sso.stu.edu.cn/login?" + urlencode({"service": JW_LOGIN_URL.replace("https:", "http:", 1)})
                  if legacy_jw else spec.login_url)
     vault._key(create=True)  # Verify secure storage before asking the user to log in.
     webvpn_config = webvpn_snapshot = None
@@ -130,7 +131,7 @@ def interactive_login(vault: Vault, service: str, *, timeout: int = 300,
             last_probe = 0.0
             while time.monotonic() < deadline:
                 if insecure_navigation[0]:
-                    raise AppError("insecure_transport", "HTTP 跳转被拦截。学校旧教务接口需先在本地设置页开启教务兼容。", source)
+                    raise AppError("insecure_transport", "HTTP 回调被拦截。学校教务回调需先在本地设置页确认兼容。", source)
                 if not browser.is_connected() or page.is_closed():
                     raise AppError("login_cancelled", "登录窗口已关闭；尚未保存会话。", source)
                 page.wait_for_timeout(1000)
@@ -170,7 +171,7 @@ def interactive_login(vault: Vault, service: str, *, timeout: int = 300,
         raise
     except BrowserError:
         if insecure_navigation[0]:
-            raise AppError("insecure_transport", "HTTP 跳转被拦截；教务旧接口可在本地设置页单独开启兼容。", source) from None
+            raise AppError("insecure_transport", "HTTP 回调被拦截；请在本地设置页确认教务回调兼容。", source) from None
         raise AppError("browser_unavailable", "登录浏览器无法启动或学校页面无法访问。请运行 stu-mcp browser install 并检查网络。",
                        source) from None
     raise AppError("login_timeout", "登录等待超时；未保存未验证的登录会话。", source)

@@ -2,6 +2,7 @@ import pytest
 
 from stu_mcp import collectors
 from stu_mcp.parsers import (
+    JW_SCHEMA_VERSION,
     current_courses,
     parse_assignment,
     parse_elc,
@@ -59,7 +60,7 @@ def test_grade_parser_and_weighted_summary(app, grades_html):
 
 def test_summary_reads_every_page(app):
     grades = [{"id": f"jw:grade:{i}", "kind": "grade", "title": str(i), "score": i, "credits": 1,
-               "gpa": 2, "semester": "2026-2027-1"} for i in range(125)]
+               "gpa": 2, "semester": "2026-2027-1", "jw_schema_version": JW_SCHEMA_VERSION} for i in range(125)]
     app.store.save_batch("jw", grades, private=True)
     assert app.academic_summary()["weighted_score"]["value"] == 62
     assert app.academic_summary()["course_count"] == 125

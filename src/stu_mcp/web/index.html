@@ -28,7 +28,7 @@
         <button class="act" type="button" aria-controls="panel-jw">登录</button>
       </div>
       <div class="panel" id="panel-jw" hidden>
-        <p>教务的成绩接口目前只能走未加密的 HTTP。继续即允许 STU MCP 通过 HTTP 读取成绩；密码仍只在学校的 HTTPS 登录页输入。</p>
+        <p>学校的教务统一认证回调使用 HTTP，需要你确认。成绩和考试优先通过 HTTPS 查询；开启兼容后，教务会话在 HTTP 跳转中可能暴露。密码仍只在学校的 HTTPS 登录页输入。</p>
         <div class="actions">
           <button class="primary" id="jw-continue" type="button">继续登录</button>
         </div>
