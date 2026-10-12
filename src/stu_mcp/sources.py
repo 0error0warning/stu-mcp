@@ -1,6 +1,11 @@
 """Capabilities are independent of authentication and collection."""
 from dataclasses import dataclass
 
+JW_LOGIN_URL = "https://jw.stu.edu.cn/jwglxt/xtgl/login_slogin.html"
+# The current SSO entry still serves the student query modules under /jsxsd.
+JW_BASE = "https://jw.stu.edu.cn/jsxsd"
+JW_HOME = JW_BASE + "/framework/xsMainV.htmlx"
+
 
 @dataclass(frozen=True)
 class Source:
@@ -19,7 +24,7 @@ SOURCES = {
                  "https://webvpn.stu.edu.cn/portal/#!/service",
                  ("oa.stu.edu.cn", "webvpn.stu.edu.cn", "oa-stu-edu-cn.webvpn.stu.edu.cn"), "webvpn"),
     "jw": Source("jw", "教务系统", ("成绩", "加权统计", "考试安排"),
-                 "https://jw.stu.edu.cn/jsxsd/", ("jw.stu.edu.cn", "sso.stu.edu.cn"), "jw"),
+                 JW_LOGIN_URL, ("jw.stu.edu.cn", "sso.stu.edu.cn"), "jw"),
     "mystu": Source("mystu", "MySTU", ("课程", "作业", "Moodle / ELC 活动", "个人日程"),
                     "https://my.stu.edu.cn/discussion/my-courses",
                     ("my.stu.edu.cn", "sso.stu.edu.cn"), "mystu"),
@@ -38,7 +43,6 @@ PUBLIC_LISTINGS = (
 
 OA_DIRECT = "http://oa.stu.edu.cn"
 OA_SECURE_PROXY = "https://oa-stu-edu-cn.webvpn.stu.edu.cn"
-JW_BASE = "https://jw.stu.edu.cn/jsxsd"
 MYSTU_BASE = "https://my.stu.edu.cn"
 MYSTU_API = MYSTU_BASE + "/v3/services/api"
 YUKETANG_BASE = "https://changjiang.yuketang.cn"

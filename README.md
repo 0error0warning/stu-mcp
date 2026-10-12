@@ -45,7 +45,7 @@
 先装好 [uv](https://docs.astral.sh/uv/getting-started/installation/)，然后运行。这里以 Codex 为例：
 
 ```sh
-uv tool install --python 3.12 https://github.com/0error0warning/stu-mcp/releases/download/v0.4.0/stu_mcp-0.4.0-py3-none-any.whl
+uv tool install --python 3.12 https://github.com/0error0warning/stu-mcp/releases/download/v0.4.1/stu_mcp-0.4.1-py3-none-any.whl
 stu-mcp connect codex --apply
 ```
 
@@ -53,7 +53,7 @@ stu-mcp connect codex --apply
 
 想查成绩、课程或作业，再运行 `stu-mcp setup`，在弹出的学校页面里自己登录。密码不用发给 agent。登录会话和个人缓存加密保存在本机；WebVPN 自动重登可以在本地设置页按需配置。[登录说明](docs/install.md) · [存储与隐私](SECURITY.md)
 
-教务的 HTTP 兼容需要你在设置页确认。开启后，成绩和教务会话会走 HTTP，密码仍在学校的 HTTPS 登录页输入。
+教务的 HTTP 回调需要你在设置页确认；成绩和考试优先走 HTTPS。密码仍在学校的 HTTPS 登录页输入。升级后重新登录、刷新教务，旧的错位缓存不会继续参与统计。
 
 喜欢用终端的话，也可以直接查：
 
@@ -65,7 +65,7 @@ stu-mcp huyou search 选课
 
 ## 还在慢慢补
 
-目前是 [v0.4.0 预览版](https://github.com/0error0warning/stu-mcp/releases/tag/v0.4.0)。官网、匿名 OA 和狐友已经做过实际读取；教务、MySTU、雨课堂和 WebVPN 的真实学生账号验证还没补齐，各客户端里从安装到使用的完整流程也还需要继续试。具体测过什么、哪里还没测，记在[验证记录](docs/verification.md)里。
+目前是 [v0.4.1 预览版](https://github.com/0error0warning/stu-mcp/releases/tag/v0.4.1)。官网、匿名 OA 和狐友已经做过实际读取；这次也在本机跑通了教务登录和成绩、考试查询。MySTU、雨课堂和 WebVPN 还需要更多同学实测，各客户端里从安装到使用的完整流程也还需要继续试。具体测过什么、哪里还没测，记在[验证记录](docs/verification.md)里。
 
 如果你用起来了，或者发现某个入口读不动了，欢迎开 issue 聊聊。告诉我用的版本、卡在哪一步就很有帮助，别把真实成绩、密码或登录凭据贴进去。
 

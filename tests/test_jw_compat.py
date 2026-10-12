@@ -58,26 +58,27 @@ def test_jw_collector_uses_selected_transport(app, grades_html, monkeypatch):
     settings = []
     requests = []
     class SyntheticHTTP:
+        used_legacy_http = False
         def __init__(self, source, state, **kwargs):
             settings.append((source, kwargs))
         def __enter__(self):
             return self
         def __exit__(self, *_):
             pass
-        def text(self, url, **_):
+        def request(self, url, **_):
             requests.append(url)
             if "kscj" in url:
-                return grades_html
+                return httpx.Response(200, text=grades_html, request=httpx.Request("POST", url))
             raise AppError("synthetic_exam_unavailable", "合成考试接口", "jw")
     monkeypatch.setattr(collectors, "CampusHTTP", SyntheticHTTP)
     synthetic_vault = SimpleNamespace(runtime=app.runtime, load=lambda _: {})
-    for enabled, scheme in ((False, "https"), (True, "http")):
+    for enabled in (False, True):
         app.runtime.save_preferences({"jw_http_compat": enabled})
         result = collectors.jw(synthetic_vault, 20, "2026-2027-1")
         assert result.items and result.private
         assert settings[-1] == ("jw", {"allow_legacy_http": enabled})
-        assert requests[-1].startswith(scheme + "://jw.stu.edu.cn/")
-        assert result.coverage["transport"] == ("school_legacy_http" if enabled else "https")
+        assert requests[-1].startswith("https://jw.stu.edu.cn/")
+        assert result.coverage["transport"] == "https"
 
 
 def test_setup_transport_option_is_explicit_boolean(app):
