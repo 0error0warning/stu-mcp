@@ -36,6 +36,7 @@
 | 雨课堂 | 课程、作业、测验、课程公告 | 需要 |
 | 狐友 | 汕大树洞里的公开帖子、评论和楼中楼回复 | 不用 |
 | 充电设备（开发版） | 按位置查设备空闲、占用、故障数量，查看每个插座的状态 | 不用 |
+| 对分易（开发版） | 多课程监听、启停与签到结果，本地网页和 MCP 共用后台 | 在本地网页用微信登录 |
 
 也可以记一下本地待办，或者告诉 agent 你的学院、专业和兴趣。它们都不是必填项，本地勾选“完成”也不会替你向学校提交作业。
 
@@ -56,6 +57,8 @@ stu-mcp connect codex --apply
 
 想查成绩、课程或作业，再运行 `stu-mcp setup`，在弹出的学校页面里自己登录。密码不用发给 agent。登录会话和个人缓存加密保存在本机；WebVPN 自动重登可以在本地设置页按需配置。[登录说明](docs/install.md) · [存储与隐私](SECURITY.md)
 
+开发版已包含对分易后台和轻量本地网页：选课、启停监听、查询签到结果，需要登录时打开网页。MCP 退出后后台继续运行，状态明确区分未启动、未登录、已暂停、监听中和查询异常。支持持续监听；电脑需保持运行和联网。新的课堂自动提交仍待实测。[安装与用法](docs/checkin.md)
+
 教务的 HTTP 回调需要你在设置页确认；成绩和考试优先走 HTTPS。密码仍在学校的 HTTPS 登录页输入。升级后重新登录、刷新教务，旧的错位缓存不会继续参与统计。
 
 喜欢用终端的话，也可以直接查：
@@ -68,7 +71,9 @@ stu-mcp huyou search 选课
 
 ## 还在慢慢补
 
-目前是 [v0.4.1 预览版](https://github.com/0error0warning/stu-mcp/releases/tag/v0.4.1)。官网、匿名 OA 和狐友已经做过实际读取；这次也在本机跑通了教务登录和成绩、考试查询。MySTU、雨课堂和 WebVPN 还需要更多同学实测，各客户端里从安装到使用的完整流程也还需要继续试。具体测过什么、哪里还没测，记在[验证记录](docs/verification.md)里。
+已发布版本是 [v0.4.1 预览版](https://github.com/0error0warning/stu-mcp/releases/tag/v0.4.1)，当前源码为 **0.5.0.dev0**。近期补充了充电查询、校园接口错误分类、雨课堂读取核验和对分易共享后台，尚未发布新的发行包。[最近更新](CHANGELOG.md)
+
+官网、匿名 OA、狐友、教务，以及雨课堂课程和部分作业已经做过真实读取。MySTU / ELC、更多雨课堂题型、会话失效恢复和对分易新课堂签到仍需实测。具体测过什么、哪里还没测，记在[验证记录](docs/verification.md)里。
 
 如果你用起来了，或者发现某个入口读不动了，欢迎开 issue 聊聊。告诉我用的版本、卡在哪一步就很有帮助，别把真实成绩、密码或登录凭据贴进去。
 
@@ -79,9 +84,10 @@ uv sync --extra dev
 uv run --extra dev pytest -q
 uv run --extra dev ruff check .
 uv run stu-mcp setup
+uv run stu-checkin
 uv build
 ```
 
-[更新记录](CHANGELOG.md) · [代码结构](docs/architecture.md) · [代码来源](docs/provenance.json)
+[文档目录](docs/README.md) · [更新记录](CHANGELOG.md) · [代码结构](docs/architecture.md) · [代码来源](docs/provenance.json)
 
 MIT 许可。个人折腾的小项目，和学校官方没有关系。

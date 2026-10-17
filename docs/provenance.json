@@ -6,6 +6,16 @@
   "method": "Clean, manually adapted parsers and endpoint contracts; no import of the original runtime.",
   "additional_inputs": [
     {
+      "repository": "bytehola/duifene_auto_sign",
+      "previous_repository": "liuzhijie443/duifene_auto_sign",
+      "commit": "8f592d19de52b2a736eecf221961cb2ce888cdd4",
+      "destination": "src/stu_checkin/vendor/duifene",
+      "method": "Adapted core modules; GUI, credentials, user settings and runtime data excluded.",
+      "license": "MIT, declared in the upstream README; no separate upstream LICENSE file at this revision",
+      "notice": "src/stu_checkin/vendor/NOTICE.txt",
+      "license_notice": "src/stu_checkin/vendor/LICENSE.txt"
+    },
+    {
       "repository": "0error0warning/school-hub",
       "commit": "70a83069ed3fab9518d5c1b7036c5a5f73a443a8",
       "path": "school_hub/totp.py",
@@ -64,7 +74,7 @@
     "credentials and sessions",
     "personal profile defaults",
     "Hermes configuration",
-    "WeChat acquisition",
+    "private WeChat message acquisition",
     "model routing and AI batch processing"
   ],
   "tests": "New synthetic fixtures only; original fixtures were not redistributed."
