@@ -103,16 +103,28 @@ class LocalServer:
                 name, kind = assets[self.path]
                 self.reply(200, (WEB / name).read_bytes(), kind, cookie=self.path == "/")
 
+            def reject_post(self, code, message):
+                # Preserve a readable error response when a Windows client sends
+                # headers and body separately. Never parse or retain rejected data.
+                try:
+                    size = int(self.headers.get("Content-Length", "0"))
+                    if 0 < size <= 8192 and not self.headers.get("Transfer-Encoding"):
+                        self.connection.settimeout(1)
+                        self.rfile.read(size)
+                except (OSError, ValueError):
+                    pass
+                self.reply(code, {"ok": False, "message": message})
+
             def do_POST(self):
                 if not self.allowed(api=True):
-                    self.reply(403, {"ok": False, "message": "请求来源不被允许。"})
+                    self.reject_post(403, "请求来源不被允许。")
                     return
                 if self.headers.get("Content-Type", "").split(";")[0] != "application/json":
-                    self.reply(415, {"ok": False, "message": "请求格式不正确。"})
+                    self.reject_post(415, "请求格式不正确。")
                     return
                 with owner.control_lock:
                     if owner.shutting_down:
-                        self.reply(409, {"ok": False, "message": "服务正在退出，请稍候。"})
+                        self.reject_post(409, "服务正在退出，请稍候。")
                         return
                     self.dispatch_post()
 

@@ -53,6 +53,18 @@ class SetupServer:
                     return False
                 return not require_secret or hmac.compare_digest(self.headers.get("X-STU-Setup", ""), owner.secret)
 
+            def reject_post(self):
+                # Unread POST bytes can reset a closing Windows socket before the
+                # client receives the 403. Discard only a bounded body, never parse it.
+                try:
+                    length = int(self.headers.get("Content-Length", "0"))
+                    if 0 < length <= 4096 and not self.headers.get("Transfer-Encoding"):
+                        self.connection.settimeout(1)
+                        self.rfile.read(length)
+                except (OSError, ValueError):
+                    pass
+                self.json(403, {"ok": False, "status": "forbidden"})
+
             def do_GET(self):
                 if not self.allowed(require_secret=self.path.startswith("/api/")):
                     self.json(403, {"ok": False, "status": "forbidden"})
@@ -74,7 +86,7 @@ class SetupServer:
 
             def do_POST(self):
                 if not self.allowed() or self.headers.get("Content-Type", "").split(";")[0] != "application/json":
-                    self.json(403, {"ok": False, "status": "forbidden"})
+                    self.reject_post()
                     return
                 try:
                     length = int(self.headers.get("Content-Length", "0"))

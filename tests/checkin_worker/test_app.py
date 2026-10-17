@@ -275,6 +275,23 @@ def test_browser_access_and_cross_origin_guard(http_server):
     http_server.controller.start.assert_not_called()
 
 
+def test_rejected_post_with_delayed_body_keeps_error_readable(http_server):
+    connection = http.client.HTTPConnection("127.0.0.1", http_server.httpd.server_port, timeout=3)
+    try:
+        body = b'{"course_ids":["x"],"minutes":30}'
+        connection.putrequest("POST", "/api/start")
+        connection.putheader("Content-Length", str(len(body)))
+        connection.putheader("Content-Type", "application/json")
+        connection.endheaders()
+        time.sleep(.05)
+        connection.send(body)
+        response = connection.getresponse()
+        assert response.status == 403 and json.loads(response.read())["ok"] is False
+        http_server.controller.start.assert_not_called()
+    finally:
+        connection.close()
+
+
 def test_extra_parameters_and_bad_host_cannot_call_backend(http_server):
     headers = browser_headers(http_server)
     assert request(http_server, "/api/start", body='{"course_ids":["x"],"minutes":30,"host":"evil"}', headers=headers)[0] == 400

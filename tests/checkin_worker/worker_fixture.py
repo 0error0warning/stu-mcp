@@ -1,4 +1,5 @@
 """Synthetic process fixture for MCP/worker integration; never uses a real account."""
+import faulthandler
 import json
 import os
 import sys
@@ -16,6 +17,8 @@ from stu_checkin.storage import SecureStore  # noqa: E402
 
 
 def main():
+    # Include a useful stack in CI failure output if platform startup stalls.
+    faulthandler.dump_traceback_later(10)
     home = Path(os.environ["STU_CHECKIN_HOME"])
     with InstanceLock(home), pytest.MonkeyPatch.context() as patch:
         fixture = controller.__wrapped__(SecureStore(home, key_store=MemoryKeys()), patch)
@@ -25,6 +28,7 @@ def main():
         app.fake_session.attended = True
         server = LocalServer(app)
         publish_runtime(home, server.info())
+        faulthandler.cancel_dump_traceback_later()
         stopped = threading.Event()
 
         def controls():
