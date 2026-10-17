@@ -6,8 +6,10 @@ import json
 import secrets
 import threading
 import webbrowser
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from http.server import BaseHTTPRequestHandler
 from pathlib import Path
+
+from stu_checkin.http_server import LoopbackHTTPServer
 
 from .auth import LoginJobs
 from .runtime import AppError
@@ -120,7 +122,7 @@ class SetupServer:
                 except Exception:
                     self.json(500, {"ok": False, "status": "setup_error", "message": "操作未完成，请重试或通过命令行检查。"})
 
-        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        self.httpd = LoopbackHTTPServer(("127.0.0.1", 0), Handler)
         self.httpd.daemon_threads = True
         self.host = f"127.0.0.1:{self.httpd.server_port}"
         self.origin = "http://" + self.host

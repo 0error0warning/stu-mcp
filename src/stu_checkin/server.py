@@ -13,10 +13,11 @@ import time
 import webbrowser
 from contextlib import suppress
 from http.cookies import SimpleCookie
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from http.server import BaseHTTPRequestHandler
 from pathlib import Path
 
 from .controller import Controller, OperationError
+from .http_server import LoopbackHTTPServer
 from .storage import StorageError, default_home
 
 WEB = Path(__file__).parent / "web"
@@ -161,7 +162,7 @@ class LocalServer:
                 except Exception:
                     self.reply(500, {"ok": False, "message": "操作未完成，请稍后重试。"})
 
-        self.httpd = ThreadingHTTPServer(("127.0.0.1", port), Handler)
+        self.httpd = LoopbackHTTPServer(("127.0.0.1", port), Handler)
         self.httpd.daemon_threads = True
         self.host = f"127.0.0.1:{self.httpd.server_port}"
         self.cookie_name = f"{COOKIE}_{self.httpd.server_port}"

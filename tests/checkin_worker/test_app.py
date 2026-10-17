@@ -275,6 +275,17 @@ def test_browser_access_and_cross_origin_guard(http_server):
     http_server.controller.start.assert_not_called()
 
 
+def test_worker_starts_without_reverse_dns(monkeypatch):
+    resolver = Mock(side_effect=AssertionError("local worker must not require DNS"))
+    monkeypatch.setattr("socket.getfqdn", resolver)
+    server = LocalServer(Mock())
+    try:
+        assert server.httpd.server_name == "127.0.0.1" and server.httpd.server_port > 0
+        resolver.assert_not_called()
+    finally:
+        server.httpd.server_close()
+
+
 def test_rejected_post_with_delayed_body_keeps_error_readable(http_server):
     connection = http.client.HTTPConnection("127.0.0.1", http_server.httpd.server_port, timeout=3)
     try:

@@ -1,9 +1,21 @@
 import http.client
 import time
+from unittest.mock import Mock
 
 import httpx
 
 from stu_mcp.setup_web import SetupServer
+
+
+def test_setup_starts_without_reverse_dns(app, monkeypatch):
+    resolver = Mock(side_effect=AssertionError("local setup must not require DNS"))
+    monkeypatch.setattr("socket.getfqdn", resolver)
+    ui = SetupServer(app)
+    try:
+        assert ui.httpd.server_name == "127.0.0.1" and ui.httpd.server_port > 0
+        resolver.assert_not_called()
+    finally:
+        ui.httpd.server_close()
 
 
 def test_rejected_post_with_delayed_body_returns_complete_error_without_side_effects(app):
