@@ -268,3 +268,64 @@ def test_unscoped_upsert_is_never_an_empty_snapshot(app):
     with pytest.raises(AppError, match="不支持课程范围"):
         app.store.save_batch("jw", [], private=True, sync=CourseSync(course_ids=frozenset()))
     assert "course_ids" not in json.dumps(app.store.freshness())
+
+
+def test_one_detail_login_failure_does_not_invalidate_other_details(app, campus, monkeypatch):
+    first = "https://my.stu.edu.cn/courses/elc/mod/assign/view.php?id=11"
+    second = first.replace("11", "12")
+    campus["activities"]["1"] = [task("blocked") | {"activityUrl": first},
+                                    task("available") | {"activityUrl": second}]
+    def detail(self, url):
+        if url == first:
+            raise AppError("login_expired", "此来源需要登录", "mystu", http_status=200)
+        return '<table><tr><td>截止时间</td><td>2026年10月13日 23:59</td></tr></table>'
+    monkeypatch.setattr(collectors.CampusHTTP, "text", detail)
+    result = app.refresh("mystu")
+    error = result["errors"][0]
+    assert error["stage"] == "task_detail" and error["course_id"] == "1"
+    assert error["item_id"] == item_id("mystu", "task", "1", first)
+    assert error["status"] == "resource_login_required" and error["next_action"] == "open_source_page"
+    items = {i["title"]: i for i in app.query("task", source="mystu")["items"]}
+    assert items["blocked"]["due_at"] is None
+    assert items["blocked"]["due_at_status"] == "detail_unavailable"
+    assert items["available"]["due_at"] == "2026-10-13T23:59:00+08:00"
+    assert items["available"]["detail_status"] == "read"
+    assert app.vault.status("mystu")["status"] == "session_saved"
+
+
+@pytest.mark.parametrize("failure", ["feed", "announcements"])
+def test_yuketang_announcements_and_feed_fail_independently(app, session, monkeypatch, failure):
+    app.vault.save("yuketang", session)
+    seen = []
+    class FakeHTTP:
+        def __init__(self, *_):
+            pass
+        def __enter__(self):
+            return self
+        def __exit__(self, *_):
+            pass
+        def json(self, url):
+            seen.append(url)
+            if "/courses/list" in url:
+                return {"data": {"list": [{"classroom_id": 1, "term": 20261, "name": "合成课"}]}}
+            stage = "feed" if "/logs/learn/" in url else "announcements"
+            if stage == failure:
+                raise AppError("access_denied", "合成权限不足", "yuketang", http_status=403)
+            if stage == "feed":
+                return {"data": {"activities": [{"id": 10, "type": 19, "title": "合成任务",
+                                                "content": {"leaf_id": 20}}]}}
+            return {"data": {"data": [{"id": 30, "title": "合成公告", "content": "合成正文"}]}}
+    monkeypatch.setattr(collectors, "CampusHTTP", FakeHTTP)
+    result = app.refresh("yuketang")
+    assert len(seen) == 3 and len(result["errors"]) == 1
+    assert result["errors"][0]["course_id"] == "1"
+    assert result["errors"][0]["stage"] == ("course_activities" if failure == "feed" else "course_announcements")
+    kind = "notice" if failure == "feed" else "task"
+    assert app.query(kind, source="yuketang")["total_count"] == 1
+
+
+def test_error_context_never_echoes_unsafe_course_url():
+    collected = collectors.Collection()
+    collected.fail("合成课程", AppError("unsafe_url", "无法读取", "mystu"),
+                   course_id="https://example.test/?ticket=SYNTHETIC_SECRET", stage="course_activities")
+    assert "SYNTHETIC_SECRET" not in json.dumps(collected.errors)

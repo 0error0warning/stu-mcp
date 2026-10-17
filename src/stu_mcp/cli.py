@@ -169,5 +169,5 @@ def main(argv: list[str] | None = None) -> int:
         if args.command in (None, "serve"):
             print("STU MCP 启动失败，请运行 stu-mcp status 检查本地状态。", file=sys.stderr)
             return 1
-        return emit({"ok": False, "status": "operation_failed", "message": "操作未完成；未输出认证信息。请检查本地状态或重试。"})
+        return emit(AppError("operation_failed", "操作未完成；未输出认证信息。请检查本地状态或重试。").result())
     return 0

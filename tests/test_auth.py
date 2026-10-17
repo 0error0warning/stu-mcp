@@ -2,6 +2,7 @@ from contextlib import nullcontext
 from copy import deepcopy
 from types import SimpleNamespace
 
+import httpx
 import pytest
 
 from stu_mcp.auth import interactive_login
@@ -137,3 +138,19 @@ def test_logout_also_cancels_a_login_job_before_its_worker_starts(app, session, 
     queued.pop()()
     assert jobs.snapshot()[0]["result"]["status"] == "session_changed"
     assert app.vault.status("mystu")["status"] == "needs_login"
+
+
+@pytest.mark.parametrize("source", ["jw", "mystu", "yuketang"])
+@pytest.mark.parametrize("status,code", [(401, None), (403, "access_denied"), (429, "rate_limited"),
+                                        (503, "source_unavailable")])
+def test_login_probe_does_not_mask_non_auth_failures(source, status, code, session, monkeypatch):
+    from stu_mcp import auth
+    from stu_mcp.network import CampusHTTP
+    monkeypatch.setattr(auth, "CampusHTTP", lambda source, state, **kwargs: CampusHTTP(
+        source, state, **kwargs, transport=httpx.MockTransport(lambda _: httpx.Response(status))))
+    if code is None:
+        assert auth.proof(source, session) is False
+    else:
+        with pytest.raises(AppError) as error:
+            auth.proof(source, session)
+        assert error.value.code == code

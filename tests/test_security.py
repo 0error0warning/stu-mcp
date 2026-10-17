@@ -2,6 +2,7 @@ import json
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 
 import pytest
 from keyring.backends.null import Keyring
@@ -58,6 +59,31 @@ def test_concurrent_first_key_is_not_overwritten(app, keys):
         ciphertexts = list(pool.map(encrypt, [1, 2]))
     assert keys.writes == 1
     assert [app.vault.unprotect(c)["number"] for c in ciphertexts] == [1, 2]
+
+
+def test_redirected_windows_runtime_keeps_original_logical_key(app, keys, session, monkeypatch):
+    app.vault.save("yuketang", session)
+    original_resolve = Path.resolve
+    def redirected(path, *args, **kwargs):
+        if path == app.runtime.home:
+            return path.parent / "synthetic-packaged-app-redirect" / path.name
+        return original_resolve(path, *args, **kwargs)
+    monkeypatch.setattr(Path, "resolve", redirected)
+    reopened = Vault(app.runtime, keys)
+    assert reopened.account != app.vault.account
+    assert reopened.load("yuketang") == session
+    reopened.save("yuketang", session)
+    assert keys.writes == 1
+    assert app.vault.load("yuketang") == session
+
+
+def test_existing_primary_key_is_never_replaced_by_alias(app, keys):
+    primary = app.vault._key(create=True)
+    other = Vault(type(app.runtime)(app.runtime.home.parent / "other-runtime"), keys)
+    alias = other._key(create=True)
+    app.vault._logical_account = other.account
+    assert primary != alias
+    assert app.vault._key() == primary and keys.writes == 2
 
 
 def test_logout_only_removes_its_source(app, session):

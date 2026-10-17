@@ -155,7 +155,7 @@ def test_valid_session_is_reused_without_reading_saved_password(app, vpn_session
     assert result.session_version == app.vault.fingerprint("webvpn")
 
 
-@pytest.mark.parametrize("rejection", [401, 403, "redirect", "html", "spa"])
+@pytest.mark.parametrize("rejection", [401, "redirect", "html", "spa"])
 def test_server_expiry_renews_once_and_refresh_can_save_private_oa(app, vpn_session, monkeypatch, rejection):
     WebVPNConfig(app.vault).configure(FIELDS)
     old = {"cookies": [{**vpn_session["cookies"][0], "value": "OLD_SYNTHETIC_COOKIE"}], "origins": []}
@@ -233,14 +233,18 @@ def test_temporary_failure_is_throttled_across_new_app_instances(app, monkeypatc
     assert config.status()["enabled"] is True
 
 
-def test_network_or_parser_failure_does_not_resubmit_credentials(app, vpn_session, monkeypatch):
+@pytest.mark.parametrize("status,code", [(403, "access_denied"), (429, "rate_limited"),
+                                        (500, "source_unavailable")])
+def test_network_or_permission_failure_does_not_resubmit_credentials(app, vpn_session, monkeypatch, status, code):
     WebVPNConfig(app.vault).configure(FIELDS)
     app.vault.save("webvpn", vpn_session)
-    protected_http(monkeypatch, lambda _: httpx.Response(500))
+    before = app.vault.fingerprint("webvpn")
+    protected_http(monkeypatch, lambda _: httpx.Response(status))
     monkeypatch.setattr(webvpn, "automatic_login", lambda *_: pytest.fail("network failure is not proof of expiry"))
     with pytest.raises(AppError) as error:
         protected_access(app.vault, PROTECTED_URL, lambda r: r.text)
-    assert error.value.code == "network_error"
+    assert error.value.code == code
+    assert app.vault.fingerprint("webvpn") == before
 
 
 @pytest.mark.parametrize("url", ["http://oa.stu.edu.cn/private", "https://evil.example/",

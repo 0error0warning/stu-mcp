@@ -9,6 +9,7 @@ from http.cookiejar import Cookie
 from urllib.parse import parse_qsl, urljoin, urlparse
 
 import httpx
+from bs4 import BeautifulSoup
 
 from .parsers import is_login
 from .runtime import AppError
@@ -119,9 +120,24 @@ class CampusHTTP:
             try:
                 with self.client.stream(method, current, data=data if method == "POST" else None,
                                         timeout=httpx.Timeout(min(18, remaining), connect=min(8, remaining))) as response:
-                    if response.status_code in (401, 403):
+                    status = response.status_code
+                    if status == 401:
                         raise AppError("login_expired" if self.authenticated else "needs_login",
-                                       "此来源需要登录或重新登录；其他来源仍可使用。", self.source)
+                                       "此来源需要登录或重新登录；其他来源仍可使用。", self.source,
+                                       http_status=status)
+                    if status == 403:
+                        raise AppError("access_denied", "来源拒绝访问此资源；请在原页面核对权限或访问限制。",
+                                       self.source, http_status=status)
+                    if status == 429:
+                        raise AppError("rate_limited", "来源限制了请求频率，请等待后重试。", self.source,
+                                       http_status=status, retry_after_seconds=retry_after(response.headers.get("retry-after")))
+                    if status == 404:
+                        raise AppError("not_found", "来源未找到此资源；请刷新列表后核对原页面。",
+                                       self.source, http_status=status)
+                    if status >= 500:
+                        raise AppError("source_unavailable", "来源服务暂时异常，请稍后重试。",
+                                       self.source, http_status=status,
+                                       retry_after_seconds=retry_after(response.headers.get("retry-after")))
                     if response.is_redirect:
                         location = response.headers.get("location")
                         if not location:
@@ -131,7 +147,7 @@ class CampusHTTP:
                         webvpn_login = (self.source == "oa" and self.authenticated
                                         and destination.hostname == "webvpn.stu.edu.cn"
                                         and destination.path.startswith("/portal"))
-                        if "sso.stu.edu.cn" in target or "/login" in destination.path.lower() or webvpn_login:
+                        if destination.hostname == "sso.stu.edu.cn" or "/login" in destination.path.lower() or webvpn_login:
                             raise AppError("login_expired" if self.authenticated else "needs_login",
                                            "此来源需要在本地浏览器登录。", self.source)
                         if response.status_code not in (301, 302, 303) and urlparse(target).netloc != urlparse(current).netloc:
@@ -140,7 +156,9 @@ class CampusHTTP:
                         if response.status_code in (301, 302, 303):
                             method = "GET"
                         continue
-                    response.raise_for_status()
+                    if status >= 400:
+                        raise AppError("source_rejected", "来源未接受此请求；请核对资源与读取条件。",
+                                       self.source, http_status=status)
                     parts, length = [], 0
                     for chunk in response.iter_bytes():
                         if time.monotonic() > self.deadline:
@@ -156,11 +174,21 @@ class CampusHTTP:
                     headers["content-length"] = str(len(content))
                     result = httpx.Response(response.status_code, headers=headers,
                                             content=content, request=response.request)
-                    if self.authenticated and content.lstrip().startswith(b"<") and is_login(result.text):
-                        raise AppError("login_expired", "此来源需要在本地浏览器重新登录。", self.source)
+                    if content.lstrip().startswith(b"<"):
+                        if (self.source == "mystu" and "/mod/quiz/" in urlparse(current).path
+                                and BeautifulSoup(result.text, "html.parser").select_one('input[name="quizpassword"]')):
+                            raise AppError("activity_password_required", "此测验要求活动密码，请在学校页面处理。",
+                                           self.source, http_status=status)
+                        # The anonymous OA bulletin lives on a page that may also
+                        # contain a login form. A form alone must not hide that board.
+                        if (self.authenticated or self.source in {"jw", "mystu", "yuketang"}) and is_login(result.text):
+                            raise AppError("login_expired" if self.authenticated else "needs_login",
+                                           "此来源需要在本地浏览器登录。", self.source, http_status=status)
                     return result
             except AppError:
                 raise
+            except httpx.TimeoutException:
+                raise AppError("request_timeout", "来源未在时限内响应，请稍后重试。", self.source) from None
             except httpx.HTTPError:
                 raise AppError("network_error", "校园来源暂时无法连接；请检查校园网络、VPN 或稍后重试。",
                                self.source) from None
@@ -176,6 +204,18 @@ class CampusHTTP:
             raise AppError("schema_changed", "来源未返回预期的 JSON 数据。", self.source) from None
         if not isinstance(payload, dict):
             raise AppError("schema_changed", "来源数据结构发生变化。", self.source)
-        if payload.get("errcode", 0) not in (0, None):
-            raise AppError("source_rejected", "来源拒绝了请求；请在设置页检查登录状态。", self.source)
+        if self.source == "yuketang":
+            codes = [payload.get(k) for k in ("errcode", "code")]
+            if any(code in (401000, "401000") for code in codes):
+                raise AppError("login_expired" if self.authenticated else "needs_login",
+                               "雨课堂已拒绝登录会话，请在本地设置页重新登录。", self.source)
+            # v2 uses errcode, classroom v3 uses code, and LMS uses success.
+            # Error messages can contain credentials or personal data; keep them
+            # out of the MCP result and do not guess authentication from prose.
+            if any(code not in (0, "0", None) for code in codes) or payload.get("success") is False:
+                raise AppError("source_rejected", "雨课堂未接受此读取；请在原页面核对资源状态。", self.source)
+            if "success" in payload and not isinstance(payload["success"], bool):
+                raise AppError("schema_changed", "雨课堂的业务状态字段无法识别。", self.source)
+        elif payload.get("errcode", 0) not in (0, "0", None):
+            raise AppError("source_rejected", "来源未接受此请求；请在原页面核对读取条件。", self.source)
         return payload
