@@ -10,6 +10,7 @@ from urllib.parse import urljoin
 from pypdf import PdfReader
 
 from . import __version__, collectors
+from .charging import ChargingService
 from .clients import detected_clients
 from .huyou import (
     DEFAULT_CIRCLE,
@@ -44,8 +45,9 @@ class App:
             auth = self.vault.status(source.session) if source.session else {"status": "not_required"}
             features.append({"source": name, "label": source.label, "features": list(source.features),
                              "auth": auth, "login_required": name in {"jw", "mystu", "yuketang"},
-                             "login_available": bool(source.session), "refresh_requires_query": name == "huyou",
+                             "login_available": bool(source.session), "refresh_requires_query": name in {"huyou", "charging"},
                              "access": "anonymous_first" if name == "oa" else "community_public" if name == "huyou"
+                             else "third_party_public" if name == "charging"
                              else "public" if name == "public" else "personal"})
         return {"ok": True, "version": __version__, "sources": features, "freshness": self.store.freshness(),
                 "clients": detected_clients(), "profile": self.runtime.profile(), "transport": self.runtime.preferences(),
@@ -56,6 +58,8 @@ class App:
     def refresh(self, source: str, limit: int = 20, semester: str = "") -> dict:
         if source == "huyou":
             raise AppError("query_required", "狐友需要关键词；请使用 search_huyou_posts 或 stu-mcp huyou search。", source)
+        if source == "charging":
+            raise AppError("query_required", "充电查询请使用 get_charging_overview/get_charging_device 或 stu-mcp charging。", source)
         if source not in SOURCES or not 1 <= limit <= 50:
             raise AppError("invalid_source", "请选择 public、oa、jw、mystu 或 yuketang；数量为 1–50。")
         if semester and not re.fullmatch(r"20\d{2}-20\d{2}-[123]", semester):
@@ -129,6 +133,12 @@ class App:
             result["official"] = False
         result["content_trust"] = "untrusted_source_data"
         return result
+
+    def charging_overview(self, location: str = "", limit: int = 4, offset: int = 0, refresh: bool = True) -> dict:
+        return ChargingService(self.store).overview(location, limit, offset, refresh)
+
+    def charging_device(self, device_code: str, refresh: bool = True) -> dict:
+        return ChargingService(self.store).detail(device_code, refresh)
 
     def huyou_search(self, query: str, keywords: list[str] | None = None, circle_id: str = DEFAULT_CIRCLE,
                      limit: int = 10, pages: int = 2, with_discussion: bool = False,

@@ -24,8 +24,9 @@ async def test_real_stdio_handshake_schema_and_feature_gating(tmp_path):
         tools = await client.list_tools()
         names = {t.name for t in tools.tools}
         assert {"get_capabilities", "refresh_source", "get_grades", "get_tasks", "open_setup"}.issubset(names)
-        assert len(names) == 19
+        assert len(names) == 21
         assert {"search_huyou_posts", "get_huyou_post", "search_huyou_circles"}.issubset(names)
+        assert {"get_charging_overview", "get_charging_device"}.issubset(names)
         for tool in tools.tools:
             schema = tool.input_schema
             assert not {"password", "username", "cookie", "cookies", "token", "api_key", "totp", "secret", "encoding"}.intersection(schema.get("properties", {}))
@@ -48,3 +49,9 @@ async def test_real_stdio_handshake_schema_and_feature_gating(tmp_path):
         community = cached_post.model_dump(by_alias=True)["structuredContent"]
         assert community["item"]["body"] == "合成公开树洞内容" and community["item"]["official"] is False
         assert "password" not in json.dumps(result).lower()
+        charging = await client.call_tool("get_charging_overview", {"refresh": False})
+        overview = charging.model_dump(by_alias=True)["structuredContent"]
+        assert overview["source"] == "charging" and overview["coverage"]["catalog_device_count"] == 14
+        assert len(overview["items"]) == 4 and overview["has_more"] and overview["counts"] is None
+        invalid_device = await client.call_tool("get_charging_device", {"device_code": "SYNTHETIC_UNKNOWN"})
+        assert invalid_device.model_dump(by_alias=True)["structuredContent"]["status"] == "unknown_device"

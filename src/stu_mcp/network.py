@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import json
 import time
+from datetime import UTC, datetime
+from email.utils import parsedate_to_datetime
 from http.cookiejar import Cookie
 from urllib.parse import parse_qsl, urljoin, urlparse
 
@@ -15,6 +17,18 @@ from .sources import SOURCES
 MAX_BYTES = 8 * 1024 * 1024
 PASSWORD_KEYS = {"password", "passwd", "pwd", "userpassword", "j_password"}
 AUTH_QUERY_KEYS = {"token", "access_token", "refresh_token", "ticket", "sessionid", "authorization"} | PASSWORD_KEYS
+
+
+def retry_after(value: str | None) -> int | None:
+    """Expose a bounded delay, never arbitrary response-header text."""
+    if not value:
+        return None
+    try:
+        seconds = int(value) if value.isdigit() else int(
+            (parsedate_to_datetime(value) - datetime.now(UTC)).total_seconds())
+        return max(0, min(seconds, 86400))
+    except (TypeError, ValueError, OverflowError):
+        return None
 
 
 def checked_url(source: str, url: str, *, authenticated: bool = False, allow_legacy_http: bool = False) -> str:

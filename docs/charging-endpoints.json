@@ -1,0 +1,4003 @@
+{
+  "schema_version": 1,
+  "checked_date": "2026-10-16",
+  "timezone": "Asia/Shanghai",
+  "api_base": "https://wx.isfdz.com/api/",
+  "scope": "Literal request calls in the current main asset and 58 page/shared chunks. Does not claim complete server-side coverage. Static names do not authorize requests.",
+  "source_assets": {
+    "main_url": "https://wx.isfdz.com/static/js/index.a7904b00.js",
+    "main_sha256": "448a40758b8df9665eb71a8793346950fddc80892fb0ade39e54f6009b233e5a",
+    "page_and_shared_chunk_count": 58
+  },
+  "counts": {
+    "literal_request_templates": 86,
+    "distinct_method_and_path": 85,
+    "live_validated_without_user_session": 12
+  },
+  "signing_parameter_names": [
+    "app_id",
+    "timestamp",
+    "sign"
+  ],
+  "credential_policy": "Discover the public browser-client configuration in memory. Never export configuration values, signed URLs, user identities or session data.",
+  "parameter_policy": "Keys are statically observed call shapes, not a complete required/optional schema. Computed arguments remain unexpanded.",
+  "endpoints": [
+    {
+      "method": "POST",
+      "path": "admin/aliMiniPay/getFansBrowseInfo",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "code",
+            "fansId",
+            "projectId",
+            "villageId"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "business_flow_unverified",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "admin/aliMiniPay/getFansBrowseInfo"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-charge-charge.ad9eed87.js",
+          "asset_sha256": "2b1d8776f9737e1ebdb5813e272b21bc0ca72fdf73d30bd2f4cddb8f4111ed4d",
+          "character_offset": 72088
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "admin/allInPay/jsPayByH5",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "amount"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "business_mutation_or_payment",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "admin/allInPay/jsPayByH5"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-charge-charge.ad9eed87.js",
+          "asset_sha256": "2b1d8776f9737e1ebdb5813e272b21bc0ca72fdf73d30bd2f4cddb8f4111ed4d",
+          "character_offset": 997
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-card-card.277af082.js",
+          "asset_sha256": "e8789a5c91ed2926c488d4e7d429219c92c882b62c54406b9e868933ee211e89",
+          "character_offset": 1380
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-chargingOrder-chargingOrder.5ac203c6.js",
+          "asset_sha256": "1632238ee6058d22b4c4695f285bd10272707d7db9b7028038bd011503839b55",
+          "character_offset": 899
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-monthCard-monthCard.3fd5939a.js",
+          "asset_sha256": "910091e913d30caddefbb8a850f2a480b947c3e0b5325adb6cab73199886fd0b",
+          "character_offset": 3093
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-zmoney-zmoney.08d7b9f9.js",
+          "asset_sha256": "8c206f33095e50a3dacb41ed42e88a1d261e60304a41353252fdee858140ef30",
+          "character_offset": 11475
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-buyInsure-buyInsure.c446e32d.js",
+          "asset_sha256": "46c3eeb4c761e06a9990ccc4f1b4b59b9f69cc81643a58276015125a6e246d52",
+          "character_offset": 4708
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-iccidPay-iccidPay.a31b26ff.js",
+          "asset_sha256": "bb01f2df1fcb963aff0af24c24ff956223d5962ad5eb24a01e0a5c9861fca50c",
+          "character_offset": 2910
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-index-index.7da7e888.js",
+          "asset_sha256": "793f50426e687c5809acf5d4f73ee2d722d63fb9fe749d70ac601cd685f0361c",
+          "character_offset": 2449
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-siteInsurePay-siteInsurePay.48771613.js",
+          "asset_sha256": "3c6ad0da00e775adb01d5640e732119879e0942138ef284f804cc0627e2bd5f4",
+          "character_offset": 991
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "admin/innerWhiteForSeller/addSellerLoginFansInfo",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "fansId",
+            "sellerId",
+            "srcId"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "business_mutation_or_payment",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "admin/innerWhiteForSeller/addSellerLoginFansInfo"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-accountManagement-accountManagement.43fabf17.js",
+          "asset_sha256": "b4de379f174f687f585ed4af0d0b6f49acd965b54685f347ba7772dc148f6329",
+          "character_offset": 7425
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "admin/innerWhiteForSeller/checkFansIsInnerFans",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "fansId",
+            "srcId"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "account_context_read_static_only",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "admin/innerWhiteForSeller/checkFansIsInnerFans"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-index-index.7da7e888.js",
+          "asset_sha256": "793f50426e687c5809acf5d4f73ee2d722d63fb9fe749d70ac601cd685f0361c",
+          "character_offset": 29714
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "admin/innerWhiteForSeller/fansQueryUserList",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "loginName"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "account_context_read_static_only",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "admin/innerWhiteForSeller/fansQueryUserList"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-accountManagement-accountManagement.43fabf17.js",
+          "asset_sha256": "b4de379f174f687f585ed4af0d0b6f49acd965b54685f347ba7772dc148f6329",
+          "character_offset": 8219
+        }
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "admin/innerWhiteForSeller/innerFansEditPhone",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "phone",
+            "userId"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "business_mutation_or_payment",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "admin/innerWhiteForSeller/innerFansEditPhone"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-accountManagement-accountManagement.43fabf17.js",
+          "asset_sha256": "b4de379f174f687f585ed4af0d0b6f49acd965b54685f347ba7772dc148f6329",
+          "character_offset": 6630
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "admin/mobile/expireWaitRenwalList",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "pageNum",
+            "pageSize",
+            "sellerId",
+            "srcId"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "account_context_read_static_only",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "admin/mobile/expireWaitRenwalList"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-iccidPay-iccidPay.a31b26ff.js",
+          "asset_sha256": "bb01f2df1fcb963aff0af24c24ff956223d5962ad5eb24a01e0a5c9861fca50c",
+          "character_offset": 12273
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "admin/mobile/fansAdvertList",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "advertPosition",
+            "srcId"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "public_read_candidate_static_only",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "admin/mobile/fansAdvertList"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-index-index.7da7e888.js",
+          "asset_sha256": "793f50426e687c5809acf5d4f73ee2d722d63fb9fe749d70ac601cd685f0361c",
+          "character_offset": 32190
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "admin/mobile/generalToActiveCard",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "cardNum",
+            "fansId",
+            "projectId"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "business_mutation_or_payment",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "admin/mobile/generalToActiveCard"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-switchCard-switchCard.975e7e67.js",
+          "asset_sha256": "d44427b56ec1605030faf263977309650df498d2fd471a0dfed0620fd9da9957",
+          "character_offset": 2856
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "admin/mobile/getEquipInfoByQrCode",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "qrCode"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "anonymous_read_verified",
+      "live_validation": {
+        "status": "success_without_user_session",
+        "date": "2026-10-16",
+        "scope": "one user-provided device; station/project/vendor context"
+      },
+      "literal_request_targets": [
+        "admin/mobile/getEquipInfoByQrCode"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-switchCard-switchCard.975e7e67.js",
+          "asset_sha256": "d44427b56ec1605030faf263977309650df498d2fd471a0dfed0620fd9da9957",
+          "character_offset": 1495
+        }
+      ],
+      "observed_success_response": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "remark": {
+                "type": "null"
+              },
+              "createUser": {
+                "type": "string"
+              },
+              "createTime": {
+                "type": "string"
+              },
+              "updateUser": {
+                "type": "string"
+              },
+              "updateTime": {
+                "type": "null"
+              },
+              "id": {
+                "type": "integer"
+              },
+              "srcId": {
+                "type": "string"
+              },
+              "srcName": {
+                "type": "string"
+              },
+              "sellerId": {
+                "type": "string"
+              },
+              "sellerName": {
+                "type": "string"
+              },
+              "projectId": {
+                "type": "string"
+              },
+              "projectName": {
+                "type": "string"
+              },
+              "villageId": {
+                "type": "string"
+              },
+              "villageName": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "qrCode": {
+                "type": "string"
+              },
+              "code": {
+                "type": "string"
+              },
+              "type": {
+                "type": "integer"
+              },
+              "linesType": {
+                "type": "null"
+              },
+              "parentCode": {
+                "type": "null"
+              },
+              "totalLines": {
+                "type": "integer"
+              },
+              "secretTimes": {
+                "type": "null"
+              },
+              "supplier": {
+                "type": "string"
+              },
+              "modelType": {
+                "type": "null"
+              },
+              "version": {
+                "type": "string"
+              },
+              "agreementVersion": {
+                "type": "string"
+              },
+              "programVersion": {
+                "type": "string"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "isPublicSeller": {
+                "type": "integer"
+              },
+              "distributeSellerTime": {
+                "type": "null"
+              },
+              "expireTime": {
+                "type": "string"
+              },
+              "distributeSTime": {
+                "type": "null"
+              },
+              "distributeETime": {
+                "type": "null"
+              },
+              "firstLoginTime": {
+                "type": "null"
+              },
+              "firstSTime": {
+                "type": "null"
+              },
+              "firstETime": {
+                "type": "null"
+              },
+              "lastUseTime": {
+                "type": "null"
+              },
+              "lastUseSTime": {
+                "type": "null"
+              },
+              "lastUseETime": {
+                "type": "null"
+              },
+              "mark": {
+                "type": "integer"
+              },
+              "num": {
+                "type": "null"
+              },
+              "lineCount": {
+                "type": "null"
+              },
+              "isDis": {
+                "type": "null"
+              },
+              "addTime": {
+                "type": "null"
+              },
+              "codeList": {
+                "type": "null"
+              },
+              "codeUrl": {
+                "type": "null"
+              },
+              "simCardInfo": {
+                "type": "null"
+              },
+              "lineUrlList": {
+                "type": "null"
+              },
+              "equipCodeVo": {
+                "type": "null"
+              },
+              "equipCodeList": {
+                "type": "null"
+              },
+              "level": {
+                "type": "null"
+              },
+              "iccid": {
+                "type": "null"
+              },
+              "top": {
+                "type": "null"
+              },
+              "equipType": {
+                "type": "null"
+              },
+              "otpTimes": {
+                "type": "null"
+              },
+              "gatewayType": {
+                "type": "null"
+              },
+              "childEquipNum": {
+                "type": "null"
+              },
+              "hasCost": {
+                "type": "integer"
+              },
+              "isBuyInsure": {
+                "type": "integer"
+              },
+              "insureExpireTime": {
+                "type": "null"
+              },
+              "insureExpireSTime": {
+                "type": "null"
+              },
+              "insureExpireETime": {
+                "type": "null"
+              },
+              "siteInsureAmount": {
+                "type": "null"
+              },
+              "startNum": {
+                "type": "integer"
+              },
+              "stime": {
+                "type": "null"
+              },
+              "etime": {
+                "type": "null"
+              }
+            }
+          },
+          "msg": {
+            "type": "string"
+          }
+        }
+      },
+      "additional_live_validation": {
+        "date": "2026-10-16",
+        "scope": "14 distinct device codes confirmed for villageId 3798; inventory remains incomplete against 15-device station summary",
+        "discovery": "Bounded public metadata lookups; no management-session credentials used."
+      }
+    },
+    {
+      "method": "GET",
+      "path": "admin/mobile/getSellerLoginFans",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "fansId",
+            "state"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "business_flow_unverified",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "admin/mobile/getSellerLoginFans"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-wxOpenLogin-wxOpenLogin.b229e560.js",
+          "asset_sha256": "b57ebfd6f1d191990994ddd683830584de240d4d8b2434c6e0e7b93f0afa30f9",
+          "character_offset": 2680
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "admin/mobile/getSrcAdvertStatus",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "fansId",
+            "srcId",
+            "villageId"
+          ],
+          "complete": true
+        },
+        {
+          "kind": "inline_object",
+          "keys": [
+            "srcId"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "public_read_candidate_static_only",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "admin/mobile/getSrcAdvertStatus"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-message-message.05c99cd2.js",
+          "asset_sha256": "f076e68a0bd92961a99b2ca799474fe8bb06f2bcd41e013a722f9dacaddf89a6",
+          "character_offset": 1298
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-toSdc-toSdc.aca27a8f.js",
+          "asset_sha256": "9ba40ba0bfe579376b07789cee37a0094d2de1b5e9735ba210d30dfe78f0d124",
+          "character_offset": 2298
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-wxOpenLogin-wxOpenLogin.b229e560.js",
+          "asset_sha256": "b57ebfd6f1d191990994ddd683830584de240d4d8b2434c6e0e7b93f0afa30f9",
+          "character_offset": 4101
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "admin/mobile/getVillageInfo",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "villageId"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "anonymous_read_verified",
+      "live_validation": {
+        "status": "success_without_user_session",
+        "date": "2026-10-16",
+        "scope": "station ID obtained from that device"
+      },
+      "literal_request_targets": [
+        "admin/mobile/getVillageInfo"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-zmoney-zmoney.08d7b9f9.js",
+          "asset_sha256": "8c206f33095e50a3dacb41ed42e88a1d261e60304a41353252fdee858140ef30",
+          "character_offset": 31145
+        }
+      ],
+      "observed_success_response": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "villageId": {
+                "type": "string"
+              },
+              "villageName": {
+                "type": "string"
+              },
+              "projectId": {
+                "type": "string"
+              },
+              "projectName": {
+                "type": "string"
+              },
+              "tel": {
+                "type": "string"
+              }
+            }
+          },
+          "msg": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "admin/mobile/villageAdvertList",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "isShow",
+            "villageId"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "public_read_candidate_static_only",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "admin/mobile/villageAdvertList"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-charge-charge.ad9eed87.js",
+          "asset_sha256": "2b1d8776f9737e1ebdb5813e272b21bc0ca72fdf73d30bd2f4cddb8f4111ed4d",
+          "character_offset": 86184
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "admin/mobile/withdraw",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "fansId",
+            "fansName",
+            "money",
+            "phone",
+            "srcId",
+            "type"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "business_mutation_or_payment",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "admin/mobile/withdraw"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-withdrawal-withdrawal.89d55dfe.js",
+          "asset_sha256": "e1c78e2fddf2cc172d2824d2d7304f5a27b3500d36e7630401e15024b7a7da9a",
+          "character_offset": 1338
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "admin/wxPay/batchEquipRenewForFansId",
+      "business_parameter_shapes": [
+        {
+          "kind": "computed_expression",
+          "keys": []
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "business_mutation_or_payment",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "admin/wxPay/batchEquipRenewForFansId"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-charge-charge.ad9eed87.js",
+          "asset_sha256": "2b1d8776f9737e1ebdb5813e272b21bc0ca72fdf73d30bd2f4cddb8f4111ed4d",
+          "character_offset": 5011
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-card-card.277af082.js",
+          "asset_sha256": "e8789a5c91ed2926c488d4e7d429219c92c882b62c54406b9e868933ee211e89",
+          "character_offset": 5394
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-chargingOrder-chargingOrder.5ac203c6.js",
+          "asset_sha256": "1632238ee6058d22b4c4695f285bd10272707d7db9b7028038bd011503839b55",
+          "character_offset": 4913
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-monthCard-monthCard.3fd5939a.js",
+          "asset_sha256": "910091e913d30caddefbb8a850f2a480b947c3e0b5325adb6cab73199886fd0b",
+          "character_offset": 7107
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-zmoney-zmoney.08d7b9f9.js",
+          "asset_sha256": "8c206f33095e50a3dacb41ed42e88a1d261e60304a41353252fdee858140ef30",
+          "character_offset": 15489
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-buyInsure-buyInsure.c446e32d.js",
+          "asset_sha256": "46c3eeb4c761e06a9990ccc4f1b4b59b9f69cc81643a58276015125a6e246d52",
+          "character_offset": 8722
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-iccidPay-iccidPay.a31b26ff.js",
+          "asset_sha256": "bb01f2df1fcb963aff0af24c24ff956223d5962ad5eb24a01e0a5c9861fca50c",
+          "character_offset": 6924
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-index-index.7da7e888.js",
+          "asset_sha256": "793f50426e687c5809acf5d4f73ee2d722d63fb9fe749d70ac601cd685f0361c",
+          "character_offset": 6463
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-siteInsurePay-siteInsurePay.48771613.js",
+          "asset_sha256": "3c6ad0da00e775adb01d5640e732119879e0942138ef284f804cc0627e2bd5f4",
+          "character_offset": 5005
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "admin/wxPay/buyEquipSiteInsure",
+      "business_parameter_shapes": [
+        {
+          "kind": "computed_expression",
+          "keys": []
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "business_mutation_or_payment",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "admin/wxPay/buyEquipSiteInsure"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-charge-charge.ad9eed87.js",
+          "asset_sha256": "2b1d8776f9737e1ebdb5813e272b21bc0ca72fdf73d30bd2f4cddb8f4111ed4d",
+          "character_offset": 5406
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-card-card.277af082.js",
+          "asset_sha256": "e8789a5c91ed2926c488d4e7d429219c92c882b62c54406b9e868933ee211e89",
+          "character_offset": 5789
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-chargingOrder-chargingOrder.5ac203c6.js",
+          "asset_sha256": "1632238ee6058d22b4c4695f285bd10272707d7db9b7028038bd011503839b55",
+          "character_offset": 5308
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-monthCard-monthCard.3fd5939a.js",
+          "asset_sha256": "910091e913d30caddefbb8a850f2a480b947c3e0b5325adb6cab73199886fd0b",
+          "character_offset": 7502
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-zmoney-zmoney.08d7b9f9.js",
+          "asset_sha256": "8c206f33095e50a3dacb41ed42e88a1d261e60304a41353252fdee858140ef30",
+          "character_offset": 15884
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-buyInsure-buyInsure.c446e32d.js",
+          "asset_sha256": "46c3eeb4c761e06a9990ccc4f1b4b59b9f69cc81643a58276015125a6e246d52",
+          "character_offset": 9117
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-iccidPay-iccidPay.a31b26ff.js",
+          "asset_sha256": "bb01f2df1fcb963aff0af24c24ff956223d5962ad5eb24a01e0a5c9861fca50c",
+          "character_offset": 7319
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-index-index.7da7e888.js",
+          "asset_sha256": "793f50426e687c5809acf5d4f73ee2d722d63fb9fe749d70ac601cd685f0361c",
+          "character_offset": 6858
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-siteInsurePay-siteInsurePay.48771613.js",
+          "asset_sha256": "3c6ad0da00e775adb01d5640e732119879e0942138ef284f804cc0627e2bd5f4",
+          "character_offset": 5400
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "auth/fansFreeLogin",
+      "business_parameter_shapes": [
+        {
+          "kind": "computed_expression",
+          "keys": []
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "authentication_or_sdk_context",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "auth/fansFreeLogin"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-wxOpenLogin-wxOpenLogin.b229e560.js",
+          "asset_sha256": "b57ebfd6f1d191990994ddd683830584de240d4d8b2434c6e0e7b93f0afa30f9",
+          "character_offset": 3401
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "charge/charge/afterCharge",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "chargeTime",
+            "chargeTplId",
+            "code",
+            "fansId",
+            "insureMoney",
+            "isInsure",
+            "line",
+            "parentCode",
+            "payType"
+          ],
+          "complete": true
+        },
+        {
+          "kind": "computed_expression",
+          "keys": []
+        }
+      ],
+      "fixed_query_parameter_names": [
+        "connect_redirect"
+      ],
+      "classification": "business_mutation_or_payment",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "charge/charge/afterCharge",
+        "charge/charge/afterCharge?connect_redirect=1"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-automateCharge-automateCharge.8bf3330b.js",
+          "asset_sha256": "c1848271f6b5531c8c558d400cc428453819b956259eb69ea74c64872c912c2f",
+          "character_offset": 3304
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-charge-charge.ad9eed87.js",
+          "asset_sha256": "2b1d8776f9737e1ebdb5813e272b21bc0ca72fdf73d30bd2f4cddb8f4111ed4d",
+          "character_offset": 101666
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "charge/charge/beforeCharge",
+      "business_parameter_shapes": [
+        {
+          "kind": "computed_expression",
+          "keys": []
+        },
+        {
+          "kind": "inline_object",
+          "keys": [
+            "amount",
+            "chargeTplId",
+            "code",
+            "fansId",
+            "isInsure",
+            "line",
+            "payType"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "business_mutation_or_payment",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "charge/charge/beforeCharge"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-charge-charge.ad9eed87.js",
+          "asset_sha256": "2b1d8776f9737e1ebdb5813e272b21bc0ca72fdf73d30bd2f4cddb8f4111ed4d",
+          "character_offset": 4433
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-charge-charge.ad9eed87.js",
+          "asset_sha256": "2b1d8776f9737e1ebdb5813e272b21bc0ca72fdf73d30bd2f4cddb8f4111ed4d",
+          "character_offset": 100629
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-card-card.277af082.js",
+          "asset_sha256": "e8789a5c91ed2926c488d4e7d429219c92c882b62c54406b9e868933ee211e89",
+          "character_offset": 4816
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-chargingOrder-chargingOrder.5ac203c6.js",
+          "asset_sha256": "1632238ee6058d22b4c4695f285bd10272707d7db9b7028038bd011503839b55",
+          "character_offset": 4335
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-monthCard-monthCard.3fd5939a.js",
+          "asset_sha256": "910091e913d30caddefbb8a850f2a480b947c3e0b5325adb6cab73199886fd0b",
+          "character_offset": 6529
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-zmoney-zmoney.08d7b9f9.js",
+          "asset_sha256": "8c206f33095e50a3dacb41ed42e88a1d261e60304a41353252fdee858140ef30",
+          "character_offset": 14911
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-buyInsure-buyInsure.c446e32d.js",
+          "asset_sha256": "46c3eeb4c761e06a9990ccc4f1b4b59b9f69cc81643a58276015125a6e246d52",
+          "character_offset": 8144
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-iccidPay-iccidPay.a31b26ff.js",
+          "asset_sha256": "bb01f2df1fcb963aff0af24c24ff956223d5962ad5eb24a01e0a5c9861fca50c",
+          "character_offset": 6346
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-index-index.7da7e888.js",
+          "asset_sha256": "793f50426e687c5809acf5d4f73ee2d722d63fb9fe749d70ac601cd685f0361c",
+          "character_offset": 5885
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-siteInsurePay-siteInsurePay.48771613.js",
+          "asset_sha256": "3c6ad0da00e775adb01d5640e732119879e0942138ef284f804cc0627e2bd5f4",
+          "character_offset": 4427
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "charge/charge/beforeContinueCharge",
+      "business_parameter_shapes": [
+        {
+          "kind": "computed_expression",
+          "keys": []
+        },
+        {
+          "kind": "inline_object",
+          "keys": [
+            "amount",
+            "chargeTplId",
+            "code",
+            "fansId",
+            "isInsure",
+            "line",
+            "payType"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "business_mutation_or_payment",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "charge/charge/beforeContinueCharge"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-charge-charge.ad9eed87.js",
+          "asset_sha256": "2b1d8776f9737e1ebdb5813e272b21bc0ca72fdf73d30bd2f4cddb8f4111ed4d",
+          "character_offset": 1395
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-card-card.277af082.js",
+          "asset_sha256": "e8789a5c91ed2926c488d4e7d429219c92c882b62c54406b9e868933ee211e89",
+          "character_offset": 1778
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-chargingOrder-chargingOrder.5ac203c6.js",
+          "asset_sha256": "1632238ee6058d22b4c4695f285bd10272707d7db9b7028038bd011503839b55",
+          "character_offset": 1297
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-chargingOrder-chargingOrder.5ac203c6.js",
+          "asset_sha256": "1632238ee6058d22b4c4695f285bd10272707d7db9b7028038bd011503839b55",
+          "character_offset": 20436
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-monthCard-monthCard.3fd5939a.js",
+          "asset_sha256": "910091e913d30caddefbb8a850f2a480b947c3e0b5325adb6cab73199886fd0b",
+          "character_offset": 3491
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-zmoney-zmoney.08d7b9f9.js",
+          "asset_sha256": "8c206f33095e50a3dacb41ed42e88a1d261e60304a41353252fdee858140ef30",
+          "character_offset": 11873
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-buyInsure-buyInsure.c446e32d.js",
+          "asset_sha256": "46c3eeb4c761e06a9990ccc4f1b4b59b9f69cc81643a58276015125a6e246d52",
+          "character_offset": 5106
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-iccidPay-iccidPay.a31b26ff.js",
+          "asset_sha256": "bb01f2df1fcb963aff0af24c24ff956223d5962ad5eb24a01e0a5c9861fca50c",
+          "character_offset": 3308
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-index-index.7da7e888.js",
+          "asset_sha256": "793f50426e687c5809acf5d4f73ee2d722d63fb9fe749d70ac601cd685f0361c",
+          "character_offset": 2847
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-siteInsurePay-siteInsurePay.48771613.js",
+          "asset_sha256": "3c6ad0da00e775adb01d5640e732119879e0942138ef284f804cc0627e2bd5f4",
+          "character_offset": 1389
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "charge/charge/otpCharge",
+      "business_parameter_shapes": [
+        {
+          "kind": "computed_expression",
+          "keys": []
+        },
+        {
+          "kind": "inline_object",
+          "keys": [
+            "amount",
+            "chargeTplId",
+            "code",
+            "fansId",
+            "isInsure",
+            "payType"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "business_mutation_or_payment",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "charge/charge/otpCharge"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-charge-charge.ad9eed87.js",
+          "asset_sha256": "2b1d8776f9737e1ebdb5813e272b21bc0ca72fdf73d30bd2f4cddb8f4111ed4d",
+          "character_offset": 1793
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-charge-charge.ad9eed87.js",
+          "asset_sha256": "2b1d8776f9737e1ebdb5813e272b21bc0ca72fdf73d30bd2f4cddb8f4111ed4d",
+          "character_offset": 98647
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-card-card.277af082.js",
+          "asset_sha256": "e8789a5c91ed2926c488d4e7d429219c92c882b62c54406b9e868933ee211e89",
+          "character_offset": 2176
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-chargingOrder-chargingOrder.5ac203c6.js",
+          "asset_sha256": "1632238ee6058d22b4c4695f285bd10272707d7db9b7028038bd011503839b55",
+          "character_offset": 1695
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-monthCard-monthCard.3fd5939a.js",
+          "asset_sha256": "910091e913d30caddefbb8a850f2a480b947c3e0b5325adb6cab73199886fd0b",
+          "character_offset": 3889
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-zmoney-zmoney.08d7b9f9.js",
+          "asset_sha256": "8c206f33095e50a3dacb41ed42e88a1d261e60304a41353252fdee858140ef30",
+          "character_offset": 12271
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-buyInsure-buyInsure.c446e32d.js",
+          "asset_sha256": "46c3eeb4c761e06a9990ccc4f1b4b59b9f69cc81643a58276015125a6e246d52",
+          "character_offset": 5504
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-iccidPay-iccidPay.a31b26ff.js",
+          "asset_sha256": "bb01f2df1fcb963aff0af24c24ff956223d5962ad5eb24a01e0a5c9861fca50c",
+          "character_offset": 3706
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-index-index.7da7e888.js",
+          "asset_sha256": "793f50426e687c5809acf5d4f73ee2d722d63fb9fe749d70ac601cd685f0361c",
+          "character_offset": 3245
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-siteInsurePay-siteInsurePay.48771613.js",
+          "asset_sha256": "3c6ad0da00e775adb01d5640e732119879e0942138ef284f804cc0627e2bd5f4",
+          "character_offset": 1787
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "charge/charge/tbqCharge",
+      "business_parameter_shapes": [
+        {
+          "kind": "computed_expression",
+          "keys": []
+        },
+        {
+          "kind": "inline_object",
+          "keys": [
+            "amount",
+            "chargeTplId",
+            "code",
+            "fansId",
+            "isInsure",
+            "payType"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "business_mutation_or_payment",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "charge/charge/tbqCharge"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-charge-charge.ad9eed87.js",
+          "asset_sha256": "2b1d8776f9737e1ebdb5813e272b21bc0ca72fdf73d30bd2f4cddb8f4111ed4d",
+          "character_offset": 4056
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-charge-charge.ad9eed87.js",
+          "asset_sha256": "2b1d8776f9737e1ebdb5813e272b21bc0ca72fdf73d30bd2f4cddb8f4111ed4d",
+          "character_offset": 99769
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-card-card.277af082.js",
+          "asset_sha256": "e8789a5c91ed2926c488d4e7d429219c92c882b62c54406b9e868933ee211e89",
+          "character_offset": 4439
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-chargingOrder-chargingOrder.5ac203c6.js",
+          "asset_sha256": "1632238ee6058d22b4c4695f285bd10272707d7db9b7028038bd011503839b55",
+          "character_offset": 3958
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-monthCard-monthCard.3fd5939a.js",
+          "asset_sha256": "910091e913d30caddefbb8a850f2a480b947c3e0b5325adb6cab73199886fd0b",
+          "character_offset": 6152
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-zmoney-zmoney.08d7b9f9.js",
+          "asset_sha256": "8c206f33095e50a3dacb41ed42e88a1d261e60304a41353252fdee858140ef30",
+          "character_offset": 14534
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-buyInsure-buyInsure.c446e32d.js",
+          "asset_sha256": "46c3eeb4c761e06a9990ccc4f1b4b59b9f69cc81643a58276015125a6e246d52",
+          "character_offset": 7767
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-iccidPay-iccidPay.a31b26ff.js",
+          "asset_sha256": "bb01f2df1fcb963aff0af24c24ff956223d5962ad5eb24a01e0a5c9861fca50c",
+          "character_offset": 5969
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-index-index.7da7e888.js",
+          "asset_sha256": "793f50426e687c5809acf5d4f73ee2d722d63fb9fe749d70ac601cd685f0361c",
+          "character_offset": 5508
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-siteInsurePay-siteInsurePay.48771613.js",
+          "asset_sha256": "3c6ad0da00e775adb01d5640e732119879e0942138ef284f804cc0627e2bd5f4",
+          "character_offset": 4050
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "charge/insureCharge/getVillageInsureAmountInfo",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "villageId"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "public_read_candidate_static_only",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "charge/insureCharge/getVillageInsureAmountInfo"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-charge-charge.ad9eed87.js",
+          "asset_sha256": "2b1d8776f9737e1ebdb5813e272b21bc0ca72fdf73d30bd2f4cddb8f4111ed4d",
+          "character_offset": 72804
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "charge/insureCharge/toBuyInsureCharge",
+      "business_parameter_shapes": [
+        {
+          "kind": "computed_expression",
+          "keys": []
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "business_mutation_or_payment",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "charge/insureCharge/toBuyInsureCharge"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-charge-charge.ad9eed87.js",
+          "asset_sha256": "2b1d8776f9737e1ebdb5813e272b21bc0ca72fdf73d30bd2f4cddb8f4111ed4d",
+          "character_offset": 3143
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-card-card.277af082.js",
+          "asset_sha256": "e8789a5c91ed2926c488d4e7d429219c92c882b62c54406b9e868933ee211e89",
+          "character_offset": 3526
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-chargingOrder-chargingOrder.5ac203c6.js",
+          "asset_sha256": "1632238ee6058d22b4c4695f285bd10272707d7db9b7028038bd011503839b55",
+          "character_offset": 3045
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-monthCard-monthCard.3fd5939a.js",
+          "asset_sha256": "910091e913d30caddefbb8a850f2a480b947c3e0b5325adb6cab73199886fd0b",
+          "character_offset": 5239
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-zmoney-zmoney.08d7b9f9.js",
+          "asset_sha256": "8c206f33095e50a3dacb41ed42e88a1d261e60304a41353252fdee858140ef30",
+          "character_offset": 13621
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-buyInsure-buyInsure.c446e32d.js",
+          "asset_sha256": "46c3eeb4c761e06a9990ccc4f1b4b59b9f69cc81643a58276015125a6e246d52",
+          "character_offset": 6854
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-iccidPay-iccidPay.a31b26ff.js",
+          "asset_sha256": "bb01f2df1fcb963aff0af24c24ff956223d5962ad5eb24a01e0a5c9861fca50c",
+          "character_offset": 5056
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-index-index.7da7e888.js",
+          "asset_sha256": "793f50426e687c5809acf5d4f73ee2d722d63fb9fe749d70ac601cd685f0361c",
+          "character_offset": 4595
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-siteInsurePay-siteInsurePay.48771613.js",
+          "asset_sha256": "3c6ad0da00e775adb01d5640e732119879e0942138ef284f804cc0627e2bd5f4",
+          "character_offset": 3137
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "charge/mobile/activeToTransfer",
+      "business_parameter_shapes": [
+        {
+          "kind": "computed_expression",
+          "keys": []
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "business_mutation_or_payment",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "charge/mobile/activeToTransfer"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-zmoney-zmoney.08d7b9f9.js",
+          "asset_sha256": "8c206f33095e50a3dacb41ed42e88a1d261e60304a41353252fdee858140ef30",
+          "character_offset": 25577
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "charge/mobile/activeTransferList",
+      "business_parameter_shapes": [
+        {
+          "kind": "computed_expression",
+          "keys": []
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "account_context_read_static_only",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "charge/mobile/activeTransferList"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-transferList-transferList.d223293d.js",
+          "asset_sha256": "94c463d7eca2a62f5597216db52f63100d0014e97bd718c46564a40b56739190",
+          "character_offset": 1687
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "charge/mobile/addFeedback",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "code",
+            "content",
+            "fansId",
+            "orderNum",
+            "phone",
+            "villageId"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "business_mutation_or_payment",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "charge/mobile/addFeedback"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-feedback-feedback.794b58c3.js",
+          "asset_sha256": "54d5bbdc09633b6a9c53137be5329a658633173a3ff1bd7a5df6eaacf5d85922",
+          "character_offset": 5795
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "charge/mobile/bind",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "fansId",
+            "phone",
+            "srcId",
+            "type"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "business_mutation_or_payment",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "charge/mobile/bind"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-authorization-authorization.6af72e60.js",
+          "asset_sha256": "cafbd29e6687ad0ceaa9c715dd6bb307429850c6712be41e09b7c3237cd06a8f",
+          "character_offset": 9110
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-authorization-authorization.6af72e60.js",
+          "asset_sha256": "cafbd29e6687ad0ceaa9c715dd6bb307429850c6712be41e09b7c3237cd06a8f",
+          "character_offset": 10822
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-bind-bind.027aee3e.js",
+          "asset_sha256": "2d4428c2c5c30a982d3aa281bbb0bcd8c47b39bf8bf7ae2a4189366a35c9190d",
+          "character_offset": 5906
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "charge/mobile/bindCard",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "cardNum",
+            "fansId",
+            "projectId"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "business_mutation_or_payment",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "charge/mobile/bindCard"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-card-card.277af082.js",
+          "asset_sha256": "e8789a5c91ed2926c488d4e7d429219c92c882b62c54406b9e868933ee211e89",
+          "character_offset": 33421
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "charge/mobile/bindProCard",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "cardNum",
+            "fansId",
+            "projectId"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "business_mutation_or_payment",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "charge/mobile/bindProCard"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-card-card.277af082.js",
+          "asset_sha256": "e8789a5c91ed2926c488d4e7d429219c92c882b62c54406b9e868933ee211e89",
+          "character_offset": 33718
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "charge/mobile/cancelMealWithdrawal",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "fansId",
+            "id",
+            "srcId"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "business_mutation_or_payment",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "charge/mobile/cancelMealWithdrawal"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-zwithdrawalList-zwithdrawalList.ec82afc1.js",
+          "asset_sha256": "7469a4d0df83029c2e3d15b45c760b2fec46e50df5fc1d6d3e0d57a4cb5d2fa0",
+          "character_offset": 7494
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "charge/mobile/cardInfo",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "fansId",
+            "projectId",
+            "type"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "account_context_read_static_only",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "charge/mobile/cardInfo"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-card-card.277af082.js",
+          "asset_sha256": "e8789a5c91ed2926c488d4e7d429219c92c882b62c54406b9e868933ee211e89",
+          "character_offset": 34222
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "charge/mobile/chargeOrderInfo",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "month",
+            "orderNum"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "account_context_read_static_only",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "charge/mobile/chargeOrderInfo"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-chargeOrderDetail-chargeOrderDetail.46c9dfac.js",
+          "asset_sha256": "6252cf8c569ca090818de52e2e82b291b08c49eb60770c60075aabd1028b26d0",
+          "character_offset": 9609
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-powerPackage-power-power.f92d86a0.js",
+          "asset_sha256": "9d198eb36f66aca24492d7769c346c9a179dbbe8587c861e046d1627aab78fab",
+          "character_offset": 1061479
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "charge/mobile/chargeOrderIng",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "fansId",
+            "projectId"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "account_context_read_static_only",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "charge/mobile/chargeOrderIng"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-charge-charge.ad9eed87.js",
+          "asset_sha256": "2b1d8776f9737e1ebdb5813e272b21bc0ca72fdf73d30bd2f4cddb8f4111ed4d",
+          "character_offset": 97066
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-chargingOrder-chargingOrder.5ac203c6.js",
+          "asset_sha256": "1632238ee6058d22b4c4695f285bd10272707d7db9b7028038bd011503839b55",
+          "character_offset": 23352
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-automateCharge-automateCharge.8bf3330b.js",
+          "asset_sha256": "c1848271f6b5531c8c558d400cc428453819b956259eb69ea74c64872c912c2f",
+          "character_offset": 4047
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "charge/mobile/chargeOrderList",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "fansId",
+            "fansMonthCardId",
+            "month",
+            "projectId"
+          ],
+          "complete": true
+        },
+        {
+          "kind": "inline_object",
+          "keys": [
+            "fansId",
+            "fansPurseId",
+            "month",
+            "pageNum",
+            "pageSize",
+            "projectId",
+            "type"
+          ],
+          "complete": true
+        },
+        {
+          "kind": "inline_object",
+          "keys": [
+            "cardNum",
+            "fansId",
+            "month",
+            "pageNum",
+            "pageSize",
+            "projectId"
+          ],
+          "complete": true
+        },
+        {
+          "kind": "inline_object",
+          "keys": [
+            "fansId",
+            "month",
+            "pageNum",
+            "pageSize",
+            "projectId"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "account_context_read_static_only",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "charge/mobile/chargeOrderList"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-monthCardOrder-monthCardOrder.825f956c.js",
+          "asset_sha256": "169ab58b5b78403015151a12ce3f1a9090fdc3f08cd5afaa4bffb8e8b7fde0e7",
+          "character_offset": 12331
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-zmoney-zmoney.08d7b9f9.js",
+          "asset_sha256": "8c206f33095e50a3dacb41ed42e88a1d261e60304a41353252fdee858140ef30",
+          "character_offset": 29569
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-cardChargeOrder-cardChargeOrder.b762a60d.js",
+          "asset_sha256": "2f97c7caaa6450448c06d909abeae77f677d0151a4cdca45776dfe6df3fa6736",
+          "character_offset": 8501
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-chargeOrder-chargeOrder.58c979f2.js",
+          "asset_sha256": "782f361ccd98f4aa1c252bc10263b157b497797c2ac6f807b48afd75e7fb0170",
+          "character_offset": 1597
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-tmoney-tmoney.efe2466f.js",
+          "asset_sha256": "e702a7f49404351661961a9ab8864b03f5e988e158666b7a50bc44250225c228",
+          "character_offset": 11540
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "charge/mobile/checkPhone",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "fansId",
+            "phone",
+            "srcId"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "business_flow_unverified",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "charge/mobile/checkPhone"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-bind-bind.027aee3e.js",
+          "asset_sha256": "2d4428c2c5c30a982d3aa281bbb0bcd8c47b39bf8bf7ae2a4189366a35c9190d",
+          "character_offset": 5698
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "charge/mobile/disclaimer",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "srcId"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "anonymous_read_verified",
+      "live_validation": {
+        "status": "success_without_user_session",
+        "date": "2026-10-16",
+        "scope": "associated vendor context; successful null data"
+      },
+      "literal_request_targets": [
+        "charge/mobile/disclaimer"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-disclaimers-disclaimers.310e4382.js",
+          "asset_sha256": "bcf1e30785dd33c4060928865f3794b3effb3bb834715440a513c9c7c90d7e8e",
+          "character_offset": 724
+        }
+      ],
+      "observed_success_response": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer"
+          },
+          "data": {
+            "type": "null"
+          },
+          "msg": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "path": "charge/mobile/editCardInfo",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "cardNum",
+            "fansId",
+            "phone",
+            "projectId"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "business_mutation_or_payment",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "charge/mobile/editCardInfo"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-card-card.277af082.js",
+          "asset_sha256": "e8789a5c91ed2926c488d4e7d429219c92c882b62c54406b9e868933ee211e89",
+          "character_offset": 31828
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "charge/mobile/fansMealTransferInfoList",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "fansId",
+            "srcId"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "account_context_read_static_only",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "charge/mobile/fansMealTransferInfoList"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-zwithdrawalList-zwithdrawalList.ec82afc1.js",
+          "asset_sha256": "7469a4d0df83029c2e3d15b45c760b2fec46e50df5fc1d6d3e0d57a4cb5d2fa0",
+          "character_offset": 6830
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "charge/mobile/feedbackList",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "fansId",
+            "pageNum",
+            "pageSize",
+            "villageId"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "account_context_read_static_only",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "charge/mobile/feedbackList"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-feedback-feedback.794b58c3.js",
+          "asset_sha256": "54d5bbdc09633b6a9c53137be5329a658633173a3ff1bd7a5df6eaacf5d85922",
+          "character_offset": 7372
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "charge/mobile/getChargeRate",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "code"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "anonymous_read_verified",
+      "live_validation": {
+        "status": "success_without_user_session",
+        "date": "2026-10-16",
+        "scope": "one user-provided device; feeModel 1 and three power tiers"
+      },
+      "literal_request_targets": [
+        "charge/mobile/getChargeRate"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-charge-charge.ad9eed87.js",
+          "asset_sha256": "2b1d8776f9737e1ebdb5813e272b21bc0ca72fdf73d30bd2f4cddb8f4111ed4d",
+          "character_offset": 91318
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-chargingOrder-chargingOrder.5ac203c6.js",
+          "asset_sha256": "1632238ee6058d22b4c4695f285bd10272707d7db9b7028038bd011503839b55",
+          "character_offset": 21068
+        }
+      ],
+      "observed_success_response": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "tplId": {
+                "type": "integer"
+              },
+              "tempTplId": {
+                "type": "null"
+              },
+              "isOpenFullStop": {
+                "type": "integer"
+              },
+              "isShow": {
+                "type": "integer"
+              },
+              "isOpenOrClose": {
+                "type": "integer"
+              },
+              "pluse": {
+                "type": "null"
+              },
+              "chooseModel": {
+                "type": "integer"
+              },
+              "feeModel": {
+                "type": "integer"
+              },
+              "chargeAmountList": {
+                "type": "null"
+              },
+              "chargeRateList": {
+                "type": "array",
+                "observed_length": 3,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "remark": {
+                      "type": "null"
+                    },
+                    "createUser": {
+                      "type": "string"
+                    },
+                    "createTime": {
+                      "type": "string"
+                    },
+                    "updateUser": {
+                      "type": "string"
+                    },
+                    "updateTime": {
+                      "type": "null"
+                    },
+                    "id": {
+                      "type": "integer"
+                    },
+                    "tplId": {
+                      "type": "integer"
+                    },
+                    "type": {
+                      "type": "integer"
+                    },
+                    "power": {
+                      "type": "integer"
+                    },
+                    "amount": {
+                      "type": "number"
+                    },
+                    "tempAmount": {
+                      "type": "number"
+                    },
+                    "serviceAmount": {
+                      "type": "number"
+                    },
+                    "tempServiceAmount": {
+                      "type": "number"
+                    },
+                    "mark": {
+                      "type": "integer"
+                    },
+                    "category": {
+                      "type": "integer"
+                    },
+                    "stime": {
+                      "type": "null"
+                    },
+                    "etime": {
+                      "type": "null"
+                    }
+                  }
+                }
+              },
+              "electricity": {
+                "type": "number"
+              },
+              "fullStopTimes": {
+                "type": "integer"
+              },
+              "cardOnceTimes": {
+                "type": "integer"
+              },
+              "minAmount": {
+                "type": "null"
+              },
+              "chargeTimesList": {
+                "type": "array",
+                "observed_length": 3,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "remark": {
+                      "type": "null"
+                    },
+                    "createUser": {
+                      "type": "string"
+                    },
+                    "createTime": {
+                      "type": "null"
+                    },
+                    "updateUser": {
+                      "type": "string"
+                    },
+                    "updateTime": {
+                      "type": "null"
+                    },
+                    "id": {
+                      "type": "integer"
+                    },
+                    "tplId": {
+                      "type": "integer"
+                    },
+                    "times": {
+                      "type": "integer"
+                    },
+                    "mark": {
+                      "type": "integer"
+                    },
+                    "stime": {
+                      "type": "null"
+                    },
+                    "etime": {
+                      "type": "null"
+                    }
+                  }
+                }
+              },
+              "electricityFee": {
+                "type": "null"
+              },
+              "serviceModel": {
+                "type": "null"
+              },
+              "serviceFee": {
+                "type": "null"
+              },
+              "subMaxPower": {
+                "type": "null"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "tempModel": {
+                "type": "integer"
+              },
+              "tempElectricityFee": {
+                "type": "null"
+              },
+              "tempServiceFee": {
+                "type": "null"
+              },
+              "carElectricityFee": {
+                "type": "null"
+              },
+              "carServiceFee": {
+                "type": "null"
+              },
+              "carParkFee": {
+                "type": "null"
+              },
+              "tempAmount": {
+                "type": "number"
+              },
+              "refundOpen": {
+                "type": "integer"
+              },
+              "freeTime": {
+                "type": "integer"
+              },
+              "miniAmount": {
+                "type": "number"
+              },
+              "belowIsCost": {
+                "type": "integer"
+              },
+              "remark": {
+                "type": "null"
+              },
+              "overServiceFee": {
+                "type": "null"
+              },
+              "overTempServiceFee": {
+                "type": "null"
+              },
+              "overKwFee": {
+                "type": "null"
+              },
+              "chargeTplPvAmount": {
+                "type": "null"
+              },
+              "chargeTplPvTimes": {
+                "type": "null"
+              }
+            }
+          },
+          "msg": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "charge/mobile/getEquipCode",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "qrCode"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "anonymous_read_verified",
+      "live_validation": {
+        "status": "success_without_user_session",
+        "date": "2026-10-16",
+        "scope": "QR tail from one user-provided device resolved to the same device"
+      },
+      "literal_request_targets": [
+        "charge/mobile/getEquipCode"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-card-card.277af082.js",
+          "asset_sha256": "e8789a5c91ed2926c488d4e7d429219c92c882b62c54406b9e868933ee211e89",
+          "character_offset": 36855
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-feedback-feedback.794b58c3.js",
+          "asset_sha256": "54d5bbdc09633b6a9c53137be5329a658633173a3ff1bd7a5df6eaacf5d85922",
+          "character_offset": 6814
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-index-index.7da7e888.js",
+          "asset_sha256": "793f50426e687c5809acf5d4f73ee2d722d63fb9fe749d70ac601cd685f0361c",
+          "character_offset": 36103
+        }
+      ],
+      "observed_success_response": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer"
+          },
+          "data": {
+            "type": "string"
+          },
+          "msg": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "path": "charge/mobile/getEquipPurseInfo",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "code",
+            "fansId",
+            "srcId"
+          ],
+          "complete": true
+        },
+        {
+          "kind": "inline_object",
+          "keys": [
+            "fansId",
+            "qrCode",
+            "srcId"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "business_flow_unverified",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "charge/mobile/getEquipPurseInfo"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-charge-charge.ad9eed87.js",
+          "asset_sha256": "2b1d8776f9737e1ebdb5813e272b21bc0ca72fdf73d30bd2f4cddb8f4111ed4d",
+          "character_offset": 74903
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-chargingOrder-chargingOrder.5ac203c6.js",
+          "asset_sha256": "1632238ee6058d22b4c4695f285bd10272707d7db9b7028038bd011503839b55",
+          "character_offset": 17465
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-automateCharge-automateCharge.8bf3330b.js",
+          "asset_sha256": "c1848271f6b5531c8c558d400cc428453819b956259eb69ea74c64872c912c2f",
+          "character_offset": 2049
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "charge/mobile/getEquipType",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "code"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "anonymous_read_verified",
+      "live_validation": {
+        "status": "success_without_user_session",
+        "date": "2026-10-15",
+        "scope": "four user-provided devices; integer type 6"
+      },
+      "literal_request_targets": [
+        "charge/mobile/getEquipType"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-charge-charge.ad9eed87.js",
+          "asset_sha256": "2b1d8776f9737e1ebdb5813e272b21bc0ca72fdf73d30bd2f4cddb8f4111ed4d",
+          "character_offset": 87433
+        }
+      ],
+      "observed_success_response": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer"
+          },
+          "data": {
+            "type": "integer"
+          }
+        },
+        "other_observed_property_names": [
+          "msg"
+        ]
+      }
+    },
+    {
+      "method": "GET",
+      "path": "charge/mobile/getFansInfo",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "fansId",
+            "projectId"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "account_context_read_static_only",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "charge/mobile/getFansInfo"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-zmoney-zmoney.08d7b9f9.js",
+          "asset_sha256": "8c206f33095e50a3dacb41ed42e88a1d261e60304a41353252fdee858140ef30",
+          "character_offset": 24423
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-index-index.7da7e888.js",
+          "asset_sha256": "793f50426e687c5809acf5d4f73ee2d722d63fb9fe749d70ac601cd685f0361c",
+          "character_offset": 33248
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-zwithdrawal-zwithdrawal.bee8200b.js",
+          "asset_sha256": "bdab36453d74d45cfaf230ef145cfe9ed8b7fe68a77bd31c56510f82dfeed7d3",
+          "character_offset": 2554
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "charge/mobile/getFansMiniOpenId",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "fansId",
+            "srcId"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "business_flow_unverified",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "charge/mobile/getFansMiniOpenId"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-index-index.7da7e888.js",
+          "asset_sha256": "793f50426e687c5809acf5d4f73ee2d722d63fb9fe749d70ac601cd685f0361c",
+          "character_offset": 28345
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "charge/mobile/getFansPurseInfo",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "fansId",
+            "type"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "account_context_read_static_only",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "charge/mobile/getFansPurseInfo"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-index-index.7da7e888.js",
+          "asset_sha256": "793f50426e687c5809acf5d4f73ee2d722d63fb9fe749d70ac601cd685f0361c",
+          "character_offset": 33871
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-tmoney-tmoney.efe2466f.js",
+          "asset_sha256": "e702a7f49404351661961a9ab8864b03f5e988e158666b7a50bc44250225c228",
+          "character_offset": 10650
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "charge/mobile/getIsOpenActive",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "projectId"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "anonymous_read_verified",
+      "live_validation": {
+        "status": "success_without_user_session",
+        "date": "2026-10-16",
+        "scope": "feature flags for the associated project"
+      },
+      "literal_request_targets": [
+        "charge/mobile/getIsOpenActive"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-charge-charge.ad9eed87.js",
+          "asset_sha256": "2b1d8776f9737e1ebdb5813e272b21bc0ca72fdf73d30bd2f4cddb8f4111ed4d",
+          "character_offset": 73565
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-card-card.277af082.js",
+          "asset_sha256": "e8789a5c91ed2926c488d4e7d429219c92c882b62c54406b9e868933ee211e89",
+          "character_offset": 30137
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-zmoney-zmoney.08d7b9f9.js",
+          "asset_sha256": "8c206f33095e50a3dacb41ed42e88a1d261e60304a41353252fdee858140ef30",
+          "character_offset": 23901
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-index-index.7da7e888.js",
+          "asset_sha256": "793f50426e687c5809acf5d4f73ee2d722d63fb9fe749d70ac601cd685f0361c",
+          "character_offset": 30678
+        }
+      ],
+      "observed_success_response": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "isOpenActive": {
+                "type": "integer"
+              },
+              "isOpenCardActive": {
+                "type": "integer"
+              }
+            }
+          },
+          "msg": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "path": "charge/mobile/getMiniTplIdList",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "srcId"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "business_flow_unverified",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "charge/mobile/getMiniTplIdList"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-charge-charge.ad9eed87.js",
+          "asset_sha256": "2b1d8776f9737e1ebdb5813e272b21bc0ca72fdf73d30bd2f4cddb8f4111ed4d",
+          "character_offset": 71477
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "charge/mobile/getMonthCard",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "projectId"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "public_read_candidate_static_only",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "charge/mobile/getMonthCard"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-monthCard-monthCard.3fd5939a.js",
+          "asset_sha256": "910091e913d30caddefbb8a850f2a480b947c3e0b5325adb6cab73199886fd0b",
+          "character_offset": 1857
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "charge/mobile/getOffEquipPurseInfo",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "code",
+            "fansId",
+            "srcId"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "business_flow_unverified",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "charge/mobile/getOffEquipPurseInfo"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-charge-charge.ad9eed87.js",
+          "asset_sha256": "2b1d8776f9737e1ebdb5813e272b21bc0ca72fdf73d30bd2f4cddb8f4111ed4d",
+          "character_offset": 74752
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "charge/mobile/getPowerList",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "month",
+            "orderNum"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "account_context_read_static_only",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "charge/mobile/getPowerList"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-powerPackage-power-power.f92d86a0.js",
+          "asset_sha256": "9d198eb36f66aca24492d7769c346c9a179dbbe8587c861e046d1627aab78fab",
+          "character_offset": 1061874
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "charge/mobile/getRechargeActive",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "fansId",
+            "projectId",
+            "type"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "business_flow_unverified",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "charge/mobile/getRechargeActive"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-card-card.277af082.js",
+          "asset_sha256": "e8789a5c91ed2926c488d4e7d429219c92c882b62c54406b9e868933ee211e89",
+          "character_offset": 35631
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-zmoney-zmoney.08d7b9f9.js",
+          "asset_sha256": "8c206f33095e50a3dacb41ed42e88a1d261e60304a41353252fdee858140ef30",
+          "character_offset": 27564
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "charge/mobile/getSecretCode",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "code",
+            "fansId"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "charging_flow_credential",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "charge/mobile/getSecretCode"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-message-message.05c99cd2.js",
+          "asset_sha256": "f076e68a0bd92961a99b2ca799474fe8bb06f2bcd41e013a722f9dacaddf89a6",
+          "character_offset": 1844
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "charge/mobile/getSellerInfo",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "villageId"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "anonymous_read_verified",
+      "live_validation": {
+        "status": "success_without_user_session",
+        "date": "2026-10-16",
+        "scope": "feature flags for the associated station"
+      },
+      "literal_request_targets": [
+        "charge/mobile/getSellerInfo"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-charge-charge.ad9eed87.js",
+          "asset_sha256": "2b1d8776f9737e1ebdb5813e272b21bc0ca72fdf73d30bd2f4cddb8f4111ed4d",
+          "character_offset": 90261
+        }
+      ],
+      "observed_success_response": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "isOpenActive": {
+                "type": "integer"
+              },
+              "isOpenCardActive": {
+                "type": "integer"
+              },
+              "isOpenMonth": {
+                "type": "integer"
+              },
+              "isOpenTemp": {
+                "type": "integer"
+              },
+              "monthCardId": {
+                "type": "null"
+              },
+              "mealId": {
+                "type": "integer"
+              },
+              "tempTplId": {
+                "type": "null"
+              }
+            }
+          },
+          "msg": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "path": "charge/mobile/loseAndUse",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "cardNum",
+            "fansId",
+            "projectId"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "business_mutation_or_payment",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "charge/mobile/loseAndUse"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-card-card.277af082.js",
+          "asset_sha256": "e8789a5c91ed2926c488d4e7d429219c92c882b62c54406b9e868933ee211e89",
+          "character_offset": 30919
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "charge/mobile/monthCardInfo",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "fansId",
+            "projectId",
+            "status"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "account_context_read_static_only",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "charge/mobile/monthCardInfo"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-monthCard-monthCard.3fd5939a.js",
+          "asset_sha256": "910091e913d30caddefbb8a850f2a480b947c3e0b5325adb6cab73199886fd0b",
+          "character_offset": 1369
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "charge/mobile/nearEqui",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "distance",
+            "latitude",
+            "longitude",
+            "srcId"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "anonymous_read_verified",
+      "live_validation": {
+        "status": "success_without_user_session",
+        "date": "2026-10-16",
+        "scope": "known vendor context and public campus coordinates; one station near Sangpu, zero near east campus"
+      },
+      "literal_request_targets": [
+        "charge/mobile/nearEqui"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-near-near.1d99c7e0.js",
+          "asset_sha256": "0b2d413228bbcc0821f17c2875112d8bf802813e8f7b114861ad3af8f919d424",
+          "character_offset": 19282
+        }
+      ],
+      "observed_success_response": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer"
+          },
+          "total": {
+            "type": "integer"
+          },
+          "rows": {
+            "type": "array",
+            "observed_length": 1,
+            "items": {
+              "type": "object",
+              "properties": {
+                "address": {
+                  "type": [
+                    "string"
+                  ]
+                },
+                "charging": {
+                  "type": [
+                    "null"
+                  ]
+                },
+                "code": {
+                  "type": [
+                    "null"
+                  ]
+                },
+                "distance": {
+                  "type": [
+                    "number"
+                  ]
+                },
+                "free": {
+                  "type": [
+                    "null"
+                  ]
+                },
+                "latitude": {
+                  "type": [
+                    "string"
+                  ]
+                },
+                "longitude": {
+                  "type": [
+                    "string"
+                  ]
+                },
+                "totalLines": {
+                  "type": [
+                    "integer"
+                  ]
+                },
+                "villageId": {
+                  "type": [
+                    "string"
+                  ]
+                },
+                "villageName": {
+                  "type": [
+                    "string"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "charge/mobile/nearEquipInfo",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "villageId"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "anonymous_read_verified",
+      "live_validation": {
+        "status": "success_without_user_session",
+        "date": "2026-10-16",
+        "scope": "associated station; 15 devices and 300 ports at observation time"
+      },
+      "literal_request_targets": [
+        "charge/mobile/nearEquipInfo"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-near-near.1d99c7e0.js",
+          "asset_sha256": "0b2d413228bbcc0821f17c2875112d8bf802813e8f7b114861ad3af8f919d424",
+          "character_offset": 19819
+        }
+      ],
+      "observed_success_response": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "equiCount": {
+                "type": "integer"
+              },
+              "address": {
+                "type": "string"
+              },
+              "villageName": {
+                "type": "string"
+              },
+              "ingCount": {
+                "type": "integer"
+              },
+              "lineCount": {
+                "type": "integer"
+              },
+              "freeCount": {
+                "type": "integer"
+              }
+            }
+          },
+          "msg": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "charge/mobile/questionList",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "srcId"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "anonymous_read_verified",
+      "live_validation": {
+        "status": "success_without_user_session",
+        "date": "2026-10-16",
+        "scope": "associated vendor context; successful empty rows"
+      },
+      "literal_request_targets": [
+        "charge/mobile/questionList"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-question-question.4fc76920.js",
+          "asset_sha256": "4b26e4159abfabe118f51846d53e27f40c3640f52b876216772e28df83e8e16f",
+          "character_offset": 613
+        }
+      ],
+      "observed_success_response": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer"
+          },
+          "rows": {
+            "type": "array",
+            "observed_length": 0
+          },
+          "code": {
+            "type": "integer"
+          },
+          "msg": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "charge/mobile/reOrderRefundLog",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "month",
+            "orderNum"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "account_context_read_static_only",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "charge/mobile/reOrderRefundLog"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-rechargeOrderDetail-rechargeOrderDetail.2625456b.js",
+          "asset_sha256": "ab209bac4363f4e53d38626695a858c0b4efd03853cd90d9f77cfb8e13ef17f5",
+          "character_offset": 8933
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "charge/mobile/readCardNumInfo",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "code",
+            "fansId"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "business_flow_unverified",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "charge/mobile/readCardNumInfo"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-card-card.277af082.js",
+          "asset_sha256": "e8789a5c91ed2926c488d4e7d429219c92c882b62c54406b9e868933ee211e89",
+          "character_offset": 37760
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "charge/mobile/rechargeOrderList",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "fansId",
+            "fansPurseId",
+            "month",
+            "pageNum",
+            "pageSize",
+            "projectId"
+          ],
+          "complete": true
+        },
+        {
+          "kind": "inline_object",
+          "keys": [
+            "cardNum",
+            "fansId",
+            "month",
+            "pageNum",
+            "pageSize",
+            "projectId"
+          ],
+          "complete": true
+        },
+        {
+          "kind": "inline_object",
+          "keys": [
+            "fansId",
+            "month",
+            "pageNum",
+            "pageSize",
+            "projectId"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "account_context_read_static_only",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "charge/mobile/rechargeOrderList"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-zmoney-zmoney.08d7b9f9.js",
+          "asset_sha256": "8c206f33095e50a3dacb41ed42e88a1d261e60304a41353252fdee858140ef30",
+          "character_offset": 28537
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-cardRechargeOrder-cardRechargeOrder.a42575f8.js",
+          "asset_sha256": "c39a4e535907eeeb7ffb6def533947645a236c66bcc63f463b50edf408185354",
+          "character_offset": 1494
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-rechargeOrder-rechargeOrder.ce0f37f7.js",
+          "asset_sha256": "96d18938437368f8f92deb14f46e762ef154a9d4069ec023414113ff1fc26468",
+          "character_offset": 7619
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "charge/mobile/sellerMealWithdraw",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "fansId",
+            "fansName",
+            "money",
+            "phone",
+            "projectId",
+            "sellerId",
+            "srcId"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "business_mutation_or_payment",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "charge/mobile/sellerMealWithdraw"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-zwithdrawal-zwithdrawal.bee8200b.js",
+          "asset_sha256": "bdab36453d74d45cfaf230ef145cfe9ed8b7fe68a77bd31c56510f82dfeed7d3",
+          "character_offset": 3232
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "charge/mobile/sendLineState",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "code",
+            "lineState"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "business_mutation_or_payment",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "charge/mobile/sendLineState"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-charge-charge.ad9eed87.js",
+          "asset_sha256": "2b1d8776f9737e1ebdb5813e272b21bc0ca72fdf73d30bd2f4cddb8f4111ed4d",
+          "character_offset": 89869
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "charge/mobile/ticketInfo",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "fansId",
+            "projectId",
+            "status"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "account_context_read_static_only",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "charge/mobile/ticketInfo"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-ticket-ticket.9859b984.js",
+          "asset_sha256": "aff65534c59ddb8b7e825929087f4d09bd3f2886ee36cd6b703118b4bef2defd",
+          "character_offset": 4873
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "charge/mobile/unbindCard",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "cardNum",
+            "fansId",
+            "projectId"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "business_mutation_or_payment",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "charge/mobile/unbindCard"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-card-card.277af082.js",
+          "asset_sha256": "e8789a5c91ed2926c488d4e7d429219c92c882b62c54406b9e868933ee211e89",
+          "character_offset": 38533
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "charge/mobile/villageList",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "fansId"
+          ],
+          "complete": true
+        },
+        {
+          "kind": "inline_object",
+          "keys": [
+            "fansId",
+            "villageName"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "account_context_read_static_only",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "charge/mobile/villageList"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-near-near.1d99c7e0.js",
+          "asset_sha256": "0b2d413228bbcc0821f17c2875112d8bf802813e8f7b114861ad3af8f919d424",
+          "character_offset": 18147
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-index-index.7da7e888.js",
+          "asset_sha256": "793f50426e687c5809acf5d4f73ee2d722d63fb9fe749d70ac601cd685f0361c",
+          "character_offset": 34753
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-myOrder-myOrder.c482f848.js",
+          "asset_sha256": "534629aa1c1f68bafa83f22d09cdb2be6df8fd7a35a9116681bfacaad5e4e4f6",
+          "character_offset": 2849
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-switch-switch.9b113147.js",
+          "asset_sha256": "161464debc5f1a9eb43e4d0a806c2263712c95c151e0fe9fcc5f5241d11234f0",
+          "character_offset": 941
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-switchCard-switchCard.975e7e67.js",
+          "asset_sha256": "d44427b56ec1605030faf263977309650df498d2fd471a0dfed0620fd9da9957",
+          "character_offset": 1907
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "charge/mobile/withdrawalAmount",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "fansId"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "account_context_read_static_only",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "charge/mobile/withdrawalAmount"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-withdrawal-withdrawal.89d55dfe.js",
+          "asset_sha256": "e1c78e2fddf2cc172d2824d2d7304f5a27b3500d36e7630401e15024b7a7da9a",
+          "character_offset": 668
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "charge/sxc/confirmEquiInfo",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "code",
+            "lineNum"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "business_flow_unverified",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "charge/sxc/confirmEquiInfo"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-charge-charge.ad9eed87.js",
+          "asset_sha256": "2b1d8776f9737e1ebdb5813e272b21bc0ca72fdf73d30bd2f4cddb8f4111ed4d",
+          "character_offset": 70619
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "charge/wxPay/toRecharge",
+      "business_parameter_shapes": [
+        {
+          "kind": "computed_expression",
+          "keys": []
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "business_mutation_or_payment",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "charge/wxPay/toRecharge"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-charge-charge.ad9eed87.js",
+          "asset_sha256": "2b1d8776f9737e1ebdb5813e272b21bc0ca72fdf73d30bd2f4cddb8f4111ed4d",
+          "character_offset": 2716
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-card-card.277af082.js",
+          "asset_sha256": "e8789a5c91ed2926c488d4e7d429219c92c882b62c54406b9e868933ee211e89",
+          "character_offset": 3099
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-chargingOrder-chargingOrder.5ac203c6.js",
+          "asset_sha256": "1632238ee6058d22b4c4695f285bd10272707d7db9b7028038bd011503839b55",
+          "character_offset": 2618
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-monthCard-monthCard.3fd5939a.js",
+          "asset_sha256": "910091e913d30caddefbb8a850f2a480b947c3e0b5325adb6cab73199886fd0b",
+          "character_offset": 4812
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-zmoney-zmoney.08d7b9f9.js",
+          "asset_sha256": "8c206f33095e50a3dacb41ed42e88a1d261e60304a41353252fdee858140ef30",
+          "character_offset": 13194
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-buyInsure-buyInsure.c446e32d.js",
+          "asset_sha256": "46c3eeb4c761e06a9990ccc4f1b4b59b9f69cc81643a58276015125a6e246d52",
+          "character_offset": 6427
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-iccidPay-iccidPay.a31b26ff.js",
+          "asset_sha256": "bb01f2df1fcb963aff0af24c24ff956223d5962ad5eb24a01e0a5c9861fca50c",
+          "character_offset": 4629
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-index-index.7da7e888.js",
+          "asset_sha256": "793f50426e687c5809acf5d4f73ee2d722d63fb9fe749d70ac601cd685f0361c",
+          "character_offset": 4168
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-siteInsurePay-siteInsurePay.48771613.js",
+          "asset_sha256": "3c6ad0da00e775adb01d5640e732119879e0942138ef284f804cc0627e2bd5f4",
+          "character_offset": 2710
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "charge/wxPay/toRechargeOfflineCard",
+      "business_parameter_shapes": [
+        {
+          "kind": "computed_expression",
+          "keys": []
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "business_mutation_or_payment",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "charge/wxPay/toRechargeOfflineCard"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-charge-charge.ad9eed87.js",
+          "asset_sha256": "2b1d8776f9737e1ebdb5813e272b21bc0ca72fdf73d30bd2f4cddb8f4111ed4d",
+          "character_offset": 2220
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-card-card.277af082.js",
+          "asset_sha256": "e8789a5c91ed2926c488d4e7d429219c92c882b62c54406b9e868933ee211e89",
+          "character_offset": 2603
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-chargingOrder-chargingOrder.5ac203c6.js",
+          "asset_sha256": "1632238ee6058d22b4c4695f285bd10272707d7db9b7028038bd011503839b55",
+          "character_offset": 2122
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-monthCard-monthCard.3fd5939a.js",
+          "asset_sha256": "910091e913d30caddefbb8a850f2a480b947c3e0b5325adb6cab73199886fd0b",
+          "character_offset": 4316
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-zmoney-zmoney.08d7b9f9.js",
+          "asset_sha256": "8c206f33095e50a3dacb41ed42e88a1d261e60304a41353252fdee858140ef30",
+          "character_offset": 12698
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-buyInsure-buyInsure.c446e32d.js",
+          "asset_sha256": "46c3eeb4c761e06a9990ccc4f1b4b59b9f69cc81643a58276015125a6e246d52",
+          "character_offset": 5931
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-iccidPay-iccidPay.a31b26ff.js",
+          "asset_sha256": "bb01f2df1fcb963aff0af24c24ff956223d5962ad5eb24a01e0a5c9861fca50c",
+          "character_offset": 4133
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-index-index.7da7e888.js",
+          "asset_sha256": "793f50426e687c5809acf5d4f73ee2d722d63fb9fe749d70ac601cd685f0361c",
+          "character_offset": 3672
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-siteInsurePay-siteInsurePay.48771613.js",
+          "asset_sha256": "3c6ad0da00e775adb01d5640e732119879e0942138ef284f804cc0627e2bd5f4",
+          "character_offset": 2214
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "charge/wxPay/toTempPay",
+      "business_parameter_shapes": [
+        {
+          "kind": "computed_expression",
+          "keys": []
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "business_mutation_or_payment",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "charge/wxPay/toTempPay"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-charge-charge.ad9eed87.js",
+          "asset_sha256": "2b1d8776f9737e1ebdb5813e272b21bc0ca72fdf73d30bd2f4cddb8f4111ed4d",
+          "character_offset": 3676
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-card-card.277af082.js",
+          "asset_sha256": "e8789a5c91ed2926c488d4e7d429219c92c882b62c54406b9e868933ee211e89",
+          "character_offset": 4059
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-chargingOrder-chargingOrder.5ac203c6.js",
+          "asset_sha256": "1632238ee6058d22b4c4695f285bd10272707d7db9b7028038bd011503839b55",
+          "character_offset": 3578
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-monthCard-monthCard.3fd5939a.js",
+          "asset_sha256": "910091e913d30caddefbb8a850f2a480b947c3e0b5325adb6cab73199886fd0b",
+          "character_offset": 5772
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-zmoney-zmoney.08d7b9f9.js",
+          "asset_sha256": "8c206f33095e50a3dacb41ed42e88a1d261e60304a41353252fdee858140ef30",
+          "character_offset": 14154
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-buyInsure-buyInsure.c446e32d.js",
+          "asset_sha256": "46c3eeb4c761e06a9990ccc4f1b4b59b9f69cc81643a58276015125a6e246d52",
+          "character_offset": 7387
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-iccidPay-iccidPay.a31b26ff.js",
+          "asset_sha256": "bb01f2df1fcb963aff0af24c24ff956223d5962ad5eb24a01e0a5c9861fca50c",
+          "character_offset": 5589
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-index-index.7da7e888.js",
+          "asset_sha256": "793f50426e687c5809acf5d4f73ee2d722d63fb9fe749d70ac601cd685f0361c",
+          "character_offset": 5128
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-siteInsurePay-siteInsurePay.48771613.js",
+          "asset_sha256": "3c6ad0da00e775adb01d5640e732119879e0942138ef284f804cc0627e2bd5f4",
+          "character_offset": 3670
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "equi/afterProtocol/getLineInfo",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "code",
+            "parentCode"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "anonymous_read_verified",
+      "live_validation": {
+        "status": "success_without_user_session",
+        "date": "2026-10-15",
+        "scope": "four user-provided devices; 20 ports per device"
+      },
+      "literal_request_targets": [
+        "equi/afterProtocol/getLineInfo"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-charge-charge.ad9eed87.js",
+          "asset_sha256": "2b1d8776f9737e1ebdb5813e272b21bc0ca72fdf73d30bd2f4cddb8f4111ed4d",
+          "character_offset": 88992
+        }
+      ],
+      "observed_success_response": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer"
+          },
+          "data": {
+            "type": "array",
+            "observed_length": 20,
+            "items": {
+              "type": "object",
+              "properties": {
+                "num": {
+                  "type": "integer"
+                },
+                "state": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "other_observed_property_names": [
+          "msg"
+        ]
+      },
+      "additional_live_validation": {
+        "date": "2026-10-16",
+        "scope": "13 station-confirmed devices each returned 20 ports; another confirmed device returned business code 500 and no port list",
+        "observed_error": {
+          "business_code": 500,
+          "message": "设备不在线"
+        },
+        "failure_projection": "Unknown ports and counts; never zero availability."
+      }
+    },
+    {
+      "method": "POST",
+      "path": "equi/afterProtocol/toShutDown",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "code",
+            "line",
+            "orderNum",
+            "parentCode"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "device_control_or_precharge_check",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "equi/afterProtocol/toShutDown"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-chargingOrder-chargingOrder.5ac203c6.js",
+          "asset_sha256": "1632238ee6058d22b4c4695f285bd10272707d7db9b7028038bd011503839b55",
+          "character_offset": 22283
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "equi/beforeProtocol/checkLine",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "code",
+            "line"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "device_control_or_precharge_check",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "equi/beforeProtocol/checkLine"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-charge-charge.ad9eed87.js",
+          "asset_sha256": "2b1d8776f9737e1ebdb5813e272b21bc0ca72fdf73d30bd2f4cddb8f4111ed4d",
+          "character_offset": 78926
+        },
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-chargingOrder-chargingOrder.5ac203c6.js",
+          "asset_sha256": "1632238ee6058d22b4c4695f285bd10272707d7db9b7028038bd011503839b55",
+          "character_offset": 19781
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "equi/beforeProtocol/getLineInfo",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "code",
+            "parentCode"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "public_read_candidate_static_only",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "equi/beforeProtocol/getLineInfo"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-charge-charge.ad9eed87.js",
+          "asset_sha256": "2b1d8776f9737e1ebdb5813e272b21bc0ca72fdf73d30bd2f4cddb8f4111ed4d",
+          "character_offset": 89152
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "equi/beforeProtocol/toShutDown",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "code",
+            "line",
+            "orderNum",
+            "parentCode"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "device_control_or_precharge_check",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "equi/beforeProtocol/toShutDown"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-chargingOrder-chargingOrder.5ac203c6.js",
+          "asset_sha256": "1632238ee6058d22b4c4695f285bd10272707d7db9b7028038bd011503839b55",
+          "character_offset": 22754
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "equi/charge/toTBQReadyCharge",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "code"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "device_control_or_precharge_check",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "equi/charge/toTBQReadyCharge"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-charge-charge.ad9eed87.js",
+          "asset_sha256": "2b1d8776f9737e1ebdb5813e272b21bc0ca72fdf73d30bd2f4cddb8f4111ed4d",
+          "character_offset": 99271
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "grant/wxAuth/getPhoneNumber",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "encryptedData",
+            "iv",
+            "sessionId"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "authentication_or_sdk_context",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "grant/wxAuth/getPhoneNumber"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-authorization-authorization.6af72e60.js",
+          "asset_sha256": "cafbd29e6687ad0ceaa9c715dd6bb307429850c6712be41e09b7c3237cd06a8f",
+          "character_offset": 8916
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "grant/wxAuth/guidImgUrl",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "srcId"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "public_read_candidate_static_only",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "grant/wxAuth/guidImgUrl"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-guid-guid.67aa837f.js",
+          "asset_sha256": "e919d085a6497d8aad1fcd710bb021d0d84567fd94cb625ae677e5f6442a7c85",
+          "character_offset": 4620
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "grant/wxAuth/miLogin",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "code",
+            "encryptedData",
+            "iv",
+            "srcId"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "authentication_or_sdk_context",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "grant/wxAuth/miLogin"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-authorization-authorization.6af72e60.js",
+          "asset_sha256": "cafbd29e6687ad0ceaa9c715dd6bb307429850c6712be41e09b7c3237cd06a8f",
+          "character_offset": 7708
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "grant/wxAuth/zfbMiniLogin",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "authCode",
+            "srcId"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "authentication_or_sdk_context",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "grant/wxAuth/zfbMiniLogin"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/pages-authorization-authorization.6af72e60.js",
+          "asset_sha256": "cafbd29e6687ad0ceaa9c715dd6bb307429850c6712be41e09b7c3237cd06a8f",
+          "character_offset": 5794
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "grant/wxParams/getWxConfig",
+      "business_parameter_shapes": [
+        {
+          "kind": "inline_object",
+          "keys": [
+            "clientUrl",
+            "srcId"
+          ],
+          "complete": true
+        }
+      ],
+      "fixed_query_parameter_names": [],
+      "classification": "authentication_or_sdk_context",
+      "live_validation": {
+        "status": "not_performed"
+      },
+      "literal_request_targets": [
+        "grant/wxParams/getWxConfig"
+      ],
+      "callsites": [
+        {
+          "asset_url": "https://wx.isfdz.com/static/js/index.a7904b00.js",
+          "asset_sha256": "448a40758b8df9665eb71a8793346950fddc80892fb0ade39e54f6009b233e5a",
+          "character_offset": 97396
+        }
+      ]
+    }
+  ],
+  "response_schema_policy": "Observed successful response shapes only. Nulls and array lengths describe samples, not universal requirements or capacities. Empty lists do not establish item schemas. Unrecorded field types remain unspecified.",
+  "station_inventory_status": {
+    "station_id": "3798",
+    "reported_devices": 15,
+    "confirmed_devices": 14,
+    "devices_with_ports": 13,
+    "ports_observed": 260,
+    "complete": false,
+    "checked_date": "2026-10-16"
+  }
+}

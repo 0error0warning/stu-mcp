@@ -13,12 +13,19 @@ from platformdirs import user_data_path
 
 
 class AppError(Exception):
-    def __init__(self, code: str, message: str, source: str | None = None):
+    def __init__(self, code: str, message: str, source: str | None = None, *,
+                 http_status: int | None = None, retry_after_seconds: int | None = None):
         super().__init__(message)
         self.code, self.message, self.source = code, message, source
+        self.http_status, self.retry_after_seconds = http_status, retry_after_seconds
 
     def result(self) -> dict:
-        return {"ok": False, "status": self.code, "message": self.message, "source": self.source}
+        result = {"ok": False, "status": self.code, "message": self.message, "source": self.source}
+        if self.http_status is not None:
+            result["http_status"] = self.http_status
+        if self.retry_after_seconds is not None:
+            result["retry_after_seconds"] = self.retry_after_seconds
+        return result
 
 
 def private_write(path: Path, data: bytes) -> None:

@@ -77,6 +77,16 @@ def parser() -> argparse.ArgumentParser:
     circles = community.add_parser("circles", help="发现公开圈子及 ID")
     circles.add_argument("query", nargs="?", default="汕大")
     circles.add_argument("--page", type=int, default=1)
+    charging = sub.add_parser("charging", help="独立读取充电设备状态，无需账号或网站服务")
+    charge = charging.add_subparsers(dest="charging_action", required=True)
+    overview = charge.add_parser("overview", help="按位置查询已核验设备，每页最多4台")
+    overview.add_argument("location", nargs="?", default="")
+    overview.add_argument("--limit", type=int, default=4)
+    overview.add_argument("--offset", type=int, default=0)
+    overview.add_argument("--local", action="store_true", help="仅读取本机缓存")
+    device = charge.add_parser("device", help="读取一台设备的插座状态")
+    device.add_argument("device_code")
+    device.add_argument("--local", action="store_true", help="仅读取本机缓存")
     return p
 
 
@@ -99,6 +109,10 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "clients":
             return emit({"ok": True, "clients": catalog()})
         app = App()
+        if args.command == "charging":
+            if args.charging_action == "overview":
+                return emit(app.charging_overview(args.location, args.limit, args.offset, not args.local))
+            return emit(app.charging_device(args.device_code, not args.local))
         if args.command == "huyou":
             if args.huyou_action == "search":
                 return emit(app.huyou_search(args.query, args.keywords, args.circle_id, args.limit, args.pages,
