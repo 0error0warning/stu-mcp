@@ -7,8 +7,6 @@ import threading
 from contextlib import nullcontext
 from urllib.parse import urljoin
 
-from pypdf import PdfReader
-
 from . import __version__, collectors
 from .charging import ChargingService
 from .clients import detected_clients
@@ -268,6 +266,9 @@ class App:
         data = response.content
         if data.startswith(b"%PDF"):
             try:
+                # Loading the PDF engine is unnecessary for MCP startup and non-PDF queries.
+                from pypdf import PdfReader
+
                 reader = PdfReader(io.BytesIO(data))
                 if len(reader.pages) > 100:
                     raise AppError("attachment_too_long", "此 PDF 超过 100 页，请在学校页面查看。")

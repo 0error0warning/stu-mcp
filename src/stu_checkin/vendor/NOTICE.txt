@@ -1,0 +1,11 @@
+The vendored duifene package is adapted from bytehola/duifene_auto_sign,
+https://github.com/bytehola/duifene_auto_sign
+revision 8f592d19de52b2a736eecf221961cb2ce888cdd4 (v1.1).
+The upstream README declares MIT License.
+
+Local adaptations: injectable encrypted storage; successful-read telemetry;
+structured form encoding, three-state login-response validation and a cancellation guard for submissions. The local
+application replaces the single-course GUI watcher with a shared, sequential
+multi-course monitor and encrypted continuous-monitor preferences. The browser application, local
+HTTP server and encrypted persistence are separate from the upstream GUI.
+No upstream credentials, personal configuration or runtime data are included.

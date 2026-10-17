@@ -57,6 +57,8 @@ CLI 返回 JSON，读取 `ok`、`status`、`coverage`、`limited`、`errors` 和
 
 ## 按需登录
 
+开发版对分易使用 MCP 的 `get_checkin_status`、`open_checkin_page`、`list_checkin_courses`、`select_checkin_courses`、`start_checkin_monitor`、`pause_checkin_monitor`、`get_checkin_results`、`stop_checkin_service`。先查状态；需要登录时打开本地网页让用户完成微信流程，不索要回调链接。只有用户要求监听时才启动，`minutes=0` 表示持续监听。MCP 退出后后台仍运行，状态为查询异常时不能说已暂停。结果要区分本程序提交成功与平台已有出勤，不能把空结果当作未签到。仅使用本机 CLI 的客户端可打开 `stu-checkin` 网页，由用户选课和启停；具体状态约定见仓库 `docs/checkin.md`。
+
 公开信息和匿名 OA 无需账号。个人来源返回 `needs_login` 或 `login_expired` 时，让用户在本机终端执行 `stu-mcp setup`，或在具有桌面的本机进程中启动该设置命令并保持其运行，打开浏览器完成所需来源的登录。设置地址只用于本机浏览器，不粘贴到对话中。用户完成后再刷新该来源。
 
 默认手动登录时，密码、验证码和扫码只在官方学校 / 雨课堂页面处理；不向用户索要凭据，不读取或导出会话文件。教务 HTTP 兼容由用户在本地设置页选择，agent 不自动开启。
