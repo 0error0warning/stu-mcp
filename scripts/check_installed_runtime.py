@@ -117,12 +117,12 @@ def main() -> None:
                "STU_MCP_HOME": str(root / "runtime"), "STU_CHECKIN_HOME": str(root / "checkin")}
         env.pop("PYTHONPATH", None)
         env.pop("STU_CHECKIN_PYTHON", None)
-        # uv sync/build already cached this dependency set. Avoid resolving a
-        # different/newer set over the network during the installed-wheel check.
+        # Validate the locked dependency set. A fresh CI cache may contain wheels
+        # from uv sync but no package-index metadata, so allow bounded online resolution.
         constraints = root / "constraints.txt"
         constraints.write_text(run([uv, "export", "--frozen", "--no-dev", "--no-emit-project", "--no-hashes"],
                                    env, Path(__file__).resolve().parents[1]), encoding="utf-8")
-        run([uv, "tool", "install", "--offline", "--constraint", str(constraints),
+        run([uv, "tool", "install", "--constraint", str(constraints),
              "--python", sys.executable, str(wheel)], env, root)
         entry = root / "bin" / ("stu-mcp.exe" if os.name == "nt" else "stu-mcp")
         assert run([str(entry), "--version"], env, root).strip() == __version__
