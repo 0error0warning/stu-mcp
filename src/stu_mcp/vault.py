@@ -52,6 +52,11 @@ class Vault:
     def __init__(self, runtime: Runtime, store: KeyStore | None = None):
         self.runtime, self._store = runtime, store
         self.account = hashlib.sha256(str(runtime.home.resolve()).encode()).hexdigest()[:24]
+        # Packaged Windows apps can redirect LocalAppData only after the first
+        # file is created. The first login then used the logical path's keyring
+        # account, while the next process resolves the redirected path. Keep
+        # that exact alias readable; never generate a replacement for its key.
+        self._logical_account = hashlib.sha256(str(runtime.home.absolute()).encode()).hexdigest()[:24]
 
     def key_store(self) -> KeyStore:
         return self._store or SystemKeyStore()
@@ -73,6 +78,8 @@ class Vault:
             store = self.key_store()
             with key_lock(self.runtime.home):
                 value = store.get_password("stu-mcp.session-key", self.account)
+                if not value and self._logical_account != self.account:
+                    value = store.get_password("stu-mcp.session-key", self._logical_account)
                 if not value and create:
                     value = Fernet.generate_key().decode("ascii")
                     store.set_password("stu-mcp.session-key", self.account, value)

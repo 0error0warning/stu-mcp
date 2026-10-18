@@ -32,6 +32,8 @@ SOURCES = {
                       "https://changjiang.yuketang.cn/", ("changjiang.yuketang.cn",), "yuketang"),
     "huyou": Source("huyou", "狐友 · 汕大树洞", ("圈内关键词搜索", "公开帖子", "评论和回复"),
                     hosts=("cs-ol.sns.sohu.com", "hy.sns.sohu.com")),
+    "charging": Source("charging", "校园充电设备 · 第三方平台", ("按位置查询设备", "空闲插座", "逐口状态"),
+                       hosts=("wx.isfdz.com",)),
 }
 
 PUBLIC_LISTINGS = (

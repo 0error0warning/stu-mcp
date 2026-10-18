@@ -21,6 +21,11 @@ The source baseline is School Hub commit `13f1b216ac35269d9840b6854ccff64c1e25e5
 - Renew WebVPN only during a protected OA read, with bounded attempts and a cooldown. Pause on rejected credentials
   or human challenges. Never automate CAPTCHA or token binding. Logout removes saved auto-login credentials.
 - Missing credentials or expired sessions affect only the dependent source.
+- Duifene monitoring is an explicit user-started background task, separate from on-demand campus reads.
+  Ship its worker/web assets with this repository; MCP and the webpage share one local process and state.
+  A passive status read must not launch it. Preserve the distinction between unavailable service, missing login,
+  paused monitoring, active monitoring and query errors. Closing MCP must not stop an authorized worker.
+  Automated tests use synthetic attendance responses; do not present them as real classroom submission evidence.
 - Preserve user configuration; installation and connection must be idempotent and reversible.
 - Do not modify the original School Hub checkout or production services for this project.
 

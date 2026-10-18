@@ -13,12 +13,37 @@ from platformdirs import user_data_path
 
 
 class AppError(Exception):
-    def __init__(self, code: str, message: str, source: str | None = None):
+    def __init__(self, code: str, message: str, source: str | None = None, *,
+                 http_status: int | None = None, retry_after_seconds: int | None = None):
         super().__init__(message)
         self.code, self.message, self.source = code, message, source
+        self.http_status, self.retry_after_seconds = http_status, retry_after_seconds
 
     def result(self) -> dict:
-        return {"ok": False, "status": self.code, "message": self.message, "source": self.source}
+        actions = {
+            "needs_login": "open_setup", "login_expired": "open_setup", "needs_elc_login": "open_setup",
+            "session_invalid": "open_setup", "session_changed": "refresh_source",
+            "rate_limited": "wait_then_retry", "source_unavailable": "retry_later",
+            "network_error": "check_network", "request_timeout": "retry_later",
+            "access_denied": "open_source_page", "not_found": "refresh_then_check_source",
+            "source_rejected": "open_source_page", "schema_changed": "report_source_change",
+            "activity_password_required": "open_source_page", "resource_locked": "open_source_page",
+            "resource_login_required": "open_source_page", "unsupported_activity": "check_supported_scope",
+            "request_deadline": "reduce_scope", "request_limit": "reduce_scope",
+            "refresh_running": "wait_then_retry", "secure_storage_unavailable": "check_system_keyring",
+            "render_unavailable": "check_local_browser", "media_unavailable": "retry_media",
+            "operation_failed": "check_local_state", "source_error": "report_source_change",
+            "response_too_large": "reduce_scope",
+        }
+        result = {"ok": False, "status": self.code, "message": self.message, "source": self.source,
+                  "retryable": self.code in {"rate_limited", "source_unavailable", "network_error",
+                                              "request_timeout", "refresh_running", "media_unavailable"},
+                  "next_action": actions.get(self.code, "check_request")}
+        if self.http_status is not None:
+            result["http_status"] = self.http_status
+        if self.retry_after_seconds is not None:
+            result["retry_after_seconds"] = self.retry_after_seconds
+        return result
 
 
 def private_write(path: Path, data: bytes) -> None:

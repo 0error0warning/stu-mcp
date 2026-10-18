@@ -1,6 +1,7 @@
 """On-demand campus adapters. No schedulers, model calls, or production dependencies."""
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from urllib.parse import parse_qs, urlencode, urlparse
@@ -50,8 +51,13 @@ class Collection:
     session_version: bytes | None = None
     sync: CourseSync | None = None
 
-    def fail(self, part: str, exc: AppError):
-        self.errors.append({"part": part, **exc.result()})
+    def fail(self, part: str, exc: AppError, *, stage: str | None = None,
+             course_id: str | None = None, item_id: str | None = None):
+        context = {k: v for k, v in {"stage": stage, "course_id": course_id, "item_id": item_id}.items()
+                   if v is not None}
+        if course_id is not None and not re.fullmatch(r"[A-Za-z0-9._:-]{1,120}", course_id):
+            context.pop("course_id")  # Some legacy course IDs are URLs; don't echo an unsafe URL on failure.
+        self.errors.append({"part": part, **context, **exc.result()})
 
     @property
     def status(self) -> str:
@@ -186,10 +192,10 @@ def mystu(vault: Vault, limit: int) -> Collection:
         for course in selected[:limit]:
             name = clean(course.get("name") or course.get("groupName"))
             url = str(course.get("url") or "")
+            cid = str(course.get("id") or url)
             try:
                 if url:
                     checked_url("mystu", url)
-                cid = str(course.get("id") or url)
                 provenance = {"course_id": cid, "semester": semester,
                               "year": course.get("attendanceYear"), "term": course.get("attendanceSemester")}
                 result.items.append({"id": item_id("mystu", "course", cid), "kind": "course", "title": name,
@@ -230,6 +236,8 @@ def mystu(vault: Vault, limit: int) -> Collection:
                     category = str(activity.get("activityCategory") or "resource")
                     kind = "task" if category in {"assignment", "assign", "quiz"} else "resource"
                     detail = {}
+                    aid = item_id("mystu", kind, cid, link or title)
+                    detail_state = {"detail_status": "not_read"} if kind == "task" else {}
                     if link:
                         checked_url("mystu", link)
                     if kind == "task" and link and detail_count < 20:
@@ -239,20 +247,31 @@ def mystu(vault: Vault, limit: int) -> Collection:
                             if is_login(detail_html):
                                 raise AppError("needs_elc_login", "作业详情需要学校页面登录。", "mystu")
                             detail = parse_assignment(detail_html)
+                            detail_state = {"detail_status": "read"}
                         except AppError as exc:
-                            result.fail("作业详情", exc)
+                            if exc.code in {"login_expired", "needs_login", "needs_elc_login"}:
+                                exc = AppError("resource_login_required",
+                                               "此活动返回登录页；不能据此判断整个 MySTU 会话失效，请先核对该活动原页面。",
+                                               "mystu", http_status=exc.http_status)
+                            detail_state = {"detail_status": "unavailable", "detail_error": exc.result()}
+                            result.fail("作业详情", exc, stage="task_detail", course_id=cid, item_id=aid)
                     elif kind == "task" and link:
                         result.limited = True
-                    result.items.append({"id": item_id("mystu", kind, cid, link or title), "kind": kind,
+                        detail_state = {"detail_status": "limit_reached"}
+                    due = detail.get("due_at") or stamp(activity.get("additionalDueDate"))
+                    if kind == "task":
+                        detail_state["due_at_status"] = ("available" if due else "not_found_in_detail"
+                                                         if detail_state["detail_status"] == "read"
+                                                         else "detail_" + detail_state["detail_status"])
+                    result.items.append({"id": aid, "kind": kind, **detail_state,
                                          "title": title, "course": name, **provenance, "url": link or None,
-                                         "category": category, "due_at": detail.get("due_at") or
-                                         stamp(activity.get("additionalDueDate")),
+                                         "category": category, "due_at": due,
                                          "school_status": detail.get("school_status"), "status": "todo",
                                          "body": detail.get("description") or clean(activity.get("description"))[:6000]})
                 if activity_complete:
                     result.sync.complete_courses.add(cid)
             except AppError as exc:
-                result.fail("课程活动", exc)
+                result.fail("课程活动", exc, stage="course_activities", course_id=cid)
         # Calendar data is optional and independent of successful course collection.
         start, end = datetime.now(CST) - timedelta(days=7), datetime.now(CST) + timedelta(days=31)
         try:
@@ -270,7 +289,7 @@ def mystu(vault: Vault, limit: int) -> Collection:
                                          "end_at": stamp(event.get("endTime")),
                                          "location": clean(event.get("location"))})
         except AppError as exc:
-            result.fail("个人日程", exc)
+            result.fail("个人日程", exc, stage="schedule")
     result.coverage.update(complete_activity_courses=len(result.sync.complete_courses),
                            course_snapshot_complete=result.sync.complete)
     return result
@@ -323,26 +342,38 @@ def yuketang(vault: Vault, limit: int) -> Collection:
                     if not title:
                         raise AppError("schema_changed", "雨课堂活动缺少标题，未把解析失败当作空列表。", "yuketang")
                     content = activity.get("content") or {}
+                    if not isinstance(content, dict):
+                        raise AppError("schema_changed", "雨课堂活动内容字段发生变化。", "yuketang")
                     kind = "task" if activity.get("type") in (19, 3) else "resource"
                     leaf = str(content.get("leaf_id") or "")
                     url = YUKETANG_BASE + f"/ai-workspace/lms-graph/{cid}/exercise/{leaf}?is_chapter=1" if leaf.isdigit() else course_url
                     result.items.append({"id": item_id("yuketang", kind, cid, activity.get("id") or title),
                                          "kind": kind, "title": title, "course": name, "url": url,
                                          "course_id": cid, "semester": semester, "term": c.get("term"),
+                                         "activity_type": activity.get("type"), "leaf_id": leaf or None,
                                          "due_at": stamp(content.get("score_d")), "status": "todo",
                                          "published_at": stamp(activity.get("create_time"))})
                 if activity_complete:
                     result.sync.complete_courses.add(cid)
+            except AppError as exc:
+                result.fail("课程活动", exc, stage="course_activities", course_id=cid)
+            # An activity failure must not suppress this course's independent announcements.
+            try:
                 announcement = http.json(YUKETANG_BASE +
                                          f"/v/discussion/v2/announcements/?cid={cid}&limit=20&offset=0&type=9")
-                for ann in (announcement.get("data") or {}).get("data", [])[:20]:
+                ann_data = announcement.get("data")
+                if not isinstance(ann_data, dict) or not isinstance(ann_data.get("data"), list):
+                    raise AppError("schema_changed", "雨课堂未返回可识别的课程公告列表。", "yuketang")
+                for ann in ann_data["data"][:20]:
+                    if not isinstance(ann, dict):
+                        raise AppError("schema_changed", "雨课堂公告记录结构发生变化。", "yuketang")
                     body = text_body(str(ann.get("content") or ""), 10000)
                     result.items.append({"id": item_id("yuketang", "notice", cid, ann.get("id")),
                                          "kind": "notice", "title": clean(ann.get("title") or body)[:200],
                                          "course": name, "body": body, "url": course_url,
                                          "published_at": stamp(ann.get("publish_time") or ann.get("create_time"))})
             except AppError as exc:
-                result.fail("课程内容", exc)
+                result.fail("课程公告", exc, stage="course_announcements", course_id=cid)
     result.coverage.update(complete_activity_courses=len(result.sync.complete_courses),
                            course_snapshot_complete=result.sync.complete)
     return result

@@ -1,6 +1,44 @@
+import http.client
+import time
+from unittest.mock import Mock
+
 import httpx
 
 from stu_mcp.setup_web import SetupServer
+
+
+def test_setup_starts_without_reverse_dns(app, monkeypatch):
+    resolver = Mock(side_effect=AssertionError("local setup must not require DNS"))
+    monkeypatch.setattr("socket.getfqdn", resolver)
+    ui = SetupServer(app)
+    try:
+        assert ui.httpd.server_name == "127.0.0.1" and ui.httpd.server_port > 0
+        resolver.assert_not_called()
+    finally:
+        ui.httpd.server_close()
+
+
+def test_rejected_post_with_delayed_body_returns_complete_error_without_side_effects(app):
+    ui = SetupServer(app)
+    ui.start(open_browser=False)
+    try:
+        for _ in range(5):
+            connection = http.client.HTTPConnection(ui.host, timeout=3)
+            try:
+                body = b'{"jw_http_compat":true}'
+                connection.putrequest("POST", "/api/transport")
+                connection.putheader("Content-Type", "application/json")
+                connection.putheader("Content-Length", str(len(body)))
+                connection.endheaders()
+                time.sleep(.05)
+                connection.send(body)
+                response = connection.getresponse()
+                assert response.status == 403 and b'"forbidden"' in response.read()
+            finally:
+                connection.close()
+        assert not app.runtime.preferences()["jw_http_compat"]
+    finally:
+        ui.close()
 
 
 def test_setup_csrf_host_and_secret(app):

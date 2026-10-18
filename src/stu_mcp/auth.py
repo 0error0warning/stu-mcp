@@ -49,7 +49,10 @@ def proof(source: str, state: dict, *, legacy_jw: bool = False) -> bool:
                 return bool(state.get("cookies"))
         return True
     except AppError as exc:
-        if source == "jw" and exc.code not in {"needs_login", "login_expired", "network_error"}:
+        # Only authentication evidence means the user should continue signing in.
+        # Surface permission, rate-limit, network and schema failures instead of
+        # silently polling them until a misleading "login timeout".
+        if exc.code not in {"needs_login", "login_expired"}:
             raise
         return False
 

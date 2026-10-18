@@ -6,8 +6,10 @@ import json
 import secrets
 import threading
 import webbrowser
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from http.server import BaseHTTPRequestHandler
 from pathlib import Path
+
+from stu_checkin.http_server import LoopbackHTTPServer
 
 from .auth import LoginJobs
 from .runtime import AppError
@@ -53,6 +55,18 @@ class SetupServer:
                     return False
                 return not require_secret or hmac.compare_digest(self.headers.get("X-STU-Setup", ""), owner.secret)
 
+            def reject_post(self):
+                # Unread POST bytes can reset a closing Windows socket before the
+                # client receives the 403. Discard only a bounded body, never parse it.
+                try:
+                    length = int(self.headers.get("Content-Length", "0"))
+                    if 0 < length <= 4096 and not self.headers.get("Transfer-Encoding"):
+                        self.connection.settimeout(1)
+                        self.rfile.read(length)
+                except (OSError, ValueError):
+                    pass
+                self.json(403, {"ok": False, "status": "forbidden"})
+
             def do_GET(self):
                 if not self.allowed(require_secret=self.path.startswith("/api/")):
                     self.json(403, {"ok": False, "status": "forbidden"})
@@ -74,7 +88,7 @@ class SetupServer:
 
             def do_POST(self):
                 if not self.allowed() or self.headers.get("Content-Type", "").split(";")[0] != "application/json":
-                    self.json(403, {"ok": False, "status": "forbidden"})
+                    self.reject_post()
                     return
                 try:
                     length = int(self.headers.get("Content-Length", "0"))
@@ -108,7 +122,7 @@ class SetupServer:
                 except Exception:
                     self.json(500, {"ok": False, "status": "setup_error", "message": "操作未完成，请重试或通过命令行检查。"})
 
-        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        self.httpd = LoopbackHTTPServer(("127.0.0.1", 0), Handler)
         self.httpd.daemon_threads = True
         self.host = f"127.0.0.1:{self.httpd.server_port}"
         self.origin = "http://" + self.host

@@ -4,6 +4,10 @@ on:
   pull_request:
 permissions:
   contents: read
+concurrency:
+  # Opening a PR must not cancel the push checks on the same commit.
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
 jobs:
   check:
     strategy:
@@ -19,7 +23,7 @@ jobs:
           - os: macos-latest
             python: '3.12'
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 12
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6

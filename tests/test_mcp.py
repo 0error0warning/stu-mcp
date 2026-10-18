@@ -17,15 +17,19 @@ async def test_real_stdio_handshake_schema_and_feature_gating(tmp_path):
     app.store.save_community([post_record({"feedId": "101", "content": "合成公开树洞内容", "status": 1})])
     config = server_config()
     params = StdioServerParameters(command=config["command"], args=config["args"],
-                                  env={**os.environ, "STU_MCP_HOME": str(tmp_path / "stdio-data")})
+                                  env={**os.environ, "STU_MCP_HOME": str(tmp_path / "stdio-data"),
+                                       "STU_CHECKIN_HOME": str(tmp_path / "checkin-data")})
     async with stdio_client(params) as (read, write), ClientSession(read, write, read_timeout_seconds=30) as client:
         initialized = await client.initialize()
         assert initialized.server_info.name == "stu-mcp"
         tools = await client.list_tools()
         names = {t.name for t in tools.tools}
         assert {"get_capabilities", "refresh_source", "get_grades", "get_tasks", "open_setup"}.issubset(names)
-        assert len(names) == 19
+        assert len(names) == 29
+        assert {"get_checkin_status", "list_checkin_courses", "select_checkin_courses", "start_checkin_monitor",
+                "pause_checkin_monitor", "get_checkin_results", "open_checkin_page", "stop_checkin_service"} <= names
         assert {"search_huyou_posts", "get_huyou_post", "search_huyou_circles"}.issubset(names)
+        assert {"get_charging_overview", "get_charging_device"}.issubset(names)
         for tool in tools.tools:
             schema = tool.input_schema
             assert not {"password", "username", "cookie", "cookies", "token", "api_key", "totp", "secret", "encoding"}.intersection(schema.get("properties", {}))
@@ -34,6 +38,10 @@ async def test_real_stdio_handshake_schema_and_feature_gating(tmp_path):
         assert result["privacy"]["model_api_key_required"] is False
         assert result["privacy"]["private_wechat"] is False
         assert result["webvpn_auto_login"]["configured"] is False
+        assert result["checkin"]["status"] == "service_not_started"
+        status = await client.call_tool("get_checkin_status", {})
+        assert status.model_dump(by_alias=True)["structuredContent"]["monitoring"] is False
+        assert not (tmp_path / "checkin-data").exists()
         unavailable = await client.call_tool("refresh_source", {"source": "jw"})
         assert unavailable.model_dump(by_alias=True)["structuredContent"]["status"] == "needs_login"
         grade = await client.call_tool("get_grades", {})
@@ -48,3 +56,9 @@ async def test_real_stdio_handshake_schema_and_feature_gating(tmp_path):
         community = cached_post.model_dump(by_alias=True)["structuredContent"]
         assert community["item"]["body"] == "合成公开树洞内容" and community["item"]["official"] is False
         assert "password" not in json.dumps(result).lower()
+        charging = await client.call_tool("get_charging_overview", {"refresh": False})
+        overview = charging.model_dump(by_alias=True)["structuredContent"]
+        assert overview["source"] == "charging" and overview["coverage"]["catalog_device_count"] == 14
+        assert len(overview["items"]) == 4 and overview["has_more"] and overview["counts"] is None
+        invalid_device = await client.call_tool("get_charging_device", {"device_code": "SYNTHETIC_UNKNOWN"})
+        assert invalid_device.model_dump(by_alias=True)["structuredContent"]["status"] == "unknown_device"
