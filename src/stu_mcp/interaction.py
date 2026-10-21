@@ -25,13 +25,13 @@ def require_interaction(source: str | None = None) -> str:
     """
     mode = interaction_mode()
     if mode == "disabled":
-        raise AppError("interaction_unavailable", "当前宿主已禁用交互浏览器；已有会话的只读查询仍可使用。", source)
+        raise AppError("interaction_unavailable", "当前宿主已禁用交互浏览器；默认 HTTP 登录可在宿主终端运行对应 stu-mcp login。", source)
     if mode == "virtual-display":
         if sys.platform != "linux" or not os.environ.get("DISPLAY"):
             raise AppError("interaction_unavailable", "此兼容选项需要已有的 Linux DISPLAY；程序不提供或启动显示服务。", source)
     elif sys.platform == "linux" and not (os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")):
-        raise AppError("interaction_unavailable", "此操作需要本人操作学校浏览器，当前宿主没有可用显示环境。"
-                       "此来源尚未实现无头首次登录；已有会话读取、对分易回调和 WebVPN 自动重登不依赖显示。", source)
+        raise AppError("interaction_unavailable", "当前选择的交互浏览器需要可操作的显示环境，宿主未提供显示。"
+                       "默认 HTTP 登录请在宿主终端运行对应 stu-mcp login。", source)
     return mode
 
 
