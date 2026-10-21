@@ -2,6 +2,8 @@
 
 官方资料核对日期：2026-10-05。STU MCP 运行在学生自己的电脑，采用本地 stdio MCP；另外提供本地命令与可选技能资源包。账号仍按学校来源独立管理，与 agent 客户端解耦。
 
+开发分支另有[个人服务器 Streamable HTTP](server.md)，尚未随 v0.5.0 发布。下面的 `connect` 和 Skill 导出继续生成本地命令，不会自动配置远程地址或读取 Bearer；远程客户端须支持私有令牌，并分别核对客户端到 MCP、宿主到学校两段网络。
+
 ## 支持范围
 
 Codex、Claude Code、Cursor 是优先维护的核心适配；`generic` 是其他本地 stdio 客户端的通用导出。WorkBuddy、ZCode、Grok Build、DeepSeek Harness 保留为额外适配；豆包工作与 `generic-cli` 属于 Skill 候选方式。当前验证覆盖配置合并、导出命令实际执行和 MCP 握手，没有把这些结果等同于任何客户端应用内的完整验收。客户端或配置版本变化时，额外适配可能需要跟进；不确定时优先通用导出。

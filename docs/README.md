@@ -11,6 +11,7 @@
 | 对分易网页、监听与 MCP | [对分易后台](checkin.md) |
 | 最近更新与实测范围 | [更新记录](../CHANGELOG.md)、[验证索引与历史归档](verification.md) |
 | 代码结构与校园协议 | [架构](architecture.md)、[校园协议核验](campus-protocols.md) |
+| 模块职责、现有登录、成功证明与状态归属 | [认证基线与服务器审查](authentication.md) |
 | 学校网页改版、依赖方向与缓存完整性 | [来源维护](source-adapters.md) |
 | 充电/狐友专属契约与后续审查 | [第三方适配](third-party-adapters.md) |
 | 学期课表、技能资源分发与后续取数条件 | [使用与范围](timetable.md) |

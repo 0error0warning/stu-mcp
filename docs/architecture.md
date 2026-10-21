@@ -36,7 +36,7 @@ flowchart LR
 | 网络传输 | `network` 负责限定主机、HTTPS、显式教务 HTTP 兼容、会话范围、读取预算和脱敏错误；连接池、失败冷却与受限匿名重试见[访问策略](network.md) |
 | 连接诊断 | `access_policy`、`connectivity` 按服务及认证依赖检查匿名响应头、DNS和显式代理对照；`network_audit` 检查固定登记的第一方入口。不改配置，不作为普通采集的全量前置条件 |
 | 宿主状态 | `runtime` 定义数据目录；`credentials` 选择系统密钥库或显式外置主密钥后端；`vault` 保护来源独立会话；`store` 保存缓存与来源范围。`charging_cache` / `charging_devices` 保持公开设备快照、租约与目录政策 |
-| 登录与安装 | `interaction` 声明桌面、虚拟显示或禁用的前提；`auth`、`webvpn`、`setup_web` 负责官方登录与宿主设置；`clients` 保留配置、备份、预览和幂等接入；`skill_export` 提供可选技能资源归档 |
+| 登录与安装 | `auth`、`webvpn`、`setup_web` 负责各自原有认证；`terminal`、`checkin_login`、`webvpn_cli` 只提供人工隐藏输入并复用既有流程。`interaction` 仅检查手工浏览器前提，不要求回调/无头认证有显示。`clients` 保留幂等接入，`skill_export` 提供可选资源归档 |
 | 签到后台 | `checkin` 是本机控制客户端，`checkin_process` 负责独立启动；`stu_checkin` 随包分发后台、网页、监听、结果与加密状态。两页面共用回环 HTTP，绑定时不反向查 DNS |
 
 分层的依赖方向与学校改版维护步骤集中在[来源适配](source-adapters.md)。当前架构写在本文，历次迁移、兼容比对和测试证据保留在[验证记录](verification.md)，不在模块说明里累积批次历史。
@@ -81,6 +81,8 @@ flowchart LR
 课表来源、事件展开与目标格式是独立边界。现有课程库存和短期日程不代表完整学期；技能组织取证与审阅，本地核心只转换已经核对的输入。当前能力、可选资源包和后续学校取数条件集中在[学期课表](timetable.md)。
 
 ## 认证依赖
+
+各模块的真实入口、成功证明、持久化、退出和服务器审查结果集中在[认证基线](authentication.md)。修改前先沿源码调用链核实；官网新登录方式、匿名技术研究与已接入能力分别记录。
 
 公开来源无需账号；OA 先匿名读取，受保护访问才使用可选 WebVPN。只允许 HTTPS 认证代理，不向旧 HTTP 代理发 cookie。教务与 MySTU 各自完成学校统一认证；雨课堂在自己的官方页面登录，扫码不赋予读取微信消息的能力。系统目录和真实核验范围见[校园协议](campus-protocols.md)。
 

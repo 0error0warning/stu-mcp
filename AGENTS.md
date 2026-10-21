@@ -18,8 +18,14 @@ The source baseline is School Hub commit `13f1b216ac35269d9840b6854ccff64c1e25e5
   personal server: an external private master-key file protects per-application encrypted credential mappings.
   Never generate/rotate a key at service startup, accept it through MCP, or store it in either data directory.
 - Never silently fall back to plaintext credential storage.
-- Default login takes place in the user's own interactive browser, outside the agent conversation.
-- Optional WebVPN auto-login is explicitly enabled by the user in local setup. Store its account/password/TOTP seed
+- Preserve each source's existing authentication route. Desktop school login stays in the user's official
+  interactive browser. Duifene uses its existing WeChat callback, entered on the local page or through the
+  human-only hidden terminal prompt; do not substitute the separately researched official QR/SignalR flow.
+- Terminal credential/callback input requires a real TTY and disabled echo; fail instead of falling back to
+  plaintext stdin, command-line arguments, environment values or MCP parameters. CLI reuses existing proof,
+  secure storage and the single check-in worker; it must not create a new monitoring plan. Previously authorized
+  continuous plans keep their existing restoration rules and are reported explicitly.
+- Optional WebVPN auto-login is explicitly enabled by the user in local setup or human terminal. Store its account/password/TOTP seed
   through the approved credential backend; never as plaintext in a file, command-line argument, MCP tool,
   or client configuration. The optional file backend encrypts them with the external master key.
 - Renew WebVPN only during a protected OA read, with bounded attempts and a cooldown. Pause on rejected credentials
@@ -79,8 +85,10 @@ The source baseline is School Hub commit `13f1b216ac35269d9840b6854ccff64c1e25e5
   one worker with a private preconfigured Bearer, explicit Host/Origin protection and bounded sessions/requests;
   do not describe it as public OAuth or multi-user hosting. Disconnecting a client must not close shared drafts.
   Report network/display/storage/download scope as the MCP host, not the caller's computer. Never infer a
-  campus route from successful remote MCP access. Headless interaction requires a protected virtual display;
-  do not bypass school login proof, TLS, human review or the one-send submission guard.
+  campus route from successful remote MCP access. Display checks apply only to existing manual-browser flows;
+  callback and WebVPN headless authentication are independent. Do not make a virtual desktop a deployment
+  prerequisite or claim new CLI authentication from anonymous QR research. Do not bypass school login proof,
+  TLS, human review or the one-send submission guard. Consult docs/authentication.md before changing login routes.
 - Do not modify the original School Hub checkout or production services for this project.
 
 ## Validation

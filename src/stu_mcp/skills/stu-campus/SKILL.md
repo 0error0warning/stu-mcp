@@ -11,7 +11,7 @@ description: 通过本机 STU MCP 查询汕头大学校园信息，或填写桑�
 
 导出包中的 `runtime.json` 只保存启动程序及参数，不含账密。读取它后，用 `command` 和 `args` 作为进程启动前缀，再追加下列命令参数。按参数数组启动，避免把路径或用户输入拼成 shell 代码。先执行 `--version` 和 `status` 验证权限。
 
-如果当前环境不能访问该程序，应报告本地执行限制。云端 Python、虚拟桌面或网页聊天环境不能代替用户电脑上的安装、系统密钥库和登录会话。不要上传用户数据目录或凭据来规避这个限制。
+如果当前环境不能访问该程序，应报告执行限制。已接入的私有 HTTP MCP 使用服务器上的网络、会话和文件，不能把宿主路径当作客户端可打开的文件；导出的 `runtime.json` 仍是本地程序入口，不自动建立远程连接。不要上传用户数据目录或凭据来规避这个限制。
 
 没有 `runtime.json` 时，检查本机 `stu-mcp --version`；未安装则按 [官方安装说明](https://github.com/0error0warning/stu-mcp/blob/main/docs/install.md) 安装。
 
@@ -97,12 +97,12 @@ CLI 返回 JSON，读取 `ok`、`status`、`coverage`、`limited`、`errors` 和
 
 ## 按需登录
 
-对分易使用 MCP 的 `get_checkin_status`、`open_checkin_page`、`list_checkin_courses`、`select_checkin_courses`、`start_checkin_monitor`、`pause_checkin_monitor`、`get_checkin_results`、`stop_checkin_service`。先查状态；需要登录时打开本地网页让用户完成微信流程，不索要回调链接。只有用户要求监听时才启动，`minutes=0` 表示持续监听。MCP 退出后后台仍运行，状态为查询异常时不能说已暂停。结果要区分本程序提交成功与平台已有出勤，不能把空结果当作未签到。仅使用本机 CLI 的客户端可打开 `stu-checkin` 网页，由用户选课和启停；具体状态约定见仓库 `docs/checkin.md`。
+对分易使用 MCP 的 `get_checkin_status`、`open_checkin_page`、`list_checkin_courses`、`select_checkin_courses`、`start_checkin_monitor`、`pause_checkin_monitor`、`get_checkin_results`、`stop_checkin_service`。先查状态；桌面模式可打开宿主网页让用户完成原微信回调流程。开发分支也支持本人在宿主终端运行 `stu-mcp login duifene` 并隐藏输入回调；私有 HTTP 按返回的 `next_action` 引导用户，agent 不索要或代填回调，不采用官网扫码替换原流程。登录不创建新监听计划，原已授权的同账号持续计划可按原规则恢复。只有用户要求新监听时才启动，`minutes=0` 表示持续监听。MCP 退出后后台仍运行，状态为查询异常时不能说已暂停。结果要区分本程序提交成功与平台已有出勤，不能把空结果当作未签到。CLI 登录的 `login_outcome=unknown` 不得重发回调，附带旧状态不能当作本次登录成功。具体状态约定见仓库 `docs/checkin.md`。
 
-公开信息和匿名 OA 无需账号。个人来源返回 `needs_login` 或 `login_expired` 时，让用户在本机终端执行 `stu-mcp setup`，或在具有桌面的本机进程中启动该设置命令并保持其运行，打开浏览器完成所需来源的登录。设置地址只用于本机浏览器，不粘贴到对话中。用户完成后再刷新该来源。
+公开信息和匿名 OA 无需账号。先用 `get_capabilities` 核对宿主、传输和各来源的 `login_flows`；缺少人工浏览器显示不代表所有登录都不可用。教务、MySTU、雨课堂首次登录及报修当前仍需要本人操作官方浏览器，没有全 CLI 实现。其他个人来源返回 `needs_login` 或 `login_expired` 时，让用户在具有所需显示环境的宿主运行 `stu-mcp setup` 并完成对应登录。设置私密地址不粘贴到对话中。用户完成后再刷新该来源，已有有效会话的读取不需要桌面。
 
 默认手动登录时，密码、验证码和扫码只在官方学校 / 雨课堂页面处理；不向用户索要凭据，不读取或导出会话文件。教务 HTTP 兼容由用户在本地设置页选择，agent 不自动开启。
 
-例外是用户可主动在本机设置页启用 WebVPN 自动重登，由 STU MCP 将账号密码和已绑定令牌的 TOTP 密钥存入系统密钥库。agent 不读取、截图或代填凭据表单，不在对话或命令参数中接收这些值。公开 OA 不依赖该配置。`auto_login_paused` 时请用户更新配置或手动登录；`auto_login_cooldown` 时稍后再试，不连续重登。退出 WebVPN 会关闭自动重登并移除凭据；手动重登移除旧自动配置。
+用户可主动在宿主设置页启用 WebVPN 自动重登，开发分支也支持本人交互终端 `stu-mcp webvpn-auto configure`，将账号密码和已绑定令牌的 TOTP 密钥存入选定的安全凭据后端。agent 不读取、截图或代填凭据，不在聊天、参数、环境变量或管道中接收这些值。配置不会执行登录或绑定新令牌；已有按需自动重登使用无头浏览器，出现图形验证码或其他人工挑战时暂停。公开 OA 不依赖该配置。`auto_login_paused` 时请用户更新配置或手动登录；`auto_login_cooldown` 时稍后再试，不连续重登。退出 WebVPN 会关闭自动重登并移除凭据；手动重登移除旧自动配置。
 
 本工具不提交作业；待办状态只修改本机。可用 `logout jw\|mystu\|yuketang\|webvpn` 退出单个来源。不需要模型 API key、Hermes、微信聊天数据或独立后台 AI。
