@@ -116,14 +116,14 @@ def test_rate_limit_reports_bounded_delay_without_retrying(header, expected):
     assert len(seen) == 1
 
 
-@pytest.mark.parametrize("error_type,code", [(httpx.ReadTimeout, "request_timeout"),
-                                            (httpx.ConnectError, "network_error")])
-def test_transport_failures_have_distinct_safe_actions(error_type, code):
+@pytest.mark.parametrize("error_type,code,retryable", [(httpx.ReadTimeout, "request_timeout", True),
+                                                      (httpx.ConnectError, "network_error", False)])
+def test_transport_failures_have_distinct_safe_actions(error_type, code, retryable):
     def handler(request):
         raise error_type("SYNTHETIC_SECRET", request=request)
     with CampusHTTP("yuketang", transport=httpx.MockTransport(handler)) as http, pytest.raises(AppError) as error:
         http.text("https://changjiang.yuketang.cn/")
-    assert error.value.code == code and error.value.result()["retryable"]
+    assert error.value.code == code and error.value.result()["retryable"] is retryable
     assert "SYNTHETIC_SECRET" not in str(error.value.result())
 
 

@@ -1,20 +1,17 @@
 """On-demand campus adapters. No schedulers, model calls, or production dependencies."""
 from __future__ import annotations
 
-import re
-from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from urllib.parse import parse_qs, urlencode, urlparse
 
 from bs4 import BeautifulSoup
 
+from .collection import Article as Article
+from .collection import Collection as Collection
 from .network import CampusHTTP, checked_url
+from .pagination import complete_list as complete_list
 from .parsers import (
-    CST,
-    clean,
     current_courses,
-    is_login,
-    item_id,
     jw_exam_semester,
     parse_assignment,
     parse_elc,
@@ -24,9 +21,8 @@ from .parsers import (
     parse_oa_article,
     parse_public,
     payload_records,
-    stamp,
-    text_body,
 )
+from .parsing import CST, clean, is_login, item_id, stamp, text_body
 from .runtime import AppError
 from .sources import (
     JW_BASE,
@@ -39,29 +35,6 @@ from .sources import (
 from .sync import CourseSync
 from .vault import Vault
 from .webvpn import protected_access
-
-
-@dataclass
-class Collection:
-    items: list[dict] = field(default_factory=list)
-    errors: list[dict] = field(default_factory=list)
-    private: bool = False
-    limited: bool = False
-    coverage: dict = field(default_factory=dict)
-    session_version: bytes | None = None
-    sync: CourseSync | None = None
-
-    def fail(self, part: str, exc: AppError, *, stage: str | None = None,
-             course_id: str | None = None, item_id: str | None = None):
-        context = {k: v for k, v in {"stage": stage, "course_id": course_id, "item_id": item_id}.items()
-                   if v is not None}
-        if course_id is not None and not re.fullmatch(r"[A-Za-z0-9._:-]{1,120}", course_id):
-            context.pop("course_id")  # Some legacy course IDs are URLs; don't echo an unsafe URL on failure.
-        self.errors.append({"part": part, **context, **exc.result()})
-
-    @property
-    def status(self) -> str:
-        return "partial" if self.errors or self.limited else "ok"
 
 
 def public(limit: int) -> Collection:
@@ -140,28 +113,6 @@ def default_semester() -> str:
     today = datetime.now(CST)
     year = today.year if today.month >= 8 else today.year - 1
     return f"{year}-{year + 1}-{'1' if today.month >= 8 or today.month == 1 else '2'}"
-
-
-def complete_list(payload: dict, size: int, capacity: int | None = None) -> bool:
-    """A full page or explicit remaining results is never a replacement snapshot."""
-    if capacity is not None and size >= capacity:
-        return False
-    for key in ("has_more", "hasMore", "has_next", "hasNext", "has_next_page", "next", "nextPage"):
-        if payload.get(key):
-            return False
-    for key in ("total", "total_count", "totalCount", "count"):
-        value = payload.get(key)
-        if value is not None:
-            try:
-                if int(value) > size or int(value) < 0:
-                    return False
-            except (TypeError, ValueError):
-                return False
-    for key in ("total_pages", "totalPages", "page_count", "pageCount"):
-        if payload.get(key, 1) != 1:
-            return False
-    pagination = payload.get("pagination")
-    return not isinstance(pagination, dict) or complete_list(pagination, size)
 
 
 def mystu(vault: Vault, limit: int) -> Collection:
@@ -377,12 +328,6 @@ def yuketang(vault: Vault, limit: int) -> Collection:
     result.coverage.update(complete_activity_courses=len(result.sync.complete_courses),
                            course_snapshot_complete=result.sync.complete)
     return result
-
-
-@dataclass
-class Article:
-    item: dict
-    session_version: bytes | None = None
 
 
 def article(record: dict, vault: Vault) -> Article:

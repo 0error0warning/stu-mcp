@@ -2,6 +2,9 @@
 from __future__ import annotations
 
 import json
+import math
+import socket
+import ssl
 import time
 from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
@@ -11,13 +14,54 @@ from urllib.parse import parse_qsl, urljoin, urlparse
 import httpx
 from bs4 import BeautifulSoup
 
-from .parsers import is_login
+from .access_policy import policy_for_url
+from .parsing import is_login
 from .runtime import AppError
 from .sources import SOURCES
 
 MAX_BYTES = 8 * 1024 * 1024
+CONNECT_SECONDS = 3
+AUTH_CONNECT_SECONDS = 8
+HOST_COOLDOWN_SECONDS = 15
 PASSWORD_KEYS = {"password", "passwd", "pwd", "userpassword", "j_password"}
 AUTH_QUERY_KEYS = {"token", "access_token", "refresh_token", "ticket", "sessionid", "authorization"} | PASSWORD_KEYS
+
+
+class TransportEvidence:
+    """Keep stage names only, never trace info (URLs, TLS objects or headers)."""
+    def __init__(self):
+        self.phase = "unknown"
+
+    def trace(self, event: str, _info: dict) -> None:
+        if event == "connection.connect_tcp.started":
+            # The backend may resolve DNS inside connect_tcp. This does not
+            # establish which DNS server, route, target IP or TCP hop was used.
+            self.phase = "connect_before_tls"
+        elif event == "connection.start_tls.started":
+            self.phase = "tls"
+        elif ".receive_response_headers.started" in event:
+            self.phase = "http_response"
+        elif ".receive_response_headers.complete" in event or ".receive_response_body.started" in event:
+            self.phase = "body_read"
+        elif ".send_request_" in event and event.endswith(".started"):
+            self.phase = "request_write"
+
+
+def failure_layer(exc: Exception, evidence: TransportEvidence | None = None) -> str:
+    """Use exception types, never provider prose/URLs that may carry secrets."""
+    seen = set()
+    current: BaseException | None = exc
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        if isinstance(current, ssl.SSLError):
+            return "tls_verification" if isinstance(current, ssl.SSLCertVerificationError) else "tls"
+        if isinstance(current, socket.gaierror):
+            return "dns"
+        current = current.__cause__ or current.__context__
+    if evidence and evidence.phase != "unknown":
+        return evidence.phase
+    return ("connect_or_tls" if isinstance(exc, (httpx.ConnectError, httpx.ConnectTimeout))
+            else "read" if isinstance(exc, (httpx.ReadError, httpx.ReadTimeout)) else "transport")
 
 
 def retry_after(value: str | None) -> int | None:
@@ -94,9 +138,13 @@ class CampusHTTP:
         if source == "yuketang":
             headers["xtbz"] = "ykt"
         self.client = httpx.Client(cookies=cookies, headers=headers, verify=True, trust_env=False,
-                                   timeout=httpx.Timeout(18, connect=8), follow_redirects=False, transport=transport)
+                                   timeout=httpx.Timeout(18, connect=AUTH_CONNECT_SECONDS),
+                                   follow_redirects=False, transport=transport)
         self.requests = 0
         self.deadline = time.monotonic() + 45
+        # One extra connect attempt for the entire anonymous read, not per page.
+        self._connect_retry = 1
+        self._failed_hosts: dict[tuple, tuple[float, AppError]] = {}
 
     def __enter__(self):
         return self
@@ -108,6 +156,15 @@ class CampusHTTP:
         current, method = url, "POST" if data is not None else "GET"
         for _ in range(5):
             checked_url(self.source, current, authenticated=self.authenticated, allow_legacy_http=self.allow_legacy_http)
+            target = urlparse(current)
+            host_key = (target.scheme, target.hostname, target.port or (443 if target.scheme == "https" else 80))
+            anonymous_get = method == "GET" and not self.authenticated and data is None
+            failed = self._failed_hosts.get(host_key) if anonymous_get else None
+            if failed and failed[0] > time.monotonic():
+                previous = failed[1]
+                raise AppError(previous.code, previous.message, self.source,
+                               retry_after_seconds=math.ceil(failed[0] - time.monotonic()),
+                               network={**(previous.network or {}), "cached_failure": True})
             if urlparse(current).scheme == "http" and data and any(str(k).lower() in PASSWORD_KEYS for k in data):
                 raise AppError("insecure_password_form", "账号密码只能提交到学校 HTTPS 登录页。", self.source)
             if self.requests >= 100:
@@ -117,9 +174,13 @@ class CampusHTTP:
             if remaining <= 0:
                 raise AppError("request_deadline", "此轮读取已达到 45 秒上限，已有结果会注明范围。", self.source)
             self.used_legacy_http |= urlparse(current).scheme == "http"
+            evidence = TransportEvidence()
+            connect_seconds = CONNECT_SECONDS if anonymous_get else AUTH_CONNECT_SECONDS
             try:
                 with self.client.stream(method, current, data=data if method == "POST" else None,
-                                        timeout=httpx.Timeout(min(18, remaining), connect=min(8, remaining))) as response:
+                                        extensions={"trace": evidence.trace},
+                                        timeout=httpx.Timeout(min(18, remaining),
+                                                              connect=min(connect_seconds, remaining))) as response:
                     status = response.status_code
                     if status == 401:
                         raise AppError("login_expired" if self.authenticated else "needs_login",
@@ -187,11 +248,27 @@ class CampusHTTP:
                     return result
             except AppError:
                 raise
-            except httpx.TimeoutException:
-                raise AppError("request_timeout", "来源未在时限内响应，请稍后重试。", self.source) from None
-            except httpx.HTTPError:
-                raise AppError("network_error", "校园来源暂时无法连接；请检查校园网络、VPN 或稍后重试。",
-                               self.source) from None
+            except httpx.HTTPError as exc:
+                layer = failure_layer(exc, evidence)
+                if (anonymous_get and self._connect_retry and isinstance(exc, httpx.ConnectTimeout)
+                        and layer == "connect_before_tls"
+                        and self.deadline - time.monotonic() > CONNECT_SECONDS + .2):
+                    self._connect_retry -= 1
+                    time.sleep(.15)
+                    continue
+                policy = policy_for_url(current)
+                context = {"transport": "direct", "failure_layer": layer,
+                           "cached_failure": False, "automatic_proxy_fallback": False}
+                if policy:
+                    context.update(endpoint_id=policy.endpoint_id, preferred_access=policy.preferred_access)
+                code = "request_timeout" if isinstance(exc, httpx.TimeoutException) else "network_error"
+                hint = policy.hint if policy else "请检查该来源的 DNS、网络路由或校园接入条件；其他来源仍可使用。"
+                error = AppError(code, "此端点未能完成直连。" + hint, self.source, network=context)
+                # A failed connect/DNS/TLS applies to this origin, not all STU
+                # hosts. Never cache resource HTTP errors or replay auth/POST.
+                if anonymous_get and isinstance(exc, (httpx.ConnectError, httpx.ConnectTimeout)):
+                    self._failed_hosts[host_key] = (time.monotonic() + HOST_COOLDOWN_SECONDS, error)
+                raise error from None
         raise AppError("redirect_limit", "来源跳转次数超过上限。", self.source)
 
     def text(self, url: str, *, data: dict | None = None) -> str:

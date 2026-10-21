@@ -21,7 +21,7 @@ from playwright.sync_api import sync_playwright
 
 from .auth import prepare_browser
 from .network import CampusHTTP, checked_url, scoped_state
-from .parsers import is_login
+from .parsing import is_login
 from .runtime import AppError, key_lock, private_write, reject_symlinks
 from .sources import SOURCES
 from .store import Store

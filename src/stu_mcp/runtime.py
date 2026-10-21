@@ -14,10 +14,12 @@ from platformdirs import user_data_path
 
 class AppError(Exception):
     def __init__(self, code: str, message: str, source: str | None = None, *,
-                 http_status: int | None = None, retry_after_seconds: int | None = None):
+                 http_status: int | None = None, retry_after_seconds: int | None = None,
+                 network: dict | None = None):
         super().__init__(message)
         self.code, self.message, self.source = code, message, source
         self.http_status, self.retry_after_seconds = http_status, retry_after_seconds
+        self.network = network
 
     def result(self) -> dict:
         actions = {
@@ -34,6 +36,8 @@ class AppError(Exception):
             "render_unavailable": "check_local_browser", "media_unavailable": "retry_media",
             "operation_failed": "check_local_state", "source_error": "report_source_change",
             "response_too_large": "reduce_scope",
+            "repair_direct_unavailable": "diagnose_campus_network",
+            "network_diagnosis_running": "wait_then_retry",
         }
         result = {"ok": False, "status": self.code, "message": self.message, "source": self.source,
                   "retryable": self.code in {"rate_limited", "source_unavailable", "network_error",
@@ -43,6 +47,13 @@ class AppError(Exception):
             result["http_status"] = self.http_status
         if self.retry_after_seconds is not None:
             result["retry_after_seconds"] = self.retry_after_seconds
+        if self.network is not None:
+            result["network"] = dict(self.network)
+            if self.network.get("failure_layer") in {"dns", "tls", "tls_verification", "connect_or_tls"}:
+                result["retryable"] = False
+                result["next_action"] = ("check_dns_and_route" if self.network["failure_layer"] == "dns"
+                                         else "check_tls" if self.network["failure_layer"] in {"tls", "tls_verification"}
+                                         else "check_network")
         return result
 
 
