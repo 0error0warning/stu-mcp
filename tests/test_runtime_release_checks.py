@@ -10,6 +10,7 @@ import sys
 import time
 from copy import deepcopy
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from mcp_types import Tool
@@ -95,13 +96,17 @@ def test_cleanup_reaps_own_descendant_listener_and_preserves_another_process(tmp
     parent = ("import subprocess,sys,time; subprocess.Popen([sys.executable,'-c',"
               + repr(descendant) + "]); time.sleep(30)")
     owned = runtime.OwnedHTTPProcess([sys.executable, "-c", parent], env=os.environ.copy(), cwd=tmp_path,
-                                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                                     listener_port=first_port)
     other = None
     try:
         other = runtime.OwnedHTTPProcess([sys.executable, "-c", listener_code(second_port)], env=os.environ.copy(),
-                                         cwd=tmp_path, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                                         cwd=tmp_path, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                                         listener_port=second_port)
         wait_listener(first_port, owned.process)
+        owned.listener_seen = True
         wait_listener(second_port, other.process)
+        other.listener_seen = True
         owned.close()
         owned.close()  # Idempotent; no process/port scan or PID reuse on another close.
         assert owned.process.poll() is not None
@@ -114,3 +119,45 @@ def test_cleanup_reaps_own_descendant_listener_and_preserves_another_process(tmp
         if other is not None:
             other.close()
     runtime.assert_listener_closed(second_port)
+
+
+def denied_group(monkeypatch, number, *, platform="darwin", returncode=0, seen=True):
+    owned = object.__new__(runtime.OwnedHTTPProcess)
+    owned.process = SimpleNamespace(pid=987654321, returncode=returncode)
+    owned.listener_port, owned.listener_seen = number, seen
+    calls = []
+
+    def denied(pid, sig):
+        calls.append((pid, sig))
+        raise PermissionError("synthetic exited process group")
+
+    monkeypatch.setattr(runtime.sys, "platform", platform)
+    monkeypatch.setattr(runtime.signal, "SIGKILL", 9, raising=False)
+    monkeypatch.setattr(runtime.os, "killpg", denied, raising=False)
+    return owned, calls
+
+
+def test_darwin_exited_group_eperm_requires_known_listener_to_be_closed(monkeypatch):
+    owned, calls = denied_group(monkeypatch, port())
+    owned._kill_remaining_group()
+    assert calls == [(owned.process.pid, runtime.signal.SIGKILL)]
+
+
+def test_darwin_exited_group_eperm_does_not_hide_a_live_listener(monkeypatch):
+    with socket.socket() as listener:
+        listener.bind(("127.0.0.1", 0))
+        listener.listen(8)
+        owned, calls = denied_group(monkeypatch, listener.getsockname()[1])
+        with pytest.raises(RuntimeError, match="listener remained open"):
+            owned._kill_remaining_group()
+        assert calls == [(owned.process.pid, runtime.signal.SIGKILL)]
+
+
+@pytest.mark.parametrize("platform,returncode,seen", [
+    ("linux", 0, True), ("darwin", None, True), ("darwin", 0, False),
+])
+def test_group_eperm_outside_confirmed_darwin_cleanup_remains_an_error(monkeypatch, platform, returncode, seen):
+    owned, calls = denied_group(monkeypatch, port(), platform=platform, returncode=returncode, seen=seen)
+    with pytest.raises(PermissionError):
+        owned._kill_remaining_group()
+    assert calls == [(owned.process.pid, runtime.signal.SIGKILL)]

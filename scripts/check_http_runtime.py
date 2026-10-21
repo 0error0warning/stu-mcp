@@ -56,10 +56,12 @@ class OwnedHTTPProcess:
     A process-name or port search could kill someone else's MCP. A fresh Windows
     Job Object or POSIX session instead confines cleanup to this spawned tree.
     """
-    def __init__(self, command, *, env, cwd, stdout, stderr):
+    def __init__(self, command, *, env, cwd, stdout, stderr, listener_port):
         self.job = None
         self.process = None
         self.closed = False
+        self.listener_port = listener_port
+        self.listener_seen = False
         if os.name == "nt":
             import win32api
             import win32job
@@ -102,8 +104,20 @@ class OwnedHTTPProcess:
             self.process.kill()
             self.process.wait(timeout=5)
         if os.name != "nt":
-            with suppress(ProcessLookupError):
-                os.killpg(self.process.pid, signal.SIGKILL)
+            self._kill_remaining_group()
+
+    def _kill_remaining_group(self):
+        try:
+            os.killpg(self.process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        except PermissionError:
+            # Darwin can return EPERM after the owned leader has been reaped.
+            # Only accept this terminal-group race with prior readiness evidence
+            # and proof that this run's known listener has actually closed.
+            if sys.platform != "darwin" or self.process.returncode is None or not self.listener_seen:
+                raise
+            assert_listener_closed(self.listener_port)
 
 
 def assert_listener_closed(port: int) -> None:
@@ -111,14 +125,28 @@ def assert_listener_closed(port: int) -> None:
     while True:
         try:
             with socket.create_connection(("127.0.0.1", port), timeout=.1):
-                if time.monotonic() >= deadline:
-                    raise RuntimeError("owned HTTP listener remained open after cleanup")
+                pass
+        except ConnectionRefusedError:
+            return  # TIME_WAIT can prevent rebinding after a clean shutdown.
         except OSError:
+            pass  # Unknown connect errors are not closure evidence.
+        try:
+            with socket.socket() as probe:
+                if os.name == "nt":
+                    probe.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+                # Successful exclusive binding proves this exact port is free.
+                # A connect timeout (including a full backlog) proves nothing.
+                probe.bind(("127.0.0.1", port))
             return
+        except OSError:
+            pass
+        if time.monotonic() >= deadline:
+            raise RuntimeError("owned HTTP listener remained open after cleanup")
         time.sleep(.05)
 
 
-async def _handshake(url: str, token: str, process: subprocess.Popen) -> None:
+async def _handshake(url: str, token: str, child: OwnedHTTPProcess) -> None:
+    process = child.process
     deadline = time.monotonic() + 15
     async with httpx2.AsyncClient(trust_env=False, timeout=.75) as anonymous:
         while time.monotonic() < deadline:
@@ -127,6 +155,7 @@ async def _handshake(url: str, token: str, process: subprocess.Popen) -> None:
             try:
                 response = await anonymous.get(url)
                 if response.status_code == 401:
+                    child.listener_seen = True
                     break
             except httpx2.HTTPError:
                 pass
@@ -228,10 +257,10 @@ def main() -> None:
                "--host", "127.0.0.1", "--port", str(port), "--auth-token-file", str(token_file),
                "--name", "installed-http"]
     with tempfile.TemporaryFile() as stdout, tempfile.TemporaryFile() as stderr:
-        child = OwnedHTTPProcess(command, env=env, cwd=root, stdout=stdout, stderr=stderr)
+        child = OwnedHTTPProcess(command, env=env, cwd=root, stdout=stdout, stderr=stderr, listener_port=port)
         process = child.process
         try:
-            asyncio.run(asyncio.wait_for(_handshake(f"http://127.0.0.1:{port}/mcp", token, process), timeout=45))
+            asyncio.run(asyncio.wait_for(_handshake(f"http://127.0.0.1:{port}/mcp", token, child), timeout=45))
             assert process.poll() is None
         finally:
             child.close()
