@@ -87,6 +87,8 @@ stu-mcp webvpn-auto remove
 
 教务、MySTU、雨课堂首次登录，以及报修独立临时认证，当前仍沿用原人工浏览器，没有通过这次部署整理变成全 CLI。**这是现有实现的范围，不是学校强制使用桌面的结论；此前并未验证纯 HTTP 首次登录。** 本轮补做的匿名接口结果与尚缺的真实账号证明见[纯 HTTP 调查](verification/2026-10-21-http-auth.md)。桌面 `stu-mcp setup`、原 `login` 和报修工具保持原行为；已有有效会话的查询本身无需显示。
 
+之后的[本人账号实测](verification/2026-10-21-http-auth-live.md)已跑通教务、MySTU、报修和雨课堂的纯 HTTP 登录及对应读取，WebVPN 仍被接入策略拒绝。实验尚未替换产品适配器，不能将实验通过写成现有安装包已经支持全 CLI，也不能再把有界面实现当作上游必需条件。
+
 无显示的宿主遇到这些操作会明确返回 `interaction_unavailable`，不在后台等待一个用户看不到的登录窗口。不要通过导出 cookies 或改认证域绕过。可选设置页仍只绑定回环，`--port` 和私有端口转发保持可用，但转发设置页不会让服务器拥有显示能力。兼容的 `virtual-display` 配置值只检查操作者已有 DISPLAY，项目不启动显示服务，也不提供默认桌面部署栈。
 
 [容器模板](server-container.md)现在只运行 MCP、保留无头 Chromium；没有 noVNC、VNC、桌面密码或设置页桥接。需要对分易网页时，可在宿主运行 `stu-checkin --port 8767 --no-browser`，独立转发其回环端口；CLI 回调不需要这一步。
