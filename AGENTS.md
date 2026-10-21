@@ -18,8 +18,10 @@ The source baseline is School Hub commit `13f1b216ac35269d9840b6854ccff64c1e25e5
   personal server: an external private master-key file protects per-application encrypted credential mappings.
   Never generate/rotate a key at service startup, accept it through MCP, or store it in either data directory.
 - Never silently fall back to plaintext credential storage.
-- Preserve each source's existing authentication route. Desktop school login stays in the user's official
-  interactive browser. Duifene uses its existing WeChat callback, entered on the local page or through the
+- Prefer official API / HTTP authentication and business reads; avoid launching a browser when the source's
+  verified protocol supports these directly. Preserve tool interfaces, source isolation and session proof
+  when replacing an adapter; keep existing manual routes until their replacement is integrated and verified.
+  Duifene uses its existing WeChat callback, entered on the local page or through the
   human-only hidden terminal prompt; do not substitute the separately researched official QR/SignalR flow.
 - Distinguish implemented adapters from upstream protocol requirements. Test HTTP-only authentication first,
   use headless browsers when needed, and request human interaction for observed challenges. An existing

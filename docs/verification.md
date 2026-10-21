@@ -8,6 +8,7 @@
 
 | 范围 | 归档 |
 | --- | --- |
+| 2026-10-21 WebVPN 继续复核 | [纯 HTTP 密码、动态口令及目录通过；OA 路由边界](verification/2026-10-21-webvpn-http.md) |
 | 2026-10-21 纯 HTTP 首次登录真实验证 | [教务、MySTU、报修、雨课堂通过；WebVPN 拒绝及边界](verification/2026-10-21-http-auth-live.md) |
 | 2026-10-21 纯 HTTP 首次认证调查 | [真实匿名前置与尚缺的账号证明](verification/2026-10-21-http-auth.md) |
 | 2026-10-21 认证基线与服务器改造复核（未发布） | [原回调 CLI、无桌面部署与兼容验证](verification/2026-10-21-server-review.md) |
