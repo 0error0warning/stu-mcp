@@ -34,7 +34,8 @@ jobs:
         if: matrix.os == 'ubuntu-latest' && matrix.python == '3.13'
         run: uv run python -m playwright install --with-deps chromium
       - run: uv run --extra dev ruff check .
-      - run: uv run --extra dev pytest -q
+      - name: Run tests with per-case progress and bounded-wait diagnostics
+        run: uv run --extra dev pytest -v --durations=10 -o faulthandler_timeout=90
       - run: uv build
       - name: Verify isolated core wheel, MCP transports, clients and worker lifecycle
         run: uv run --locked --extra dev python scripts/check_installed_runtime.py
