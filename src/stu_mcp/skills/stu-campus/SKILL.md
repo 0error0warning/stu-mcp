@@ -65,7 +65,7 @@ CLI 返回 JSON，读取 `ok`、`status`、`coverage`、`limited`、`errors` 和
 
 普通采集不做全量预检；匿名读取的同源连接失败在当前客户端冷却15秒，cached_failure=true是沿用该次失败而非刚刚重测。DNS/TLS/阶段不明不自动重试；认证和POST不套用读取重试，报修未知结果仍不得重发。v2研究只保留8个校园完整轮次、独立非校园代理未形成，不宣称校园网不稳定或完整矩阵已验收。详见docs/network.md。
 
-使用 `prepare_repair_draft` 收集校区、姓名、学院、准确楼座、具体房间、电话、故障现象和预约日期/整点起止时间，按 `problems` 询问缺项。B栋与修远书院B楼是不同选项，不凭房号猜楼座。预约须有具体日期且确保有人在场。邮箱可保留学校预填值，缺少则在学校窗口补齐。
+使用 `prepare_repair_draft` 收集校区、姓名、学院、准确楼座、具体房间、电话、故障现象和预约日期/整点起止时间，按 `problems` 询问缺项。B栋与修远书院B楼是不同选项，不凭房号猜楼座。预约须有具体日期且确保有人在场。邮箱保留学校有效预填值；缺少时请用户补充草稿的 `email` 后重新填写。
 
 详细描述只简短写用户提供的现象，例如“空调外机不转。”，不为800字上限凑字数。只追问实际必填或辨明故障所需的信息；故障代码、内机送风等非必填细节，用户没提就不追问、不写“未确认”。不补推测原因，不自动加“请安排检查维修”“上门前请提前电话联系”等客套或联系要求。用户明确提供的相关细节可以保留，不机械删改原话。
 
@@ -77,7 +77,7 @@ CLI 返回 JSON，读取 `ok`、`status`、`coverage`、`limited`、`errors` 和
 
 结果为 `submission_unknown` 或需要最新状态时，调用 `check_repair_submission(draft_id)`，它只做GET，不提交；不要反复轮询。`receipt_fresh=true` 才是本次核对结果；false时按原时间说明“上次已核验，本次未能刷新”。已有成功回执不会因刷新失败变成未提交。无回执仍是未知，禁止重试、换草稿重发或声称已受理。草稿会话关闭后不能刷新，只能保留缓存；重启不等于撤回请求。用 `close_repair_form` 关闭本草稿会话，确认即失效；草稿、预览、回执只在进程内存，报修登录态独立加密保存。
 
-2026-10-19 用户浏览器已跑通真实学校提交及详情，自动适配器的列表/详情流程另经离线浏览器测试，详情字段提取在现有真实工单做过只读核对。原生 MCP 整单提交没有额外创建真实工单验收，不把这些证据混用。速度以返回的提交/核对耗时及网络情况为准，不承诺固定秒数。
+2026-10-21 默认 HTTP 实现已实测独立 CAS、本人列表、会话恢复、预约校验和完整实际预览，未额外创建真实工单。2026-10-19 浏览器真实提交是历史证据，不能替代新 HTTP 最终提交验收。速度以返回的提交/核对耗时及网络情况为准，不承诺固定秒数。
 
 无原生 MCP 时，把字段 JSON 作为标准输入或 `--fields-file` 传给 `repair plan` / `repair drill`；默认 HTTP 演练展示实际完整表单后退出，不提交。只有本人明确要求提交，才可运行 `repair drill --submit`，实际预览展示后还需本人在交互终端输入“确认提交”。不要用管道代替确认。`repair preview --browser` 是显式可选兼容。用标准输入传业务数据，不拼接 shell 或把个人数据放命令行。字段为 `campus,name,college,building,location,phone,title,description,device,email,visit_date,visit_start,visit_end`，不接收账密、认证回调或任意URL；日期 `YYYY-MM-DD`、时间如 `14:00` / `17:00`。其他校区及校园网故障先查入口，不把 `r` 的分类套用到学生社区。详见仓库 `docs/repair.md`。
 
@@ -97,9 +97,9 @@ CLI 返回 JSON，读取 `ok`、`status`、`coverage`、`limited`、`errors` 和
 
 ## 按需登录
 
-对分易使用 MCP 的 `get_checkin_status`、`open_checkin_page`、`list_checkin_courses`、`select_checkin_courses`、`start_checkin_monitor`、`pause_checkin_monitor`、`get_checkin_results`、`stop_checkin_service`。先查状态；桌面模式可打开宿主网页让用户完成原微信回调流程。开发分支也支持本人在宿主终端运行 `stu-mcp login duifene` 并隐藏输入回调；私有 HTTP 按返回的 `next_action` 引导用户，agent 不索要或代填回调，不采用官网扫码替换原流程。登录不创建新监听计划，原已授权的同账号持续计划可按原规则恢复。只有用户要求新监听时才启动，`minutes=0` 表示持续监听。MCP 退出后后台仍运行，状态为查询异常时不能说已暂停。结果要区分本程序提交成功与平台已有出勤，不能把空结果当作未签到。CLI 登录的 `login_outcome=unknown` 不得重发回调，附带旧状态不能当作本次登录成功。具体状态约定见仓库 `docs/checkin.md`。
+对分易使用 MCP 的 `get_checkin_status`、`open_checkin_page`、`list_checkin_courses`、`select_checkin_courses`、`start_checkin_monitor`、`pause_checkin_monitor`、`get_checkin_results`、`stop_checkin_service`。先查状态；桌面模式可打开宿主网页让用户完成原微信回调流程。v0.6.0 支持本人在宿主终端运行 `stu-mcp login duifene` 并隐藏输入回调；私有 HTTP 按返回的 `next_action` 引导用户，agent 不索要或代填回调，不采用官网扫码替换原流程。登录不创建新监听计划，原已授权的同账号持续计划可按原规则恢复。只有用户要求新监听时才启动，`minutes=0` 表示持续监听。MCP 退出后后台仍运行，状态为查询异常时不能说已暂停。结果要区分本程序提交成功与平台已有出勤，不能把空结果当作未签到。CLI 登录的 `login_outcome=unknown` 不得重发回调，附带旧状态不能当作本次登录成功。具体状态约定见仓库 `docs/checkin.md`。
 
-公开信息和匿名 OA 无需账号。先用 `get_capabilities` 核对宿主、传输和各来源的 `login_flows`。当前开发分支默认纯 HTTP 认证；`needs_login` / `login_expired` 时请本人在 MCP 宿主终端运行 `stu-mcp login mystu|jw|yuketang|webvpn|repair` 的对应命令，再刷新该来源。雨课堂在终端显示官方二维码，需要本人手机确认；无服务端浏览器不等于免除人工授权。未知挑战应准确报告，不自动退回浏览器。已发布旧版本可能未包含本能力，以宿主 capabilities 和版本为准。
+公开信息和匿名 OA 无需账号。先用 `get_capabilities` 核对宿主、传输和各来源的 `login_flows`。v0.6.0 起默认纯 HTTP 认证；`needs_login` / `login_expired` 时请本人在 MCP 宿主终端运行对应登录命令，例如 `stu-mcp login mystu`，其他来源将最后参数替换为 `jw`、`yuketang`、`webvpn` 或 `repair`，再刷新该来源。雨课堂在终端显示官方二维码，需要本人手机确认；无服务端浏览器不等于免除人工授权。未知挑战应准确报告，不自动退回浏览器。旧版本可能未包含本能力，以宿主 capabilities 和版本为准。
 
 密码、动态码、微信回调只在本人宿主终端或原本机设置页输入，不在 MCP 参数、聊天、命令行、环境变量或管道传递，不读取或导出会话文件。教务官方 HTTP 票据回调需本人明确允许 `login jw --allow-http-callback` 或本地持续兼容开关，密码仍只发 HTTPS SSO。OA 官方 HTTP 代理兼容另有独立开关，不能借用教务许可。确有需要时显式 `login --browser` 使用可选 browser 依赖；默认路径不安装或启动 Chromium。
 

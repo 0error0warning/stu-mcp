@@ -32,12 +32,12 @@
 | 学校官网、学生处 | 新闻、通知、活动预告、校园服务入口 | 不用 |
 | OA | 近期通知、正文和附件，PDF / 文本附件也能读 | 先匿名读取，受限时再用 WebVPN |
 | 教务 | 自己的成绩、学分加权统计、考试安排 | 需要 |
-| MySTU / ELC | 课程、作业、测验、资料链接、个人日程 | 需要 MySTU 登录与 ELC 会话 |
+| MySTU / Moodle | 课程、作业、测验、资料链接、个人日程 | MySTU 登录；ELC / Campus 分别核验 |
 | 雨课堂 | 课程、作业、测验、课程公告 | 需要 |
 | 狐友 | 汕大树洞里的公开帖子、评论和楼中楼回复 | 不用 |
 | 充电设备 | 按位置查设备空闲、占用、故障数量，查看每个插座的状态 | 不用 |
 | 对分易 | 多课程监听、启停与签到结果，本地网页和 MCP 共用后台；新课堂提交仍待实测 | 原微信回调，可用宿主网页或终端 |
-| 桑浦山宿舍报修 | 检查缺项、填表、展示完整预览，等本人确认后提交一次 | 当前分支使用独立 HTTP 登录 |
+| 桑浦山宿舍报修 | 检查缺项、填表、展示完整预览，等本人确认后提交一次 | 独立 HTTP 登录 |
 | 校园连接诊断 | 分别检查业务站、统一认证、直连、DNS和本机代理 | 不用 |
 | 学校入口批量检测 | 批量比较本机DNS、可选公共DNS和匿名直连，区分解析失败与连接失败 | 不用 |
 
@@ -54,7 +54,7 @@
 先装好 [uv](https://docs.astral.sh/uv/getting-started/installation/)，然后运行。这里以 Codex 为例：
 
 ```sh
-uv tool install --python 3.12 https://github.com/0error0warning/stu-mcp/releases/download/v0.5.0/stu_mcp-0.5.0-py3-none-any.whl
+uv tool install --python 3.12 https://github.com/0error0warning/stu-mcp/releases/download/v0.6.0/stu_mcp-0.6.0-py3-none-any.whl
 stu-mcp connect codex --apply
 ```
 
@@ -62,13 +62,13 @@ stu-mcp connect codex --apply
 
 MCP 接入和技能安装分别处理。随包的[课表导出技能](docs/timetable.md)组织校历核对和文件转换，完整学期课表仍需另行取得和核实。技能 ZIP 是可选资源包，生成后仍需按客户端支持的方式安装，不会自动让当前 agent 加载技能。
 
-当前开发分支支持本机 stdio 与个人服务器私有 Streamable HTTP，共用一套工具。认证默认走 HTTP 和本人终端；雨课堂由本人手机确认官方二维码，对分易沿用原微信回调。Docker 不需要桌面或 Chromium，Playwright 仅作为显式浏览器兼容依赖。上面的 v0.5.0 发行包尚不包含这些改造；从源码安装当前分支后再使用下列命令，详见[服务器说明](docs/server.md)和[认证流程](docs/authentication.md)。
+v0.6.0 支持本机 stdio 与个人服务器私有 Streamable HTTP，共用一套工具。认证默认走 HTTP 和本人终端；雨课堂由本人手机确认官方二维码，对分易沿用原微信回调。默认安装和 Docker 模板不需要桌面或 Chromium，Playwright 仅作为显式浏览器兼容依赖。服务器不必安装 agent 或模型服务，详见[服务器说明](docs/server.md)和[认证流程](docs/authentication.md)。
 
-当前开发分支在运行 MCP 的主机终端执行 `stu-mcp login mystu`、`stu-mcp login yuketang` 或 `stu-mcp login repair`；密码和动态码隐藏输入，不交给 agent。会话及个人缓存加密保存，WebVPN 可另行明确配置按需自动重登。设置页默认提供宿主 CLI 指引；需原浏览器时显式选择 `--browser`。[版本与登录说明](docs/install.md) · [存储与隐私](SECURITY.md)
+在运行 MCP 的主机终端执行 `stu-mcp login mystu`、`stu-mcp login yuketang` 或 `stu-mcp login repair`；密码和动态码隐藏输入，不交给 agent。会话及个人缓存加密保存，WebVPN 可另行明确配置按需自动重登。设置页默认提供宿主 CLI 指引；需原浏览器时显式选择 `--browser`。客户端到 MCP 和 MCP 到学校是两段网络，连上服务器不代表服务器能访问校园网。[版本与登录说明](docs/install.md) · [存储与隐私](SECURITY.md)
 
-本版包含对分易后台和轻量本地网页：选课、启停监听、查询签到结果，需要登录时打开网页。MCP 退出后后台继续运行，状态明确区分未启动、未登录、已暂停、监听中和查询异常。支持持续监听；电脑需保持运行和联网。新的课堂自动提交仍待实测。[安装与用法](docs/checkin.md)
+本版包含对分易后台和轻量本地网页：选课、启停监听、查询签到结果，微信回调可在宿主终端或本地网页完成。MCP 退出后后台继续运行，状态明确区分未启动、未登录、已暂停、监听中和查询异常。支持持续监听；电脑需保持运行和联网。新的课堂自动提交仍待实测。[安装与用法](docs/checkin.md)
 
-当前分支的宿舍报修使用独立 HTTP 会话填表，完整展示实际表单，等你明确确认后只提交一次。随后核对新增单据及详情，返回单号、处理状态和核对时间；结果未知时只读查单。草稿留在进程内存，登录会话独立加密保存。当前适配桑浦山学生社区；旧浏览器实测、HTTP 合成测试及新增真实验收分别记录，不能互相替代。校园网报修是另一套入口。[使用与验证范围](docs/repair.md)
+宿舍报修使用独立 HTTP 会话填表，完整展示实际表单，等你明确确认后只提交一次。随后核对新增单据及详情，返回单号、处理状态和核对时间；结果未知时只读查单。草稿留在进程内存，登录会话独立加密保存。当前适配桑浦山学生社区；新版真实登录和填表预览已核验，正式提交仍由合成与回环测试覆盖，没有为验收额外建单。校园网报修是另一套入口。[使用与验证范围](docs/repair.md)
 
 教务当前可用 `stu-mcp login jw --allow-http-callback` 明确允许本次官方票据回调，密码始终发至 HTTPS SSO。OA 的 HTTP 8118 兼容是另一项默认关闭的本地选择，不能默默开启或借用教务许可；详见[认证说明](docs/authentication.md)。从 0.4.1 之前升级需重新登录并刷新教务。
 
@@ -82,9 +82,9 @@ stu-mcp huyou search 选课
 
 ## 还在慢慢补
 
-当前版本为 **[v0.5.0 学生预览版](https://github.com/0error0warning/stu-mcp/releases/tag/v0.5.0)**。本版补充了充电查询、宿舍报修、校园连接诊断、对分易共享后台和课表导出技能，并按来源整理网页与接口适配，保留现有工具接口。[最近更新](CHANGELOG.md)
+当前版本为 **[v0.6.0 学生预览版](https://github.com/0error0warning/stu-mcp/releases/tag/v0.6.0)**。本版把默认登录改为纯 HTTP CLI，加入个人服务器接入与轻量容器模板，保留 38 项工具的名称和输入输出接口。继续以 GitHub prerelease 发布，不把预览版称作稳定版。[发行说明](docs/releases/v0.6.0.md) · [最近更新](CHANGELOG.md)
 
-官网、匿名 OA、狐友、教务及部分雨课堂业务有历史真实读取；后续 HTTP 实验也验证过 MySTU、报修、雨课堂及 WebVPN 的特定认证阶段。正式适配器、会话恢复、完整业务和服务器部署分别验收；具体成功、失败与未测范围以[验证记录](docs/verification.md)为准。
+正式 HTTP 适配器已实测教务、MySTU 的身份与课程、ELC/Campus 的部分业务、雨课堂课程活动，以及报修登录和完整预览。WebVPN 的密码、动态口令和资源目录通过；受保护 OA 正文及自然过期续登尚未通过本轮验收。发行 CI 包含跨平台测试和默认镜像离线检查，容器内学校业务、跨机接入、更多账号和真实新报修提交仍分别待验，详见[验证记录](docs/verification.md)。
 
 如果你用起来了，或者发现某个入口读不动了，欢迎开 issue 聊聊。告诉我用的版本、卡在哪一步就很有帮助，别把真实成绩、密码或登录凭据贴进去。
 

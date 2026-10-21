@@ -2,7 +2,7 @@
 
 ## 定位
 
-STU MCP 是给用户自己的 agent 用的本地 MCP。安装和接入由 agent 按安装 prompt 执行 `stu-mcp connect`。当前开发分支的认证默认由本人宿主终端执行纯 HTTP 登录。设置页提供状态、对应 CLI 指引、传输兼容和可选 WebVPN 自动重登配置，不是必需的认证门户。
+STU MCP 给用户自己的 agent 提供本机 stdio 或个人服务器私有 HTTP 接入。本机安装和接入由 agent 按安装 prompt 执行 `stu-mcp connect`。v0.6.0 的认证默认由本人宿主终端执行纯 HTTP 登录。设置页提供状态、对应 CLI 指引、传输兼容和可选 WebVPN 自动重登配置，不是必需的认证门户。
 
 其余都不放在页面上：
 

@@ -1,6 +1,6 @@
-# 容器部署（开发中）
+# 容器部署
 
-本页对应开发版本，尚未随 v0.5.0 发布。模板面向 Linux 服务器上的一个用户、一个 HTTP worker，
+本页提供 v0.6.0 的可选本地构建模板，配套 CI 的镜像构建与离线启动检查。模板面向 Linux 服务器上的一个用户、一个 HTTP worker，
 由 tini 直接启动 `stu-mcp`，不包含显示服务、远程桌面或额外管理网页进程。
 默认镜像不安装 Playwright、Chromium、Xvfb 或远程桌面；各来源默认通过 HTTP 和本人 CLI 认证。
 连接方式、授权边界和网络诊断见[服务器部署](server.md)。目前需本地构建镜像，没有已发布镜像地址。
@@ -99,4 +99,4 @@ docker compose exec -it stu-mcp stu-mcp login jw --allow-http-callback
 - SSH/Tailscale 连接解决客户端到 MCP 的访问。学校 DNS、SSO 和来源请求发生在容器服务器；
   连接 MCP 成功不证明服务器能进入校园内网。不自动改 DNS、路由、代理或 TLS 校验。
 - 已检查模板结构、端口／密钥隔离、真实 SDK 的回环交互及 HTTP 认证/业务的合成测试。
-  当前开发机无 Docker，尚未构建运行镜像；宿主实测不能充当容器或跨机验收，最新真实记录见[验证索引](verification.md)。
+  CI 独立构建默认镜像，并在禁网容器中检查版本、核心导入、默认 HTTP、无 Playwright 及离线状态；结果见[发行验证](verification/2026-10-21-v0.6.0.md)。这不包含容器内学校认证或 SSH/Tailscale 跨机验收。

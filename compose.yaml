@@ -18,7 +18,6 @@ services:
         source: ${STU_MCP_SECRETS_DIR:?Set STU_MCP_SECRETS_DIR to a private absolute secrets directory}
         target: /run/secrets
         read_only: true
-    shm_size: "256mb"
     security_opt:
       - no-new-privileges:true
 
