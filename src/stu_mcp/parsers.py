@@ -3,10 +3,14 @@ from __future__ import annotations
 
 import math
 import re
-from urllib.parse import parse_qs, urljoin, urlparse
+from urllib.parse import urljoin, urlparse
 
 from bs4 import BeautifulSoup
 
+from .features.notices.parser import parse_links as parse_links
+from .features.notices.parser import parse_oa as parse_oa
+from .features.notices.parser import parse_oa_article as parse_oa_article
+from .features.notices.parser import parse_public as parse_public
 from .parsing import CST as CST
 from .parsing import clean as clean
 from .parsing import is_login as is_login
@@ -28,70 +32,6 @@ def jw_authenticated(html: str) -> bool:
             and soup.select_one("#NEW_XSD_KSBM_WDKS_KSAPCX")):
         return True
     raise AppError("schema_changed", "教务未返回可识别的学生主页；请检查学校页面，未保存未经验证的会话。", "jw")
-
-
-def parse_public(html: str, base: str, category: str, limit: int) -> list[dict]:
-    soup = BeautifulSoup(html, "html.parser")
-    records, seen = [], set()
-    for link in soup.select("a[href]"):
-        url = urljoin(base, str(link["href"]))
-        path = urlparse(url).path.lower()
-        if not ("/info/" in path or re.search(r"/(?:news|activity|notice)(?:detail|view)?\.aspx$", path, re.IGNORECASE)):
-            continue
-        title = clean(link.get("title") or link.get_text(" ", strip=True))
-        if len(title) < 3 or title.lower() in {"more", "更多", "查看详情", "了解更多"} or url in seen:
-            continue
-        parent = link.find_parent("li") or link.parent
-        records.append({"id": item_id("public", "notice", url), "kind": "notice", "title": title,
-                        "url": url, "category": category,
-                        "published_at": published(clean(parent.get_text(" ", strip=True)))})
-        seen.add(url)
-        if len(records) >= limit:
-            break
-    return records
-
-
-def parse_links(html: str, base: str) -> list[dict]:
-    soup = BeautifulSoup(html, "html.parser")
-    return [{"id": item_id("public", "service", urljoin(base, str(a["href"]))), "kind": "service",
-             "title": clean(a.get_text(" ", strip=True)), "url": urljoin(base, str(a["href"]))}
-            for a in soup.select("section.n_kuaisu .box a[href]")
-            if clean(a.get_text(" ", strip=True))][:80]
-
-
-def parse_oa(html: str, base: str, limit: int) -> list[dict]:
-    soup = BeautifulSoup(html, "html.parser")
-    records, seen = [], set()
-    for link in soup.select('a[href*="newstemplateprotal.jsp"]'):
-        url = urljoin(base, str(link["href"]))
-        docid = parse_qs(urlparse(url).query).get("docid", [url])[0]
-        if docid in seen:
-            continue
-        row = link.find_parent("tr")
-        cells = [clean(c.get_text(" ", strip=True)) for c in row.select("td")] if row else []
-        records.append({"id": item_id("oa", "notice", docid), "kind": "notice", "docid": docid,
-                        "title": clean(link.get("title") or link.get_text(" ", strip=True)),
-                        "url": url, "department": cells[1] if len(cells) > 1 else "",
-                        "published_at": published(" ".join(cells))})
-        seen.add(docid)
-        if len(records) >= limit:
-            break
-    if not records and not soup.select_one("#searchForm"):
-        raise AppError("oa_unavailable", "此网络无法读取 OA 列表；请查看本地设置中的 OA 状态。", "oa")
-    return records
-
-
-def parse_oa_article(html: str, base: str) -> dict:
-    soup = BeautifulSoup(html, "html.parser")
-    attachments = []
-    for row in soup.select('tr[id^="accessory_dsp_tr"]'):
-        field = row.select_one('input[name="accessory"]')
-        if field and str(field.get("value", "")).isdigit():
-            file_id = str(field["value"])
-            label = re.sub(r"附件\d+|下载", "", clean(row.get_text(" ", strip=True))).strip(" :：")
-            attachments.append({"name": label or f"附件 {file_id}", "url": base +
-                                f"/weaver/weaver.file.FileDownload?fileid={file_id}&download=1&requestid=0"})
-    return {"body": text_body(html), "attachments": attachments[:30]}
 
 
 JW_COLUMNS = {

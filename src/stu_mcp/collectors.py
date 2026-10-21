@@ -8,28 +8,15 @@ from bs4 import BeautifulSoup
 
 from .collection import Article as Article
 from .collection import Collection as Collection
+from .features.notices import service as notices
 from .network import CampusHTTP, checked_url
 from .pagination import complete_list as complete_list
-from .parsers import (
-    current_courses,
-    jw_exam_semester,
-    parse_assignment,
-    parse_elc,
-    parse_jw,
-    parse_links,
-    parse_oa,
-    parse_oa_article,
-    parse_public,
-    payload_records,
-)
+from .parsers import current_courses, jw_exam_semester, parse_assignment, parse_elc, parse_jw, payload_records
 from .parsing import CST, clean, is_login, item_id, stamp, text_body
 from .runtime import AppError
 from .sources import (
     JW_BASE,
     MYSTU_API,
-    OA_DIRECT,
-    OA_SECURE_PROXY,
-    PUBLIC_LISTINGS,
     YUKETANG_BASE,
 )
 from .sync import CourseSync
@@ -38,48 +25,11 @@ from .webvpn import protected_access
 
 
 def public(limit: int) -> Collection:
-    result = Collection(limited=True, coverage={"scope": "recent_listing_pages", "per_listing": limit})
-    with CampusHTTP("public") as http:
-        for category, url in PUBLIC_LISTINGS:
-            try:
-                html = http.text(url)
-                records = parse_public(html, url, category, limit)
-                if not records:
-                    raise AppError("schema_changed", "此公开栏目未找到预期文章链接。", "public")
-                for record in records:
-                    checked_url("public", record["url"])
-                result.items.extend(records)
-            except AppError as exc:
-                result.fail(category, exc)
-        url = "https://www.stu.edu.cn/kstd.htm"
-        try:
-            result.items.extend(parse_links(http.text(url), url))
-        except AppError as exc:
-            result.fail("校园服务入口", exc)
-    if not result.items:
-        raise AppError("source_unavailable", "公开来源暂时无法读取；这不表示没有通知。", "public")
-    return result
+    return notices.public(limit, http_factory=CampusHTTP)
 
 
 def oa(vault: Vault, limit: int) -> Collection:
-    # The published OA board currently works anonymously. Never send a session to its HTTP endpoint.
-    base, private, session_version = OA_DIRECT, False, None
-    http = CampusHTTP("oa")
-    url = base + "/login/Login.jsp?logintype=1"
-    try:
-        html = http.text(url)
-        records = parse_oa(html, base, limit)
-    except AppError:
-        http.client.close()
-        base, private = OA_SECURE_PROXY, True
-        accessed = protected_access(vault, base + "/login/Login.jsp?logintype=1",
-                                    lambda response: parse_oa(response.text, base, limit))
-        records, session_version = accessed.value, accessed.session_version
-    finally:
-        http.client.close()
-    return Collection(records, private=private, limited=True, session_version=session_version,
-                      coverage={"scope": "first_listing_page", "limit": limit,
-                                "access": "authenticated_https" if private else "anonymous_http"})
+    return notices.oa(vault, limit, http_factory=CampusHTTP, protected_reader=protected_access)
 
 
 def jw(vault: Vault, limit: int, semester: str) -> Collection:
@@ -331,22 +281,4 @@ def yuketang(vault: Vault, limit: int) -> Collection:
 
 
 def article(record: dict, vault: Vault) -> Article:
-    source, url = record["source"], record.get("url")
-    if source not in {"public", "oa"} or not url:
-        raise AppError("unsupported_article", "请通过对应课程工具读取此来源。", source)
-    session_version = None
-    if source == "oa" and urlparse(url).scheme == "https":
-        accessed = protected_access(vault, url, lambda response: response.text)
-        html, session_version = accessed.value, accessed.session_version
-    else:
-        with CampusHTTP(source) as http:
-            html = http.text(url)
-    if is_login(html):
-        raise AppError("needs_login", "正文需要在学校页面登录。", source)
-    if source == "oa":
-        parsed = urlparse(url)
-        return Article(parse_oa_article(html, f"{parsed.scheme}://{parsed.netloc}"), session_version)
-    soup = BeautifulSoup(html, "html.parser")
-    return Article({"body": text_body(html), "attachments": [
-        {"name": clean(a.get_text(" ", strip=True)) or "附件", "url": str(a["href"])}
-        for a in soup.select('a[href*="download"], a[href$=".pdf"], a[href$=".docx"]')][:30]})
+    return notices.article(record, vault, http_factory=CampusHTTP, protected_reader=protected_access)
