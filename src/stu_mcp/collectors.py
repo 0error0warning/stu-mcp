@@ -1,22 +1,19 @@
 """On-demand campus adapters. No schedulers, model calls, or production dependencies."""
 from __future__ import annotations
 
-from datetime import datetime, timedelta
-from urllib.parse import parse_qs, urlencode, urlparse
-
-from bs4 import BeautifulSoup
+from datetime import datetime
 
 from .collection import Article as Article
 from .collection import Collection as Collection
+from .features.mystu.service import mystu as collect_mystu
 from .features.notices import service as notices
-from .network import CampusHTTP, checked_url
+from .network import CampusHTTP
 from .pagination import complete_list as complete_list
-from .parsers import current_courses, jw_exam_semester, parse_assignment, parse_elc, parse_jw, payload_records
-from .parsing import CST, clean, is_login, item_id, stamp, text_body
+from .parsers import jw_exam_semester, parse_jw
+from .parsing import CST, clean, item_id, stamp, text_body
 from .runtime import AppError
 from .sources import (
     JW_BASE,
-    MYSTU_API,
     YUKETANG_BASE,
 )
 from .sync import CourseSync
@@ -66,134 +63,7 @@ def default_semester() -> str:
 
 
 def mystu(vault: Vault, limit: int) -> Collection:
-    result = Collection(private=True, coverage={"scope": "latest_term", "max_courses": limit,
-                                                "activities_per_course": 50, "detail_limit": 20})
-    detail_count = 0
-    with CampusHTTP("mystu", vault.load("mystu")) as http:
-        http.json(MYSTU_API + "/user/validate?ver=1.1")
-        payload = http.json(MYSTU_API + "/course/query")
-        raw_courses = payload.get("items")
-        if not isinstance(raw_courses, list):
-            raise AppError("schema_changed", "MySTU 的课程字段发生变化。", "mystu")
-        courses = payload_records(payload)
-        if len(courses) != len(raw_courses) or any(not (c.get("id") or c.get("url")) for c in courses):
-            raise AppError("schema_changed", "MySTU 课程缺少可识别的记录。", "mystu")
-        selected = current_courses(courses)
-        dated = [c for c in courses if isinstance(c.get("attendanceYear"), int)
-                 and isinstance(c.get("attendanceSemester"), int)]
-        inventory_complete = complete_list(payload, len(courses)) and len(dated) == len(courses)
-        semester = (f"{selected[0]['attendanceYear']}-{selected[0]['attendanceSemester']}"
-                    if selected and dated else None)
-        result.sync = CourseSync(
-            course_ids=frozenset(str(c.get("id") or c["url"]) for c in selected) if inventory_complete else None,
-            semester=semester)
-        result.coverage.update(semester=semester, inventory_complete=inventory_complete,
-                               selected_courses=len(selected))
-        result.limited = len(selected) > limit or not inventory_complete
-        for course in selected[:limit]:
-            name = clean(course.get("name") or course.get("groupName"))
-            url = str(course.get("url") or "")
-            cid = str(course.get("id") or url)
-            try:
-                if url:
-                    checked_url("mystu", url)
-                provenance = {"course_id": cid, "semester": semester,
-                              "year": course.get("attendanceYear"), "term": course.get("attendanceSemester")}
-                result.items.append({"id": item_id("mystu", "course", cid), "kind": "course", "title": name,
-                                     "url": url or None, **provenance, "teacher": clean(course.get("teacher"))})
-                if "/courses/elc/" in url:
-                    html = http.text(url)
-                    if is_login(html):
-                        raise AppError("needs_elc_login", "ELC 还需在学校页面完成登录；请重新打开 MySTU 登录。", "mystu")
-                    soup = BeautifulSoup(html, "html.parser")
-                    if not soup.select_one(".course-content"):
-                        raise AppError("schema_changed", "ELC 未返回可识别的课程内容。", "mystu")
-                    activities = parse_elc(html, url)
-                    nodes = soup.select(".course-content li.activity, .course-content .activity[class*='modtype_']")
-                    if len(nodes) != len(activities):
-                        raise AppError("schema_changed", "ELC 部分活动未能解析，保留其旧缓存。", "mystu")
-                    # HTML may contain just one section or lazily loaded activities.
-                    # Recognizing a page is not proof of a complete course snapshot.
-                    activity_complete = False
-                else:
-                    moodle_id = parse_qs(urlparse(url).query).get("id", [""])[0]
-                    if not moodle_id:
-                        result.limited = True
-                        continue
-                    activity_payload = http.json(MYSTU_API + "/courseactivity/query?" +
-                                                 urlencode({"moodleCourseId": moodle_id, "category": "undefined",
-                                                            "lang": "zh-CN"}))
-                    activities = activity_payload.get("courseActivities")
-                    activity_complete = isinstance(activities, list) and complete_list(
-                        activity_payload, len(activities), 50)
-                if not isinstance(activities, list) or any(not isinstance(a, dict) for a in activities):
-                    raise AppError("schema_changed", "MySTU 活动字段发生变化。", "mystu")
-                result.limited |= not activity_complete
-                for activity in activities[:50]:
-                    title = clean(activity.get("activityTitle"))
-                    if not title:
-                        raise AppError("schema_changed", "MySTU 活动缺少标题，未把解析失败当作空列表。", "mystu")
-                    link = str(activity.get("activityUrl") or "")
-                    category = str(activity.get("activityCategory") or "resource")
-                    kind = "task" if category in {"assignment", "assign", "quiz"} else "resource"
-                    detail = {}
-                    aid = item_id("mystu", kind, cid, link or title)
-                    detail_state = {"detail_status": "not_read"} if kind == "task" else {}
-                    if link:
-                        checked_url("mystu", link)
-                    if kind == "task" and link and detail_count < 20:
-                        detail_count += 1
-                        try:
-                            detail_html = http.text(link)
-                            if is_login(detail_html):
-                                raise AppError("needs_elc_login", "作业详情需要学校页面登录。", "mystu")
-                            detail = parse_assignment(detail_html)
-                            detail_state = {"detail_status": "read"}
-                        except AppError as exc:
-                            if exc.code in {"login_expired", "needs_login", "needs_elc_login"}:
-                                exc = AppError("resource_login_required",
-                                               "此活动返回登录页；不能据此判断整个 MySTU 会话失效，请先核对该活动原页面。",
-                                               "mystu", http_status=exc.http_status)
-                            detail_state = {"detail_status": "unavailable", "detail_error": exc.result()}
-                            result.fail("作业详情", exc, stage="task_detail", course_id=cid, item_id=aid)
-                    elif kind == "task" and link:
-                        result.limited = True
-                        detail_state = {"detail_status": "limit_reached"}
-                    due = detail.get("due_at") or stamp(activity.get("additionalDueDate"))
-                    if kind == "task":
-                        detail_state["due_at_status"] = ("available" if due else "not_found_in_detail"
-                                                         if detail_state["detail_status"] == "read"
-                                                         else "detail_" + detail_state["detail_status"])
-                    result.items.append({"id": aid, "kind": kind, **detail_state,
-                                         "title": title, "course": name, **provenance, "url": link or None,
-                                         "category": category, "due_at": due,
-                                         "school_status": detail.get("school_status"), "status": "todo",
-                                         "body": detail.get("description") or clean(activity.get("description"))[:6000]})
-                if activity_complete:
-                    result.sync.complete_courses.add(cid)
-            except AppError as exc:
-                result.fail("课程活动", exc, stage="course_activities", course_id=cid)
-        # Calendar data is optional and independent of successful course collection.
-        start, end = datetime.now(CST) - timedelta(days=7), datetime.now(CST) + timedelta(days=31)
-        try:
-            schedule = http.json(MYSTU_API + "/userschedule/query?" +
-                                 urlencode({"startTime": int(start.timestamp() * 1000),
-                                            "endTime": int(end.timestamp() * 1000), "category": "all"}))
-            events = payload_records(schedule)
-            result.limited |= len(events) > 50
-            for event in events[:50]:
-                title = clean(event.get("title") or event.get("name"))
-                if title:
-                    result.items.append({"id": item_id("mystu", "event", event.get("id"), title),
-                                         "kind": "event", "title": title,
-                                         "start_at": stamp(event.get("startTime")),
-                                         "end_at": stamp(event.get("endTime")),
-                                         "location": clean(event.get("location"))})
-        except AppError as exc:
-            result.fail("个人日程", exc, stage="schedule")
-    result.coverage.update(complete_activity_courses=len(result.sync.complete_courses),
-                           course_snapshot_complete=result.sync.complete)
-    return result
+    return collect_mystu(vault, limit, http_factory=CampusHTTP)
 
 
 def yuketang(vault: Vault, limit: int) -> Collection:

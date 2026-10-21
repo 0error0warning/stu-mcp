@@ -3,10 +3,13 @@ from __future__ import annotations
 
 import math
 import re
-from urllib.parse import urljoin, urlparse
 
 from bs4 import BeautifulSoup
 
+from .features.mystu.parser import current_courses as current_courses
+from .features.mystu.parser import parse_assignment as parse_assignment
+from .features.mystu.parser import parse_elc as parse_elc
+from .features.mystu.parser import payload_records as payload_records
 from .features.notices.parser import parse_links as parse_links
 from .features.notices.parser import parse_oa as parse_oa
 from .features.notices.parser import parse_oa_article as parse_oa_article
@@ -119,55 +122,3 @@ def jw_exam_semester(html: str) -> str:
         if option is not None and re.fullmatch(r"20\d{2}-20\d{2}-[123]", str(option["value"])):
             return str(option["value"])
     raise AppError("schema_changed", "教务未返回可识别的考试学期；请明确指定学期后重试。", "jw")
-
-
-def payload_records(payload: dict) -> list[dict]:
-    fields = [f.strip() for f in str(payload.get("fields") or "").split(",") if f]
-    return [r if isinstance(r, dict) else dict(zip(fields, r, strict=False))
-            for r in payload.get("items") or [] if isinstance(r, (dict, list))]
-
-
-def current_courses(courses: list[dict]) -> list[dict]:
-    dated = [c for c in courses if isinstance(c.get("attendanceYear"), int)
-             and isinstance(c.get("attendanceSemester"), int)]
-    if not dated:
-        return courses
-    term = max((c["attendanceYear"], c["attendanceSemester"]) for c in dated)
-    return [c for c in dated if (c["attendanceYear"], c["attendanceSemester"]) == term]
-
-
-def parse_elc(html: str, base: str) -> list[dict]:
-    soup = BeautifulSoup(html, "html.parser")
-    records = []
-    for node in soup.select(".course-content li.activity, .course-content .activity[class*='modtype_']"):
-        link = node.select_one(".activityinstance a[href], a[href]")
-        if not link:
-            continue
-        url = urljoin(base, str(link["href"]))
-        match = re.search(r"/mod/([^/]+)/", urlparse(url).path)
-        category = match.group(1) if match else "resource"
-        title_node = node.select_one(".instancename") or link
-        records.append({"activityTitle": clean(title_node.get_text(" ", strip=True)), "activityUrl": url,
-                        "activityCategory": "assignment" if category in {"assign", "quiz"} else category,
-                        "moodleType": category, "description": clean(node.get_text(" ", strip=True))[:4000]})
-    return records
-
-
-def parse_assignment(html: str) -> dict:
-    soup = BeautifulSoup(html, "html.parser")
-    values = {}
-    for row in soup.select("tr"):
-        cells = row.select("th, td")
-        if len(cells) >= 2:
-            values[clean(cells[0].get_text(" ", strip=True)).lower()] = clean(cells[-1].get_text(" ", strip=True))
-    for term in soup.select("dt"):
-        sibling = term.find_next_sibling("dd")
-        if sibling:
-            values[clean(term.get_text(" ", strip=True)).lower()] = clean(sibling.get_text(" ", strip=True))
-    def field(pattern: str) -> str | None:
-        return next((v for k, v in values.items() if re.search(pattern, k)), None)
-    intro = soup.select_one("#intro, .activity-description")
-    due = field("due date|截止|到期|closes|关闭")
-    status = field("submission status|提交状态|completion status|完成状态")
-    return {"due_at": parse_date(due), "school_status": status,
-            "description": clean(intro.get_text(" ", strip=True))[:6000] if intro else ""}
