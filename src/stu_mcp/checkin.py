@@ -15,6 +15,7 @@ from urllib.parse import urlparse
 import httpx
 
 from .checkin_process import launch_windows_worker
+from .runtime import checkin_home
 
 LABELS = {"service_not_started": "服务未启动", "not_logged_in": "未登录", "paused": "已暂停",
           "monitoring": "监听中", "query_error": "查询异常", "starting": "正在启动", "stopping": "正在暂停"}
@@ -27,11 +28,7 @@ RESULT_KEYS = {"course_id", "course_name", "activity_id", "type", "status", "mes
 
 
 def default_home():
-    if raw := os.environ.get("STU_CHECKIN_HOME"):
-        return Path(raw).expanduser().resolve()
-    # LocalAppData is redirected inside packaged Windows clients; a user-profile
-    # location is shared with independently launched processes and desktop shortcuts.
-    return Path.home() / ".local" / "share" / "stu-checkin"
+    return checkin_home()
 
 
 def _lock(stream, *, release=False):

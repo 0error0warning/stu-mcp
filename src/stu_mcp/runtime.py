@@ -57,6 +57,15 @@ class AppError(Exception):
         return result
 
 
+def checkin_home() -> Path:
+    """One physical worker home for the MCP client and the independent worker."""
+    raw = os.environ.get("STU_CHECKIN_HOME")
+    if raw:
+        return Path(raw).expanduser().resolve()
+    # Packaged desktop clients may redirect LocalAppData per process.
+    return Path.home() / ".local" / "share" / "stu-checkin"
+
+
 def private_write(path: Path, data: bytes) -> None:
     reject_symlinks(path)
     path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
