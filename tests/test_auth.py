@@ -138,7 +138,7 @@ def test_logout_also_cancels_a_login_job_before_its_worker_starts(app, session, 
     queued = []
     monkeypatch.setattr(auth.threading, "Thread", lambda *, target, **_: SimpleNamespace(start=lambda: queued.append(target)))
     jobs = auth.LoginJobs(app.vault)
-    jobs.start("mystu")
+    jobs.start("mystu", backend="browser")
     app.logout("mystu")
     queued.pop()()
     assert jobs.snapshot()[0]["result"]["status"] == "session_changed"

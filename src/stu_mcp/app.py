@@ -333,6 +333,9 @@ class App:
                 "unverified_count": page["unverified_count"]}
 
     def logout(self, service: str) -> dict:
+        if service == "repair":
+            with key_lock(self.runtime.home, "repair"):
+                return self.vault.logout("repair")
         source = "oa" if service == "webvpn" else service
         if source not in SOURCES or not SOURCES[source].session:
             raise AppError("unknown_service", "此来源没有需要移除的登录态。")

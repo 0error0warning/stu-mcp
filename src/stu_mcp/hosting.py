@@ -32,7 +32,7 @@ class HostRuntime:
         self.transport = transport
         self.checkin = checkin if checkin is not None else CheckinClient(
             opener=open_local_page if transport == "stdio" else lambda _: False)
-        self.repairs = RepairDrafts()
+        self.repairs = RepairDrafts(vault=self.app.vault)
         self.network = NetworkDiagnostics()
         self.network_audit = NetworkAudit()
         self._setup: SetupServer | None = None
@@ -51,20 +51,23 @@ class HostRuntime:
                         "shared_between_clients": True, "multi_user": False, "workers": 1,
                         "authentication": "local_process" if self.transport == "stdio" else "private_bearer",
                         "oauth_discovery": False, "interaction": interaction,
+                        "default_authentication": "http", "browser_backend": "optional_explicit",
                         "credential_backend": backend_name(), "credential_backend_verified": False,
                         "setup_on": "mcp_host", "setup_url_returned_to_agent": False,
                         "login_flows": {
                             "duifene": {"method": "wechat_callback", "input": "host_tty_or_loopback_page",
                                         "requires_display": False, "new_monitoring_plan": False,
                                         "existing_authorized_plan_may_resume": True},
-                            "webvpn": {"manual_login": "official_browser", "configure": "host_tty_or_loopback_page",
-                                       "automatic_renewal": "headless_totp", "human_challenges": "pause",
+                            "webvpn": {"manual_login": "http_cli", "configure": "host_tty_or_loopback_page",
+                                       "automatic_renewal": "http_totp", "human_challenges": "pause",
                                        "real_account_renewal_verified": False},
-                            **{source: {"method": "official_browser", "new_login_requires_display": True,
+                            **{source: {"method": "http_qr" if source == "yuketang" else "cas_http",
+                                        "new_login_requires_display": False, "input": "host_tty",
                                         "saved_session_reads_require_display": False}
                                for source in ("jw", "mystu", "yuketang")},
-                            "repair": {"method": "isolated_official_browser", "requires_display": True,
-                                       "persistent_session": False}},
+                            "repair": {"method": "isolated_cas_http", "requires_display": False,
+                                       "persistent_session": True, "draft_storage": "process_memory",
+                                       "input": "host_tty"}},
                         "repair_state": "process_memory", "repair_survives_restart": False,
                         "downloads_on": "mcp_host"}}
 
@@ -73,7 +76,7 @@ class HostRuntime:
             return {"ok": False, "status": "host_setup_required", "execution": execution_context(),
                     "message": "对分易请由本人在 MCP 宿主终端运行 stu-mcp login duifene，使用原微信回调。"
                     "WebVPN 自动重登可在终端用 stu-mcp webvpn-auto configure 配置；不把凭据发给 agent。"
-                    "其他来源的首次登录和报修仍需本人操作学校浏览器，当前尚未实现全 CLI。"
+                    "教务、MySTU、雨课堂和报修请运行 stu-mcp login 对应来源，默认使用 HTTP，无需显示环境。"
                     "可选设置页仍仅在宿主回环提供，私密地址不会通过 MCP 返回。"}
         with self._lock:
             if self._closed:
@@ -89,7 +92,7 @@ class HostRuntime:
             else:
                 opened = open_local_page(self._setup.url)
         return {"ok": opened, "status": "settings_opened" if opened else "local_browser_required",
-                "message": "请在 MCP 宿主的浏览器完成设置；对分易和 WebVPN 的终端入口见 get_capabilities。"}
+                "message": "账号认证默认在 MCP 宿主终端运行 stu-mcp login 来源；设置页提供本机可选配置。"}
 
     def checkin_result(self, result: dict[str, Any]) -> dict[str, Any]:
         if self.transport != "stdio" and (result.get("needs_login") or result.get("next_action") == "open_local_browser"):

@@ -13,7 +13,8 @@ from stu_mcp.network import CampusHTTP
 from stu_mcp.runtime import AppError
 from stu_mcp.setup_web import SetupServer
 from stu_mcp.sources import OA_SECURE_PROXY
-from stu_mcp.webvpn import KEYRING_SERVICE, WebVPNConfig, automatic_login, parse_totp, protected_access
+from stu_mcp.webvpn import KEYRING_SERVICE, WebVPNConfig, parse_totp, protected_access
+from stu_mcp.webvpn import _browser_automatic_login as automatic_login
 
 RAW_SEED = b"12345678901234567890"  # Published RFC 6238 test vector, never a user's secret.
 SEED = base64.b32encode(RAW_SEED).decode()

@@ -220,13 +220,16 @@ def test_no_display_limits_manual_browser_without_disabling_callback_or_auto_ren
     assert flows["duifene"]["requires_display"] is False
     assert flows["duifene"]["method"] == "wechat_callback"
     assert flows["duifene"]["existing_authorized_plan_may_resume"] is True
-    assert flows["webvpn"]["automatic_renewal"] == "headless_totp"
+    assert flows["webvpn"]["automatic_renewal"] == "http_totp"
     assert flows["webvpn"]["human_challenges"] == "pause"
     assert flows["webvpn"]["real_account_renewal_verified"] is False
     assert result["webvpn_auto_login"]["enabled"]
     for source in ("jw", "mystu", "yuketang"):
-        assert flows[source]["new_login_requires_display"] is True
+        assert flows[source]["new_login_requires_display"] is False
+        assert flows[source]["method"] == ("http_qr" if source == "yuketang" else "cas_http")
         assert flows[source]["saved_session_reads_require_display"] is False
+    assert hosting["default_authentication"] == "http"
+    assert hosting["browser_backend"] == "optional_explicit"
     assert hosting["credential_backend"] == "encrypted_file" and not hosting["credential_backend_verified"]
     assert result["privacy"]["credential_backend"] == "encrypted_file"
     assert result["privacy"]["storage"] == "external_key_and_encrypted_sessions"

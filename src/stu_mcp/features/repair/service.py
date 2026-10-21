@@ -35,7 +35,7 @@ def check_review(review: dict | None, review_id: str, capture: dict) -> None:
         raise AppError("repair_form_changed", "表单内容已改变，原确认不可使用；请重新展示并确认。", "repair")
 
 class RepairService:
-    """One owned browser at a time; bounded in-memory drafts, no hidden daemon."""
+    """One owned form session at a time; bounded in-memory drafts, no hidden daemon."""
     def __init__(self, adapter_factory: SessionFactory):
         self.adapter_factory = adapter_factory
         self.lock = threading.RLock()
@@ -100,7 +100,7 @@ class RepairService:
         return {"ok": True, **draft, "preview": preview, "system": "sangpushan_dorm",
                 "entry_url": REPAIR_HOME, "form_url": REPAIR_FORM, "form_verified_on": VERIFIED_ON,
                 "building_options": list(BUILDINGS), "submission_supported": True, "confirmation_required": True,
-                "storage": "process_memory_only", "login_session_saved": False,
+                "storage": "process_memory_only", "login_session_saved": draft.get("login_session_saved", False),
                 "message": draft.get("message", "先填写、展示实际表单并等待用户明确确认；未确认不提交。")}
 
     def open(self, draft_id: str) -> dict:
@@ -278,13 +278,13 @@ class RepairService:
             else:
                 self._update(draft_id, status=exc.code, error=exc.result(), field_matches={})
         except Exception:
-            # Playwright exceptions often contain SSO URLs and entered values.
-            error = {"status": "repair_browser_error", "message": "学校窗口已关闭、页面无法访问或字段变化；"
+            # Transport exceptions can contain URLs or entered values.
+            error = {"status": "repair_session_error", "message": "报修会话已关闭、页面无法访问或字段变化；"
                      "未输出个人页面和认证信息。"}
             if self.drafts[draft_id].get("request_sent"):
                 self._update(draft_id, window_status="closed", error=error)
             else:
-                self._update(draft_id, status="repair_browser_error", field_matches={}, error=error)
+                self._update(draft_id, status="repair_session_error", field_matches={}, error=error)
         finally:
             self.reviews.pop(draft_id, None)
             if stop.is_set():

@@ -113,14 +113,14 @@ class SetupServer:
                     data = json.loads(self.rfile.read(length))
                     if not isinstance(data, dict):
                         raise ValueError
-                    allowed_keys = {"/api/login": {"service"}, "/api/logout": {"service"},
-                                    "/api/transport": {"jw_http_compat"},
+                    allowed_keys = {"/api/login": {"service", "backend"}, "/api/logout": {"service"},
+                                    "/api/transport": {"jw_http_compat", "oa_http_compat"},
                                     "/api/webvpn-auto": {"enabled", "username", "password", "totp", "encoding"},
                                     "/api/webvpn-auto/remove": set()}
                     if self.path not in allowed_keys or not set(data).issubset(allowed_keys[self.path]):
                         raise ValueError
                     if self.path == "/api/login":
-                        result = owner.jobs.start(str(data.get("service", "")))
+                        result = owner.jobs.start(str(data.get("service", "")), backend=str(data.get("backend", "http")))
                     elif self.path == "/api/logout":
                         result = owner.app.logout(str(data.get("service", "")))
                     elif self.path == "/api/transport":

@@ -10,7 +10,8 @@ from playwright.sync_api import sync_playwright
 from stu_mcp import webvpn
 from stu_mcp.runtime import AppError
 from stu_mcp.sources import OA_SECURE_PROXY
-from stu_mcp.webvpn import WebVPNConfig, automatic_login, protected_access
+from stu_mcp.webvpn import WebVPNConfig, protected_access
+from stu_mcp.webvpn import _browser_automatic_login as automatic_login
 
 FIELDS = {"enabled": True, "username": "SYNTHETIC_USER", "password": "SYNTHETIC_PASSWORD",
           "totp": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ"}  # RFC 6238 test vector.
@@ -109,6 +110,11 @@ def offline_browser(monkeypatch):
                 executable_path=real.chromium.executable_path, launch=launch))
 
         monkeypatch.setattr(webvpn, "sync_playwright", playwright)
+        # These DOM tests explicitly exercise the optional legacy backend. The
+        # production default remains HTTP; accidental dispatch must not contact STU.
+        monkeypatch.setattr(webvpn, "automatic_login", automatic_login)
+        monkeypatch.setattr("stu_mcp.auth_http.webvpn.acquire_state",
+                            lambda **_: pytest.fail("offline DOM test cannot start HTTP authentication"))
         yield evidence
 
 
