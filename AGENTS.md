@@ -21,6 +21,10 @@ The source baseline is School Hub commit `13f1b216ac35269d9840b6854ccff64c1e25e5
 - Preserve each source's existing authentication route. Desktop school login stays in the user's official
   interactive browser. Duifene uses its existing WeChat callback, entered on the local page or through the
   human-only hidden terminal prompt; do not substitute the separately researched official QR/SignalR flow.
+- Distinguish implemented adapters from upstream protocol requirements. Test HTTP-only authentication first,
+  use headless browsers when needed, and request human interaction for observed challenges. An existing
+  headed browser is not evidence that the school requires a desktop. Anonymous initialization, synthetic
+  tests and reading with saved cookies do not prove real HTTP-only first login; retain that boundary in docs.
 - Terminal credential/callback input requires a real TTY and disabled echo; fail instead of falling back to
   plaintext stdin, command-line arguments, environment values or MCP parameters. CLI reuses existing proof,
   secure storage and the single check-in worker; it must not create a new monitoring plan. Previously authorized

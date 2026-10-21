@@ -99,7 +99,7 @@ CLI 返回 JSON，读取 `ok`、`status`、`coverage`、`limited`、`errors` 和
 
 对分易使用 MCP 的 `get_checkin_status`、`open_checkin_page`、`list_checkin_courses`、`select_checkin_courses`、`start_checkin_monitor`、`pause_checkin_monitor`、`get_checkin_results`、`stop_checkin_service`。先查状态；桌面模式可打开宿主网页让用户完成原微信回调流程。开发分支也支持本人在宿主终端运行 `stu-mcp login duifene` 并隐藏输入回调；私有 HTTP 按返回的 `next_action` 引导用户，agent 不索要或代填回调，不采用官网扫码替换原流程。登录不创建新监听计划，原已授权的同账号持续计划可按原规则恢复。只有用户要求新监听时才启动，`minutes=0` 表示持续监听。MCP 退出后后台仍运行，状态为查询异常时不能说已暂停。结果要区分本程序提交成功与平台已有出勤，不能把空结果当作未签到。CLI 登录的 `login_outcome=unknown` 不得重发回调，附带旧状态不能当作本次登录成功。具体状态约定见仓库 `docs/checkin.md`。
 
-公开信息和匿名 OA 无需账号。先用 `get_capabilities` 核对宿主、传输和各来源的 `login_flows`；缺少人工浏览器显示不代表所有登录都不可用。教务、MySTU、雨课堂首次登录及报修当前仍需要本人操作官方浏览器，没有全 CLI 实现。其他个人来源返回 `needs_login` 或 `login_expired` 时，让用户在具有所需显示环境的宿主运行 `stu-mcp setup` 并完成对应登录。设置私密地址不粘贴到对话中。用户完成后再刷新该来源，已有有效会话的读取不需要桌面。
+公开信息和匿名 OA 无需账号。先用 `get_capabilities` 核对宿主、传输和各来源的 `login_flows`；缺少人工浏览器显示不代表所有登录都不可用。教务、MySTU、雨课堂首次登录及报修的当前适配器采用本人操作的官方浏览器，没有全 CLI 实现；这是实现范围，不能据此断言学校协议要求桌面。纯 HTTP 匿名前置或已有会话查询也不证明真实首次认证已完成。其他个人来源返回 `needs_login` 或 `login_expired` 时，让用户在具有所需显示环境的宿主运行 `stu-mcp setup` 并完成对应登录。设置私密地址不粘贴到对话中。用户完成后再刷新该来源，已有有效会话的读取不需要桌面。
 
 默认手动登录时，密码、验证码和扫码只在官方学校 / 雨课堂页面处理；不向用户索要凭据，不读取或导出会话文件。教务 HTTP 兼容由用户在本地设置页选择，agent 不自动开启。
 
