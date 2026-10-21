@@ -6,6 +6,8 @@ import threading
 import time
 from pathlib import Path
 
+from stu_mcp.http_privacy import private_http_logging
+
 from . import __version__
 from .auth import AUTH_URL, callback_code
 from .auth import CALLBACK as CALLBACK
@@ -344,7 +346,11 @@ class Controller:
                 raise OperationError("请先暂停监听，再切换微信连接。")
             self._busy = True
             try:
-                result = bridge.login_by_link("https://www.duifene.com/?code=" + code)
+                # LocalServer calls connect synchronously on its handler thread.
+                # Keep the upstream one-time callback and session traces private
+                # on that same thread; do not rely on executor propagation.
+                with private_http_logging():
+                    result = bridge.login_by_link("https://www.duifene.com/?code=" + code)
                 if not result.get("ok"):
                     raise OperationError(clean_message(result.get("message", "连接未完成，请重新获取微信链接。")))
                 bridge._sentinel.start()

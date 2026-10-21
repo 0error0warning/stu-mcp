@@ -82,16 +82,15 @@ def _check_consistency(values: Mapping[str, Any]) -> str:
 def _normalize(values: dict[str, Any]) -> None:
     """联动归一化（就地修改）。
 
-    证书校验已不在前端暴露，其取值完全由代理决定：配置代理即视为抓包调试
-    场景，其证书通常无法通过系统信任链校验，故关闭校验；无代理时恢复为安全
-    的默认开启，避免清空代理后残留 False 且无从恢复。
+    代理只改变连接路径，不降低 HTTPS 证书校验。旧配置中的 False 也归一为
+    安全值；自签名证书未受信时应失败，不以关闭校验恢复连接。
 
     代理地址统一补全 scheme：requests 要求形如 ``http://host:port``，缺 scheme
     时会在发请求时抛 ProxySchemeUnknown，表现为「保存成功但代理无效」。用户常
     只填 ``127.0.0.1:8080``，这里补成 ``http://127.0.0.1:8080``。
     """
     values["proxy_url"] = _normalize_proxy(str(values.get("proxy_url", "")).strip())
-    values["verify_tls"] = not values["proxy_url"]
+    values["verify_tls"] = True
 
 
 def _normalize_proxy(raw: str) -> str:
@@ -121,8 +120,7 @@ class Settings:
         "MicroMessenger/8.0.40(0x1800282a) NetType/WIFI Language/zh_CN "
     )
     ini_filename: str = "duifenyi.ini"
-    # 正式运行不启用明文代理、开启 TLS 校验。抓包调试时在设置中显式填写
-    # 代理地址并关闭校验。
+    # 代理配置保留；HTTPS/WSS 始终校验证书，不提供关闭校验的配置。
     proxy_url: str = ""
     verify_tls: bool = True
     request_timeout_s: float = 10.0
@@ -158,6 +156,13 @@ class Settings:
     probe_max_residual_m: float = 50.0
     meters_per_deg_lat: float = 111132.92
     meters_per_deg_lon: float = 111320.0
+
+    def __post_init__(self) -> None:
+        # Direct constructors must obey the same safe policy as settings loaded
+        # from storage. Keep the legacy field accepted, but never restore False.
+        values = {"proxy_url": self.proxy_url or ""}
+        _normalize(values)
+        self.proxy_url, self.verify_tls = values["proxy_url"], values["verify_tls"]
 
     @property
     def proxies(self) -> dict[str, str] | None:

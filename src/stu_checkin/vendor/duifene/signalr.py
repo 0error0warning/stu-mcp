@@ -8,11 +8,7 @@ from collections.abc import Callable
 from typing import Any
 
 import requests
-import urllib3
 import websocket
-
-# 关闭未验证 HTTPS 告警（与主程序一致：走本地抓包代理、不校验证书）
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 RS = "\x1e"  # SignalR 记录分隔符
 
@@ -50,7 +46,7 @@ class DuifeneMessageHub:
         user_agent: str = DEFAULT_UA,
         on_message: Callable[[str, list[Any]], None] | None = None,
         on_log: Callable[[str], None] | None = None,
-        verify: bool = False,
+        verify: bool = True,
         proxies: dict[str, str] | None = None,
     ) -> None:
         self.key_id = key_id
@@ -59,12 +55,14 @@ class DuifeneMessageHub:
         self.user_agent = user_agent
         self.on_message = on_message
         self.on_log = on_log or (lambda _msg: None)
-        self.verify = verify
+        # Preserve the legacy argument for callers, without retaining its old
+        # certificate-bypass behavior for either negotiation or WebSocket TLS.
+        self.verify = True
         self.proxies = proxies
 
         self._session = requests.Session()
         self._session.headers["User-Agent"] = user_agent
-        self._session.verify = verify
+        self._session.verify = True
         self._session.trust_env = False
         if proxies:
             self._session.proxies = proxies
@@ -106,7 +104,7 @@ class DuifeneMessageHub:
         return websocket.create_connection(
             ws_url,
             header=[f"Origin: {self.origin}", f"User-Agent: {self.user_agent}"],
-            sslopt={"cert_reqs": ssl.CERT_NONE},
+            sslopt={"cert_reqs": ssl.CERT_REQUIRED, "check_hostname": True},
             http_proxy_host=self._proxy_host(),
             http_proxy_port=self._proxy_port(),
             timeout=timeout,

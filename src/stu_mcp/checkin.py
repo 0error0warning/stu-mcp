@@ -15,6 +15,7 @@ from urllib.parse import urlparse
 import httpx
 
 from .checkin_process import launch_windows_worker
+from .http_privacy import private_http_logging
 from .runtime import checkin_home
 
 LABELS = {"service_not_started": "服务未启动", "not_logged_in": "未登录", "paused": "已暂停",
@@ -73,8 +74,13 @@ class CheckinClient:
                 "service_running": running, "monitoring": False if running is False else None,
                 "logged_in": None, "needs_login": False, "observed_at": time.time()}
 
+    @contextmanager
     def _client(self):
-        return httpx.Client(trust_env=False, follow_redirects=False, timeout=2, transport=self.transport)
+        # The loopback worker's session cookie authorizes real check-in control;
+        # its HTTP traces and hidden callback input are private like school auth.
+        with private_http_logging(), httpx.Client(trust_env=False, follow_redirects=False,
+                                                  timeout=2, transport=self.transport) as client:
+            yield client
 
     def _discover(self):
         try:

@@ -15,7 +15,7 @@ class _PrivateRequestFilter(logging.Filter):
 
 # httpx INFO includes complete URLs; httpcore DEBUG includes response headers.
 for _name in ("httpx", "httpcore.connection", "httpcore.http11", "httpcore.http2",
-              "httpcore.proxy", "httpcore.socks"):
+              "httpcore.proxy", "httpcore.socks", "urllib3.connectionpool"):
     logging.getLogger(_name).addFilter(_PrivateRequestFilter())
 
 
