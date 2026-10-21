@@ -15,8 +15,9 @@ from urllib.parse import parse_qsl, urlencode, urlparse
 from playwright.sync_api import Error as BrowserError
 from playwright.sync_api import sync_playwright
 
+from .features.jw.parser import jw_authenticated
 from .network import PASSWORD_KEYS, CampusHTTP, scoped_state
-from .parsers import is_login, jw_authenticated
+from .parsing import is_login
 from .runtime import AppError, key_lock
 from .sources import JW_HOME, JW_LOGIN_URL, MYSTU_API, MYSTU_BASE, SOURCES, YUKETANG_BASE
 from .store import Store

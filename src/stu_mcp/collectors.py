@@ -5,15 +5,14 @@ from datetime import datetime
 
 from .collection import Article as Article
 from .collection import Collection as Collection
+from .features.jw.service import jw as collect_jw
 from .features.mystu.service import mystu as collect_mystu
 from .features.notices import service as notices
 from .network import CampusHTTP
 from .pagination import complete_list as complete_list
-from .parsers import jw_exam_semester, parse_jw
 from .parsing import CST, clean, item_id, stamp, text_body
 from .runtime import AppError
 from .sources import (
-    JW_BASE,
     YUKETANG_BASE,
 )
 from .sync import CourseSync
@@ -30,30 +29,7 @@ def oa(vault: Vault, limit: int) -> Collection:
 
 
 def jw(vault: Vault, limit: int, semester: str) -> Collection:
-    legacy = vault.runtime.preferences()["jw_http_compat"]
-    base = JW_BASE
-    result = Collection(private=True, limited=True, coverage={"grade_scope": semester or "available_table",
-                                                             "max_grade_rows": 200,
-                                                             "exam_semester": semester or None,
-                                                             "transport": "https", "login_entry": "jwglxt"})
-    with CampusHTTP("jw", vault.load("jw"), allow_legacy_http=legacy) as http:
-        response = http.request(base + "/kscj/cjcx_list",
-                                data={"kksj": semester, "kcmc": "", "kcxz": "", "kspage": "1", "jspage": "200"})
-        html = response.text
-        grades = parse_jw(html, "grade")
-        result.coverage["grade_rows_read"] = len(grades)
-        result.items.extend(g for g in grades[:200] if not semester or g["semester"] == semester)
-        try:
-            term = semester or jw_exam_semester(http.text(base + "/xsks/xsksap_query"))
-            result.coverage["exam_semester"] = term
-            response = http.request(base + "/xsks/xsksap_list", data={"xnxqid": term, "xqlb": "", "xqlbmc": ""})
-            exams = parse_jw(response.text, "exam", term)
-            result.items.extend(exams[:limit])
-            result.coverage["exam_rows_read"] = len(exams)
-        except AppError as exc:
-            result.fail("考试安排", exc)
-        result.coverage["transport"] = "school_legacy_http" if http.used_legacy_http else "https"
-    return result
+    return collect_jw(vault, limit, semester, http_factory=CampusHTTP)
 
 
 def default_semester() -> str:

@@ -7,8 +7,8 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import UTC, datetime
 
+from .features.jw.schema import JW_SCHEMA_VERSION
 from .huyou import merge_post, searchable_text
-from .parsers import JW_SCHEMA_VERSION
 from .runtime import AppError, Runtime, reject_symlinks
 from .sync import COURSE_KINDS, CourseSync, in_scope
 from .vault import Vault
