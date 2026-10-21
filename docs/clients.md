@@ -1,6 +1,6 @@
 # 接入你的 agent
 
-官方资料核对日期：2026-10-05。STU MCP 运行在学生自己的电脑，采用本地 stdio MCP；另外提供本地命令与可导入的 Skill。账号仍按学校来源独立管理，与 agent 客户端解耦。
+官方资料核对日期：2026-10-05。STU MCP 运行在学生自己的电脑，采用本地 stdio MCP；另外提供本地命令与可选技能资源包。账号仍按学校来源独立管理，与 agent 客户端解耦。
 
 ## 支持范围
 
@@ -15,7 +15,7 @@ Codex、Claude Code、Cursor 是优先维护的核心适配；`generic` 是其�
 | ZCode | `stu-mcp connect zcode --apply` | 合并 `~/.zcode/cli/config.json` 的 `mcp.servers`，保留原来有效的 `.agents` 服务 |
 | Grok Build | `stu-mcp connect grok-build --apply` | 合并当前 `GROK_HOME/config.toml`，默认 `~/.grok/config.toml` |
 | DeepSeek Harness 桌面端 | `stu-mcp connect deepseek-harness --apply` | 合并 `DSH_HOME/profiles/desktop/cordis.patch.yml`，默认 `~/.dsh/profiles/desktop/cordis.patch.yml` |
-| 豆包工作 | `stu-mcp connect doubao-work --apply` | 生成本机 Skill ZIP，需导入技能并验证本机命令权限；未配置原生 MCP |
+| 豆包工作 | `stu-mcp connect doubao-work --apply` | 生成本机 Skill ZIP，需确认客户端支持的安装方式并验证本机命令权限；未配置原生 MCP |
 | 其他本地 MCP 客户端 | `stu-mcp connect generic` | 导出 stdio JSON，不猜配置路径 |
 | 其他可执行本地命令的 agent | `stu-mcp connect generic-cli --apply` | 生成同一份本机 Skill ZIP |
 
@@ -57,11 +57,13 @@ Python 启动路径必须保留 uv 虚拟环境的入口，即使它是符号链
 
 [飞书官方产品说明](https://www.feishu.cn/content/article/7677519271848610746) 确认可以创建、对话式安装和导入本地自定义技能，并能在授权范围内操作电脑与调用工具。它也提及自定义连接器；已查到的官方公开资料不足以确认本地 MCP 配置格式、stdio 支持和自动注册接口，本版本不猜测这些格式。
 
-提供 **CLI + Skill 候选接入**：运行 `stu-mcp connect doubao-work --apply` 生成 `stu-campus.zip`，在豆包工作的技能入口导入。使用本地电脑环境，先执行版本和状态命令确认它确实能访问本机安装。技能导入与调用权限依赖当前客户端，尚未用真实豆包工作验收，不报告成原生 MCP 已连接。
+提供 **CLI + Skill 候选接入**：运行 `stu-mcp connect doubao-work --apply` 生成 `stu-campus.zip`，再按客户端支持的方式安装技能。ZIP 是资源分发文件，不是各客户端通用安装器，也不会自动注册 MCP。使用本地电脑环境，先执行版本和状态命令确认它确实能访问本机安装。技能安装与调用权限依赖当前客户端，尚未用真实豆包工作验收，不报告成原生 MCP 已连接。
 
-ZIP 只有 `stu-campus/SKILL.md` 和 `stu-campus/runtime.json`；后者只含本机启动程序与参数，不含登录数据。无法执行时报告限制，不上传会话；云端或虚拟电脑不能代替用户电脑的安装与系统密钥库。包在 STU MCP 数据目录的 `exports`，可直接删除；导入后的技能在客户端移除。
+ZIP 只有 `stu-campus/SKILL.md` 和 `stu-campus/runtime.json`；后者只含生成机器的绝对 Python 启动路径与参数，不含登录数据。换机器或重建安装环境后应重新导出，不能把该路径当成通用运行配置。无法执行时报告限制，不上传会话；云端或虚拟电脑不能代替用户电脑的安装与系统密钥库。包在 STU MCP 数据目录的 `exports`，可直接删除；安装后的技能在客户端移除。
 
 Skill 覆盖通知正文 / 附件、成绩统计、课程 / 作业 / 日程、狐友公开讨论、服务入口与本机资料 / 待办，使用同一套数据、来源限制与加密存储，由当前 agent 分析。
+
+课表技能的工作流、默认行为和可选 ZIP 分发方式统一见[课表导出](timetable.md)。它不改变默认客户端接入，不代替完整学校课表读取或实际 App 导入验收。
 
 ## 当前验收状态
 
