@@ -21,6 +21,22 @@ def parser() -> argparse.ArgumentParser:
     sub.add_parser("serve", help="启动 stdio MCP 服务")
     sub.add_parser("status", help="输出功能/登录/缓存状态")
     sub.add_parser("clients", help="查看客户端接入方式与官方说明")
+    network = sub.add_parser("network", help="匿名诊断指定校园服务的直连、DNS及本机代理，不改设置")
+    network.add_argument("--service-id", default="sangpushan_repair")
+    network.add_argument("--location-hint", choices=("unknown", "campus", "off_campus"), default="unknown")
+    network.add_argument("--refresh", action="store_true")
+    login_check = network.add_mutually_exclusive_group()
+    login_check.add_argument("--check-login", action="store_true", default=None,
+                             help="对已知依赖SSO的业务额外检查统一认证")
+    login_check.add_argument("--anonymous-only", dest="check_login", action="store_false",
+                             help="仅检查该匿名入口，不额外检查SSO")
+    network.add_argument("--compare-proxy", action="store_true", help="额外比较无凭据本机代理；不自动切换")
+    audit = sub.add_parser("network-audit", help="批量检查已登记学校域名的DNS与匿名直连，不改设置")
+    audit.add_argument("--location-hint", choices=("unknown", "campus", "off_campus"), default="unknown")
+    audit.add_argument("--compare-public-dns", action="store_true", help="额外对比阿里与腾讯公共DNS的A/AAAA")
+    audit.add_argument("--refresh", action="store_true", help="切网后重新检测，跳过进程内缓存")
+    repair = sub.add_parser("repair", help="从标准输入JSON准备宿舍报修草稿或打开不提交的演练窗口")
+    repair.add_argument("repair_action", choices=("plan", "preview"))
     setup = sub.add_parser("setup", help="打开本机设置页")
     setup.add_argument("--no-browser", action="store_true", help="仅在终端输出本机设置地址")
     login = sub.add_parser("login", help="在独立浏览器中手动登录学校")
@@ -91,7 +107,7 @@ def parser() -> argparse.ArgumentParser:
 
 
 def emit(result: dict) -> int:
-    print(json.dumps(result, ensure_ascii=False, indent=2))
+    print(json.dumps(result, ensure_ascii=False, indent=2), flush=True)
     return 0 if result.get("ok", True) else 1
 
 
@@ -108,6 +124,45 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if args.command == "clients":
             return emit({"ok": True, "clients": catalog()})
+        if args.command == "network":
+            from .connectivity import NetworkDiagnostics
+            return emit(NetworkDiagnostics().diagnose(args.service_id, args.location_hint, args.refresh,
+                                                     check_login=args.check_login, compare_proxy=args.compare_proxy))
+        if args.command == "network-audit":
+            from .network_audit import NetworkAudit
+            return emit(NetworkAudit().audit(args.location_hint, compare_public_dns=args.compare_public_dns,
+                                              refresh=args.refresh))
+        if args.command == "repair":
+            from .features.repair import RepairDrafts
+            from .features.repair.models import ACTIVE
+            try:
+                if hasattr(sys.stdin, "reconfigure"):
+                    sys.stdin.reconfigure(encoding="utf-8")
+                raw = sys.stdin.read(8193)
+                fields = json.loads(raw) if len(raw) <= 8192 else None
+                if not isinstance(fields, dict) or "draft_id" in fields:
+                    raise ValueError
+            except (ValueError, TypeError):
+                raise AppError("invalid_repair_fields", "请从标准输入提供不超过8192字的报修字段JSON对象。") from None
+            drafts = RepairDrafts()
+            result = drafts.prepare(**fields)
+            if args.repair_action == "plan" or result["problems"]:
+                return emit(result)
+            try:
+                result = drafts.open(result["draft_id"])
+                previous = None
+                while True:
+                    if result["status"] != previous:
+                        emit(result)
+                        previous = result["status"]
+                    if result["status"] not in ACTIVE:
+                        return 0 if result["status"] in {"closed", "preview_expired"} else 1
+                    time.sleep(.5)
+                    result = drafts.snapshot(result["draft_id"])
+            except KeyboardInterrupt:
+                return 0
+            finally:
+                drafts.shutdown()
         app = App()
         if args.command == "charging":
             if args.charging_action == "overview":

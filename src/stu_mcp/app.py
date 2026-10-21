@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import io
 import math
 import re
@@ -10,6 +11,8 @@ from urllib.parse import urljoin
 from . import __version__, collectors
 from .charging import ChargingService
 from .clients import detected_clients
+from .connectivity import CAPABILITY as NETWORK_CAPABILITY
+from .features.repair import CAPABILITY as REPAIR_CAPABILITY
 from .huyou import (
     DEFAULT_CIRCLE,
     HuyouClient,
@@ -22,8 +25,10 @@ from .huyou import (
     searchable_text,
 )
 from .network import CampusHTTP
-from .parsers import text_body
+from .network_audit import CAPABILITY as NETWORK_AUDIT_CAPABILITY
+from .parsing import text_body
 from .runtime import AppError, Runtime, key_lock
+from .services import service_results
 from .sources import SOURCES
 from .store import Store
 from .vault import Vault
@@ -50,6 +55,9 @@ class App:
         return {"ok": True, "version": __version__, "sources": features, "freshness": self.store.freshness(),
                 "clients": detected_clients(), "profile": self.runtime.profile(), "transport": self.runtime.preferences(),
                 "webvpn_auto_login": WebVPNConfig(self.vault).status(),
+                "repair": dict(REPAIR_CAPABILITY),
+                "network_diagnostics": dict(NETWORK_CAPABILITY),
+                "network_audit": copy.deepcopy(NETWORK_AUDIT_CAPABILITY),
                 "privacy": {"model_api_key_required": False, "background_ai": False,
                             "private_wechat": False, "storage": "os_keyring_and_encrypted_sessions"}}
 
@@ -111,7 +119,12 @@ class App:
         sources = tuple(SOURCES) if source == "all" else (source,)
         if not set(sources).issubset(SOURCES):
             raise AppError("invalid_source", "数据来源不受支持。")
-        result = self.store.list(sources=sources, kind=kind, limit=limit, query=query, offset=offset)
+        service_directory = kind == "service" and "public" in sources
+        result = self.store.list(sources=sources, kind=kind, limit=limit,
+                                 query="" if service_directory else query, offset=offset,
+                                 _all_items=service_directory)
+        if service_directory:
+            result.update(service_results(result["items"], query, limit, offset))
         dependencies = {"grade": {"jw"}, "exam": {"jw"}, "course": {"mystu", "yuketang"},
                         "task": {"mystu", "yuketang"}, "resource": {"mystu", "yuketang"}, "event": {"mystu"}}
         needed = dependencies.get(kind, set()).intersection(sources)
@@ -198,7 +211,7 @@ class App:
                 or type(reply_limit) is not int or not 0 <= reply_limit <= 20):
             raise AppError("invalid_limit", "每帖主评论上限 1–40，楼中楼回复总上限 0–20。", "huyou")
         if not refresh:
-            from .parsers import item_id
+            from .parsing import item_id
             item = self.store.get(item_id("huyou", "post", fid))
             return {"ok": True, "item": item, "cached": True, "source": "huyou", "official": False,
                     "content_trust": "untrusted_source_data"}

@@ -25,7 +25,12 @@ async def test_real_stdio_handshake_schema_and_feature_gating(tmp_path):
         tools = await client.list_tools()
         names = {t.name for t in tools.tools}
         assert {"get_capabilities", "refresh_source", "get_grades", "get_tasks", "open_setup"}.issubset(names)
-        assert len(names) == 29
+        assert len(names) == 38
+        assert "diagnose_campus_network" in names
+        assert "audit_campus_network" in names
+        assert {"prepare_repair_draft", "open_repair_form", "get_repair_draft", "close_repair_form"} <= names
+        assert {"review_repair_draft", "submit_repair_draft"} <= names
+        assert "check_repair_submission" in names
         assert {"get_checkin_status", "list_checkin_courses", "select_checkin_courses", "start_checkin_monitor",
                 "pause_checkin_monitor", "get_checkin_results", "open_checkin_page", "stop_checkin_service"} <= names
         assert {"search_huyou_posts", "get_huyou_post", "search_huyou_circles"}.issubset(names)
@@ -39,6 +44,49 @@ async def test_real_stdio_handshake_schema_and_feature_gating(tmp_path):
         assert result["privacy"]["private_wechat"] is False
         assert result["webvpn_auto_login"]["configured"] is False
         assert result["checkin"]["status"] == "service_not_started"
+        assert result["repair"]["submission_supported"] is True
+        assert result["repair"]["confirmation_required"] is True
+        assert result["repair"]["submission_live_verified"] is False
+        assert result["repair"]["transport"] == "direct"
+        assert result["repair"]["read_only_submission_check"] is True
+        assert result["network_diagnostics"]["changes_system_settings"] is False
+        assert result["network_diagnostics"]["automatic_proxy_fallback"] is False
+        assert result["network_diagnostics"]["local_proxy_comparison_default"] is False
+        assert result["network_audit"]["changes_system_settings"] is False
+        assert result["network_audit"]["public_dns_comparison_default"] is False
+        assert result["network_audit"]["physical_location_detection"] is False
+        assert "network_repair_http" in result["network_diagnostics"]["service_ids"]
+        schema = next(t.input_schema for t in tools.tools if t.name == "diagnose_campus_network")
+        assert schema["properties"]["compare_proxy"]["default"] is False
+        assert schema["properties"]["check_login"]["default"] is None
+        # Invalid input exercises the real tool without network traffic.
+        invalid_network = await client.call_tool("diagnose_campus_network", {"service_id": "https://evil.invalid/"})
+        assert invalid_network.model_dump(by_alias=True)["structuredContent"]["status"] == "invalid_network_service"
+        invalid_audit = await client.call_tool("audit_campus_network", {"location_hint": "guess_from_ip"})
+        assert invalid_audit.model_dump(by_alias=True)["structuredContent"]["status"] == "invalid_network_location"
+        draft = await client.call_tool("prepare_repair_draft", {"title": "合成空调故障"})
+        prepared = draft.model_dump(by_alias=True)["structuredContent"]
+        assert prepared["status"] == "needs_information" and prepared["submission_supported"] is True
+        denied = await client.call_tool("submit_repair_draft", {"draft_id": prepared["draft_id"], "review_id": "none"})
+        assert denied.model_dump(by_alias=True)["structuredContent"]["status"] == "repair_confirmation_required"
+        no_review = await client.call_tool("review_repair_draft", {"draft_id": prepared["draft_id"]})
+        assert no_review.model_dump(by_alias=True)["structuredContent"]["status"] == "repair_window_required"
+        no_submission = await client.call_tool("check_repair_submission", {"draft_id": prepared["draft_id"]})
+        assert no_submission.model_dump(by_alias=True)["structuredContent"]["status"] == "repair_not_submitted"
+        opened = await client.call_tool("open_repair_form", {"draft_id": prepared["draft_id"]})
+        assert opened.model_dump(by_alias=True)["structuredContent"]["status"] == "needs_information"
+        readback = await client.call_tool("get_repair_draft", {"draft_id": prepared["draft_id"]})
+        assert readback.model_dump(by_alias=True)["structuredContent"]["preview"]["title"] == "合成空调故障"
+        closed = await client.call_tool("close_repair_form", {"draft_id": prepared["draft_id"]})
+        assert closed.model_dump(by_alias=True)["structuredContent"]["status"] == "closed"
+        by_name = {t.name: t for t in tools.tools}
+        assert by_name["get_repair_draft"].annotations.read_only_hint is True
+        assert by_name["open_repair_form"].annotations.read_only_hint is False
+        assert by_name["submit_repair_draft"].annotations.read_only_hint is False
+        assert by_name["check_repair_submission"].annotations.read_only_hint is True
+        assert by_name["diagnose_campus_network"].annotations.read_only_hint is True
+        assert by_name["audit_campus_network"].annotations.read_only_hint is True
+        assert by_name["audit_campus_network"].input_schema["properties"]["compare_public_dns"]["default"] is False
         status = await client.call_tool("get_checkin_status", {})
         assert status.model_dump(by_alias=True)["structuredContent"]["monitoring"] is False
         assert not (tmp_path / "checkin-data").exists()
@@ -50,6 +98,16 @@ async def test_real_stdio_handshake_schema_and_feature_gating(tmp_path):
         assert unknown.model_dump(by_alias=True)["structuredContent"]["status"] == "invalid_source"
         public = await client.call_tool("search_notices", {"source": "public"})
         assert public.model_dump(by_alias=True)["structuredContent"]["items"] == []
+        services = await client.call_tool("get_service_links", {"query": "校园网 报修"})
+        directory = services.model_dump(by_alias=True)["structuredContent"]
+        assert directory["total_count"] == 2 and directory["availability_checked"] is False
+        assert directory["items"][0]["url"] == "https://r.stu.edu.cn/"
+        assert directory["items"][0]["service_id"] == "campus_repair"
+        assert directory["items"][0]["form_verified"] is True
+        assert directory["items"][0]["submission_verified"] is False
+        assert directory["items"][0]["workflow_verified"] is False
+        assert directory["items"][1]["recommended"] is False
+        assert directory["items"][1]["migration_confirmed"] is False
         invalid_plan = await client.call_tool("search_huyou_posts", {"query": "合成问题", "keywords": []})
         assert invalid_plan.model_dump(by_alias=True)["structuredContent"]["status"] == "invalid_keywords"
         cached_post = await client.call_tool("get_huyou_post", {"target": "101", "refresh": False})

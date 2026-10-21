@@ -11,6 +11,7 @@ import pytest
 from stu_mcp import connectivity as net
 from stu_mcp import network
 from stu_mcp.access_policy import POLICIES, policy_for_url
+from stu_mcp.cli import parser
 from stu_mcp.runtime import AppError
 from stu_mcp.services import describe_service
 
@@ -67,6 +68,12 @@ def test_catalog_exposes_service_policy_without_turning_research_into_live_healt
         assert record["access_policy"]["automatic_proxy_fallback"] is False
 
 
+def test_cli_keeps_service_default_and_explicit_diagnostic_scope():
+    default = parser().parse_args(["network"])
+    assert default.check_login is None and default.compare_proxy is False
+    expanded = parser().parse_args(["network", "--check-login", "--compare-proxy"])
+    assert expanded.check_login is True and expanded.compare_proxy is True
+    assert parser().parse_args(["network", "--anonymous-only"]).check_login is False
 
 
 def test_one_connect_retry_per_anonymous_read_and_origin_backoff_preserves_other_sources(monkeypatch):

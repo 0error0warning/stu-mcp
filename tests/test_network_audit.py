@@ -216,3 +216,17 @@ def test_http_response_and_unknown_are_not_falsely_reported_as_dns_failure(dns_s
 def test_invalid_arguments_rejected_before_any_probe(kwargs):
     with pytest.raises(AppError):
         net.NetworkAudit().audit(**kwargs)
+
+
+def test_cli_runs_batch_without_initializing_accounts(monkeypatch, capsys, matrix):
+    from stu_mcp.cli import main
+    assert main(["network-audit", "--location-hint", "off_campus", "--compare-public-dns", "--refresh"]) == 0
+    result = json.loads(capsys.readouterr().out)
+    assert result["network_context"]["location_hint"] == "off_campus"
+    assert result["public_dns_comparison_requested"] is True
+
+
+def test_capability_map_cannot_be_mutated_by_a_caller(app):
+    first = app.status()
+    first["network_audit"]["public_dns_resolvers"]["alidns"] = "changed"
+    assert app.status()["network_audit"]["public_dns_resolvers"]["alidns"] == "223.5.5.5"

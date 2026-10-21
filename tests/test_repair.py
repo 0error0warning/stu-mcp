@@ -1,5 +1,9 @@
 """Synthetic repair data only; never log in or create a school work order."""
+import io
 import json
+import os
+import subprocess
+import sys
 import threading
 from datetime import date, timedelta
 from html import escape
@@ -9,6 +13,7 @@ from urllib.parse import parse_qs, urlencode
 
 import pytest
 
+from stu_mcp.cli import main
 from stu_mcp.repair import (
     REPAIR_FORM,
     RepairDrafts,
@@ -263,8 +268,26 @@ def test_closed_drafts_are_evicted_at_bounded_capacity():
     assert len(drafts.drafts) == 20 and oldest not in drafts.drafts
 
 
+def test_cli_plan_uses_stdin_without_persistent_data(fields, monkeypatch, capsys, tmp_path):
+    monkeypatch.setenv("STU_MCP_HOME", str(tmp_path / "no-data"))
+    monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps(fields)))
+    assert main(["repair", "plan"]) == 0
+    result = json.loads(capsys.readouterr().out)
+    assert result["status"] == "draft_ready"
+    assert fields["phone"] not in json.dumps(result)
+    assert not (tmp_path / "no-data").exists()
 
 
+def test_cli_reads_utf8_even_when_windows_default_pipe_encoding_differs(fields, tmp_path):
+    completed = subprocess.run([sys.executable, "-m", "stu_mcp", "repair", "plan"],
+                               input=json.dumps(fields, ensure_ascii=False).encode("utf-8"),
+                               capture_output=True, timeout=20,
+                               env={**os.environ, "PYTHONIOENCODING": "cp1252",
+                                    "STU_MCP_HOME": str(tmp_path / "unused")})
+    assert completed.returncode == 0
+    result = json.loads(completed.stdout.decode("utf-8"))
+    assert result["preview"]["name"] == "合成同学" and result["status"] == "draft_ready"
+    assert not (tmp_path / "unused").exists()
 
 
 def test_fixed_reference_date_is_not_runtime_date(fields):
