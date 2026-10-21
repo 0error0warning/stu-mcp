@@ -2,7 +2,7 @@
 
 # 学期课表与文件导出
 
-开发版提供 `stu-timetable-export` 技能，组织 agent 核对完整课表、目标学期最新有效官方校历和节次时刻，再生成 WakeUp CSV / 日历 ICS。它不增加 MCP 工具，不猜学校课表接口，也不连接 Google/Microsoft 账号。当前课程库存和短期个人日程的含义保持不变。
+STU MCP v0.5.0 学生预览版提供 `stu-timetable-export` 技能，组织 agent 核对完整课表、目标学期最新有效官方校历和节次时刻，再生成 WakeUp CSV / 日历 ICS。它不增加 MCP 工具，不猜学校课表接口，也不连接 Google/Microsoft 账号。当前课程库存和短期个人日程的含义保持不变。
 
 ## 默认行为
 
@@ -32,7 +32,7 @@ stu-mcp skill-export --skill stu-timetable-export
 stu-mcp skill-export --skill stu-timetable-export --apply
 ```
 
-首条只预览，第二条生成用户数据目录下的 `exports/stu-timetable-export.zip`。这是**可选的本机命令资源包**：包含技能、参考、薄脚本、由项目核心生成的脚本副本和 `runtime.json`。`runtime.json` 指向生成机器的 Python 路径，换机需要按目标环境配置；本命令不承诺各客户端原生支持 ZIP 导入，也不是通用安装器。原 `connect ...` 与 `stu-campus.zip` 默认行为保持。
+首条只预览，第二条生成用户数据目录下的 `exports/stu-timetable-export.zip`。这是**可选的本机命令资源包**：包含技能、参考、薄脚本、由项目核心生成的脚本副本和 `runtime.json`。`runtime.json` 指向生成机器的 Python 路径，换机、升级或重建安装环境后应重新导出并按客户端方式替换旧技能；本命令不承诺各客户端原生支持 ZIP 导入，也不是通用安装器。原 `connect ...` 与 `stu-campus.zip` 默认行为保持。
 
 包内不含凭据、个人课表或登录态。资源可运行、客户端能使用技能、学校取证完成、目标 App 导入正确是分别核验的事项。
 
@@ -46,7 +46,7 @@ python path/to/stu-timetable-export/scripts/build_timetable.py --input reviewed.
 
 支持明确周次、连续节次、课程/授课安排身份、教师/地点、取消、改期和显式来源日期处理的全日替换。现代学期采用明确 UTC+08 时刻，不依赖主机时区或 Windows tzdata。校历/课表未确认、有待核实项或冲突时不生成正式文件；某目标不能无损表达时报告部分成功，不丢课。
 
-输出为 `review.json`、`schedule.ics`、`wakeup.csv` 与 `wakeup-settings.json`。WakeUp 的学期起点、周数和节次时刻需按设置文件单独核对；文件有效不等于实际 App 导入正确。重复导入不承诺去重/覆盖，文件导入不自动同步，也不创建、覆盖或删除远端事件。实际验证及未验收项见[课表验证记录](verification/2026-10-20-timetable.md)。
+输出为 `review.json`、`schedule.ics`、`wakeup.csv` 与 `wakeup-settings.json`。WakeUp 的学期起点、周数和节次时刻需按设置文件单独核对；文件有效不等于实际 App 导入正确。当前未完成本人完整课表取数及 WakeUp、Google Calendar、Outlook 的真实导入验收。重复导入不承诺去重/覆盖，文件导入不自动同步，也不创建、覆盖或删除远端事件。实际验证及未验收项见[课表验证记录](verification/2026-10-20-timetable.md)。
 
 ## 当前数据的范围
 

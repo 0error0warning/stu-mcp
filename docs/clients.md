@@ -25,7 +25,7 @@ Codex、Claude Code、Cursor 是优先维护的核心适配；`generic` 是其�
 
 配置保存返回 `verification: configuration_only`。重新加载 / 重启并启用后，从当前 agent 发现并调用 `get_capabilities` 才算连接验证完成。
 
-Python 启动路径必须保留 uv 虚拟环境的入口，即使它是符号链接，也不能解析成底层 Python。升级修复后重新执行对应的 `connect ... --apply`，会备份并更新已有 STU MCP 启动项，保留用户的其他设置。导出的 JSON 或 Skill ZIP 需要重新生成并替换客户端内的旧副本。
+Python 启动路径必须保留 uv 虚拟环境的入口，即使它是符号链接，也不能解析成底层 Python。升级后重新执行对应的 `connect ... --apply`，会备份并更新已有 STU MCP 启动项，保留用户的其他设置。导出的 JSON 或 Skill ZIP 需要重新生成并替换客户端内的旧副本；重新加载后在当前 agent 核实版本与 `get_capabilities`，配置写入成功不等于客户端已运行新版。完整步骤见[升级说明](install.md#从旧版升级)。
 
 ## WorkBuddy
 

@@ -1,6 +1,6 @@
 # 独立充电查询
 
-当前开发版 STU MCP 可直接查询充电平台的设备状态，不需要学校账号、微信登录、自建网站、域名或服务器。用户的 agent 调用本机 MCP，由 MCP 处理请求签名、状态解析和本机缓存。该功能尚未包含在已发布的 v0.4.1 安装包中。
+STU MCP v0.5.0 学生预览版可直接查询充电平台的设备状态，不需要学校账号、微信登录、自建网站、域名或服务器。用户的 agent 调用本机 MCP，由 MCP 处理请求签名、状态解析和本机缓存。安装或从旧版升级见[安装说明](install.md)。
 
 ## MCP 用法
 
@@ -17,13 +17,13 @@
 
 ## 命令行
 
-在开发目录中执行：
+安装后执行：
 
 ```sh
-uv run stu-mcp charging overview 思源
-uv run stu-mcp charging overview --limit 4 --offset 4
-uv run stu-mcp charging device 4GR00008490
-uv run stu-mcp charging overview 图书馆 --local
+stu-mcp charging overview 思源
+stu-mcp charging overview --limit 4 --offset 4
+stu-mcp charging device 4GR00008490
+stu-mcp charging overview 图书馆 --local
 ```
 
 `--local` 与工具的 `refresh=false` 都只读本机缓存，不发网络请求。缓存尚无成功样本时，设备仍可列出，但 `ports` 和 `counts` 为 `null`；CLI 在本次没有可用状态数据时返回退出码 1。

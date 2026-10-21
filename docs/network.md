@@ -1,6 +1,6 @@
 # 校园服务的直连与代理诊断
 
-开发版提供 `diagnose_campus_network`，CLI 为 `stu-mcp network`。按服务检查固定入口的匿名 GET 响应头和系统 DNS；SSO按依赖需要检查，本机代理对照需明确开启。不读正文或登录信息，不提交表单，不改配置。普通业务读取不调用整轮诊断。
+STU MCP v0.5.0 学生预览版提供 `diagnose_campus_network`，CLI 为 `stu-mcp network`。按服务检查固定入口的匿名 GET 响应头和系统 DNS；SSO按依赖需要检查，本机代理对照需明确开启。不读正文或登录信息，不提交表单，不改配置。普通业务读取不调用整轮诊断。
 
 ## 按服务选择访问方式
 

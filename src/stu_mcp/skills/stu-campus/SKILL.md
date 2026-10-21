@@ -31,8 +31,8 @@ CLI 返回 JSON，读取 `ok`、`status`、`coverage`、`limited`、`errors` 和
 | 课程 / 作业 / 资料 | `query course\|task\|resource --source all` |
 | 个人日程 | `query event --source mystu` |
 | 校园服务入口 | `query service --source public` |
-| 连接诊断（开发版） | `network --service-id sangpushan_repair --location-hint unknown --refresh` |
-| 批量学校入口检测（开发版） | `network-audit --location-hint unknown --compare-public-dns --refresh` |
+| 连接诊断 | `network --service-id sangpushan_repair --location-hint unknown --refresh` |
+| 批量学校入口检测 | `network-audit --location-hint unknown --compare-public-dns --refresh` |
 | 狐友圈内关键词搜索 | `huyou search 原问题 --keyword 短词 --keyword 另一个词` |
 | 狐友公开正文 / 评论 / 回复 | `huyou detail FEED_ID`，只读缓存用 `--local` |
 | 查找狐友圈子 | `huyou circles 汕大` |
@@ -97,7 +97,7 @@ CLI 返回 JSON，读取 `ok`、`status`、`coverage`、`limited`、`errors` 和
 
 ## 按需登录
 
-开发版对分易使用 MCP 的 `get_checkin_status`、`open_checkin_page`、`list_checkin_courses`、`select_checkin_courses`、`start_checkin_monitor`、`pause_checkin_monitor`、`get_checkin_results`、`stop_checkin_service`。先查状态；需要登录时打开本地网页让用户完成微信流程，不索要回调链接。只有用户要求监听时才启动，`minutes=0` 表示持续监听。MCP 退出后后台仍运行，状态为查询异常时不能说已暂停。结果要区分本程序提交成功与平台已有出勤，不能把空结果当作未签到。仅使用本机 CLI 的客户端可打开 `stu-checkin` 网页，由用户选课和启停；具体状态约定见仓库 `docs/checkin.md`。
+对分易使用 MCP 的 `get_checkin_status`、`open_checkin_page`、`list_checkin_courses`、`select_checkin_courses`、`start_checkin_monitor`、`pause_checkin_monitor`、`get_checkin_results`、`stop_checkin_service`。先查状态；需要登录时打开本地网页让用户完成微信流程，不索要回调链接。只有用户要求监听时才启动，`minutes=0` 表示持续监听。MCP 退出后后台仍运行，状态为查询异常时不能说已暂停。结果要区分本程序提交成功与平台已有出勤，不能把空结果当作未签到。仅使用本机 CLI 的客户端可打开 `stu-checkin` 网页，由用户选课和启停；具体状态约定见仓库 `docs/checkin.md`。
 
 公开信息和匿名 OA 无需账号。个人来源返回 `needs_login` 或 `login_expired` 时，让用户在本机终端执行 `stu-mcp setup`，或在具有桌面的本机进程中启动该设置命令并保持其运行，打开浏览器完成所需来源的登录。设置地址只用于本机浏览器，不粘贴到对话中。用户完成后再刷新该来源。
 

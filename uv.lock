@@ -1298,7 +1298,7 @@ wheels = [
 
 [[package]]
 name = "stu-mcp"
-version = "0.5.0.dev0"
+version = "0.5.0"
 source = { editable = "." }
 dependencies = [
     { name = "beautifulsoup4" },

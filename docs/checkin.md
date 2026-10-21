@@ -8,14 +8,13 @@ STU MCP 与 `stu-checkin` 的本地网页控制同一个独立进程。后台和
 
 Windows 的 MCP 客户端会使用进程作业组回收子进程，普通 `DETACHED_PROCESS` 仍可能在客户端退出时被回收。本扩展通过本机 WMI 以当前用户启动隐藏后台，与 MCP 作业组分离；不创建系统服务或计划任务，不申请管理员权限。仅传运行所需的环境变量，不继承无关 API 密钥。使用的启动接口和隐藏窗口配置见 Microsoft 的 [Win32_Process.Create](https://learn.microsoft.com/en-us/windows/win32/cimwin32prov/create-method-in-class-win32-process) 与 [Win32_ProcessStartup](https://learn.microsoft.com/en-us/windows/win32/cimwin32prov/win32-processstartup)。本机禁止 WMI 启动时会明确报告启动失败，不降级为依赖 MCP 存活的子进程。POSIX 使用独立会话启动。
 
-当前源码版本为 `0.5.0.dev0`，此功能尚未发布到 v0.4.1 安装包。在本仓库运行：
+后台与网页随 `v0.5.0` 学生预览版安装，安装或升级步骤见[安装说明](install.md)。安装后运行：
 
 ```sh
-uv sync --extra dev
-uv run stu-checkin
+stu-checkin
 ```
 
-也可以直接让 MCP 调用 `open_checkin_page`，按需启动后台。安装开发版到客户端时，先在本仓库运行 `uv build`，再运行 `uv tool install --force dist/stu_mcp-0.5.0.dev0-py3-none-any.whl` 和 `stu-mcp connect <客户端> --apply`，最后重新加载 MCP。后续发行版本按 [安装说明](install.md) 升级。
+也可以直接让 MCP 调用 `open_checkin_page`，按需启动后台。从源码运行则在仓库执行 `uv sync --extra dev` 和 `uv run stu-checkin`。安装包包含后台不代表新课堂签到已完成实测；当前验证范围见本文末尾。
 
 启动优先复用已运行的同协议后台；没有后台时使用当前安装的 Python 环境，不自动寻找相邻源码目录。高级用法可将 `STU_CHECKIN_PYTHON` 设为已安装兼容后台的 Python 解释器绝对路径。工具参数不接受路径或任意命令。
 
