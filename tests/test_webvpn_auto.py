@@ -372,6 +372,7 @@ def test_failed_keyring_deletion_disables_login_and_can_be_retried(app, keys, vp
 
 
 @pytest.mark.parametrize("logout_during_login", [False, True])
+@pytest.mark.usefixtures("synthetic_login_interaction")
 def test_manual_login_erases_auto_credentials_and_obeys_logout_fence(app, keys, vpn_session, tmp_path, monkeypatch, logout_during_login):
     from test_auth import fake_playwright
 

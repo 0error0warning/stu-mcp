@@ -16,6 +16,7 @@ from playwright.sync_api import Error as BrowserError
 from playwright.sync_api import sync_playwright
 
 from .features.jw.parser import jw_authenticated
+from .interaction import require_interaction
 from .network import PASSWORD_KEYS, CampusHTTP, scoped_state
 from .parsing import is_login
 from .runtime import AppError, key_lock
@@ -92,6 +93,7 @@ def interactive_login(vault: Vault, service: str, *, timeout: int = 300,
                       on_phase: Callable[[str], None] | None = None,
                       expected_revision: bytes | None = None) -> dict:
     source = login_service(service)
+    require_interaction(source)
     spec = SOURCES[source]
     if expected_revision is None:
         with key_lock(vault.runtime.home, spec.session):

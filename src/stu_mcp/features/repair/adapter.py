@@ -7,6 +7,7 @@ from contextlib import contextmanager, suppress
 from datetime import date
 from urllib.parse import parse_qs, urlparse
 
+from ...interaction import require_interaction
 from ...runtime import AppError
 from . import submission
 from .parser import on_page, parse_form
@@ -217,6 +218,7 @@ def open_browser(stop, update):
 
     from ...auth import prepare_browser
 
+    require_interaction("repair")
     update(network=direct_preflight())
     if stop.is_set():
         raise AppError("repair_window_required", "报修窗口已取消打开。", "repair")

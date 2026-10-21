@@ -29,6 +29,18 @@ def keys():
 
 
 @pytest.fixture
+def synthetic_login_interaction(monkeypatch):
+    """Only fake-Playwright login tests bypass the real host display policy.
+
+    Do not fake the process platform or install an autouse display override:
+    interaction policy tests and real browser fixtures keep their own checks.
+    """
+    from stu_mcp import auth
+
+    monkeypatch.setattr(auth, "require_interaction", lambda source=None: "desktop")
+
+
+@pytest.fixture
 def app(tmp_path, keys):
     runtime = Runtime(tmp_path / "runtime")
     return App(runtime, Vault(runtime, keys))
