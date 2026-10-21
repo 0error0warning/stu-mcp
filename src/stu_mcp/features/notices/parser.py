@@ -11,7 +11,9 @@ from ...runtime import AppError
 from .schema import (
     AUTH_QUERY_KEYS,
     BODY_SELECTORS,
-    OA_ARTICLE_PATH,
+    OA_ARTICLE_PATHS,
+    OA_ATTACHMENT_FIELD_PATTERN,
+    OA_BODY_SELECTORS,
     OA_COLUMNS,
     OA_EMPTY_TEXT,
     OA_HOSTS,
@@ -31,7 +33,7 @@ def _url(base: str, value: object, *, hosts: frozenset[str] | None = None) -> st
         parsed = urlparse(candidate)
         if (parsed.scheme not in {"http", "https"} or not parsed.hostname or parsed.username or parsed.password
                 or parsed.port not in {None, 80, 443} or hosts is not None and parsed.hostname not in hosts
-                or any(key.casefold() in AUTH_QUERY_KEYS for key, _ in parse_qsl(parsed.query))):
+                or any(key.casefold() in AUTH_QUERY_KEYS for key, _ in parse_qsl(parsed.query, keep_blank_values=True))):
             return None
     except ValueError:
         return None
@@ -87,9 +89,9 @@ def parse_links(html: str, base: str) -> list[dict]:
 
 def _oa_identity(link: Tag, base: str) -> tuple[str, str] | None:
     url = _url(base, link.get("href"), hosts=OA_HOSTS)
-    if url is None or urlparse(url).path != OA_ARTICLE_PATH:
+    if url is None or urlparse(url).path not in OA_ARTICLE_PATHS:
         return None
-    values = parse_qs(urlparse(url).query).get("docid", [])
+    values = parse_qs(urlparse(url).query, keep_blank_values=True).get("docid", [])
     if len(values) != 1 or not re.fullmatch(r"[A-Za-z0-9._:-]{1,200}", values[0]):
         raise _changed("oa", "OA 通知标识缺失或有歧义。")
     return url, values[0]
@@ -101,7 +103,7 @@ def _column_map(table: Tag) -> tuple[dict[str, int], int] | None:
         if row.find_parent("table") is not table:
             continue
         cells = row.find_all(["th", "td"], recursive=False)
-        names = [clean(cell.get_text(" ", strip=True)).rstrip(":：") for cell in cells]
+        names = [re.sub(r"\s+", "", cell.get_text(" ", strip=True)).rstrip(":：") for cell in cells]
         if len(cells) == 1 and cells[0].has_attr("colspan"):
             # A table title spanning all columns is decoration, not a header.
             continue
@@ -198,7 +200,7 @@ def _body_root(soup: BeautifulSoup, source: str, base: str, *, has_attachments: 
                         r"Internal Server Error|Service Unavailable|Access Denied|Not Found)",
                         clean(node.get_text(" ", strip=True)), re.I):
             raise AppError("source_unavailable", "学校返回错误或维护页面，未保存为通知正文。", source)
-    for selector in BODY_SELECTORS:
+    for selector in OA_BODY_SELECTORS if source == "oa" else BODY_SELECTORS:
         candidates = soup.select(selector)
         if candidates:
             if len(candidates) != 1:
@@ -221,8 +223,9 @@ def parse_oa_article(html: str, base: str) -> dict:
     soup = BeautifulSoup(html, "html.parser")
     attachments, seen = [], set()
     for row in soup.select('[id^="accessory_dsp_tr"]'):
-        fields = row.select('input[name="accessory"]')
-        if len(fields) != 1 or not str(fields[0].get("value", "")).isdigit():
+        fields = [field for field in row.select("input[name]")
+                  if re.fullmatch(OA_ATTACHMENT_FIELD_PATTERN, str(field.get("name", "")))]
+        if len(fields) != 1 or not re.fullmatch(r"[0-9]+", str(fields[0].get("value", ""))):
             raise _changed("oa", "OA 附件标识缺失或有歧义。")
         file_id = str(fields[0]["value"])
         if file_id in seen:

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from urllib.parse import urljoin, urlparse
+from urllib.parse import parse_qs, urljoin, urlparse, urlunparse
 
 from bs4 import BeautifulSoup
 
@@ -110,6 +110,23 @@ def optional_text(value: object, label: str) -> str:
     return clean(value)
 
 
+def course_url(value: object) -> str:
+    """Upgrade the observed legacy ELC link; never enable authenticated HTTP."""
+    url = optional_text(value, "课程链接")
+    try:
+        parsed = urlparse(url)
+        query = parse_qs(parsed.query, keep_blank_values=True)
+        if (parsed.scheme == "http" and parsed.hostname == "my.stu.edu.cn"
+                and parsed.port in {None, 80} and not parsed.username and not parsed.password
+                and not parsed.fragment and parsed.path == "/courses/elc/course/view.php"
+                and set(query) == {"id"} and len(query["id"]) == 1
+                and re.fullmatch(r"[0-9]{1,20}", query["id"][0])):
+            return urlunparse(parsed._replace(scheme="https", netloc="my.stu.edu.cn"))
+    except ValueError:
+        pass  # The adapter's existing URL policy rejects malformed/unknown links.
+    return url
+
+
 def parse_inventory(payload: dict) -> Inventory:
     courses = payload_records(payload)
     known_ids = set()
@@ -139,7 +156,7 @@ def parse_inventory(payload: dict) -> Inventory:
             raise schema_error("MySTU 课程缺少名称，保留原缓存。")
         result.append(Course(
             id=str(course.get(COURSE_FIELDS["id"]) or course[COURSE_FIELDS["url"]]), title=title,
-            url=optional_text(course.get(COURSE_FIELDS["url"]), "课程链接"),
+            url=course_url(course.get(COURSE_FIELDS["url"])),
             year=course.get(COURSE_FIELDS["year"]), term=course.get(COURSE_FIELDS["term"]),
             teacher=optional_text(course.get(COURSE_FIELDS["teacher"]), "教师")))
     return Inventory(result, complete, semester)
@@ -183,6 +200,10 @@ def parse_elc(html: str, base: str) -> list[dict]:
         raise schema_error("ELC 未返回唯一可识别的课程内容。")
     records, seen = [], set()
     for node in soup.select(ACTIVITY_SELECTOR):
+        if "modtype_label" in node.get("class", []):
+            # Moodle labels are inline course material, not separately linked
+            # activities. Their incidental links may repeat a real resource.
+            continue
         link = node.select_one(ACTIVITY_LINK_SELECTOR)
         if link is None:
             raise schema_error("ELC 部分活动缺少链接，保留原缓存。")
