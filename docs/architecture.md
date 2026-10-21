@@ -1,12 +1,14 @@
 # 架构与产品边界
 
-STU MCP 是面向汕头大学学生的本地校园工具。标准 stdio MCP 是主要接入方式，CLI 提供安装、诊断和无 MCP 环境的补充入口；分析、总结与模型调用由用户自己的 agent 完成。同一实现服务各客户端，不维护互不相通的客户端专版。
+STU MCP 是面向汕头大学学生的校园工具。桌面默认使用 stdio，个人服务器可通过 Streamable HTTP 复用同一实例；CLI 提供安装、诊断和补充入口。分析、总结与模型调用由用户自己的 agent 完成。同一实现服务各客户端，不维护客户端或服务器专版。远程支持目前在开发分支，部署与验证边界见[服务器说明](server.md)。
 
 本仓库是独立开源产品；Hermes 上的私有 `school_hub` 是另一个部署，不由本仓库运行或修改。仓库不包含原项目历史、运行数据库、个人画像、登录态、Hermes 运行目录或部署配置。
 
 ```mermaid
 flowchart LR
-    A[用户的 agent] -->|stdio MCP| B[server / App]
+    A[用户的 agent] -->|stdio / Streamable HTTP| T[传输边界]
+    T --> R[HostRuntime]
+    R --> B[server 工具 / App]
     C[CLI] --> B
     B --> D[features 业务服务]
     D --> E[来源访问适配]
@@ -14,7 +16,7 @@ flowchart LR
     E --> G[学校或第三方来源]
     B --> H[Store 与缓存]
     I[本地设置页] --> J[用户在官方页面登录]
-    J --> K[独立加密会话 / 系统密钥库]
+    J --> K[独立加密会话 / 凭据后端]
     K --> E
     B -->|本机 HTTP| L[stu_checkin 独立后台]
     M[签到网页] --> L
@@ -25,6 +27,7 @@ flowchart LR
 | 边界 | 模块与职责 |
 | --- | --- |
 | 产品入口 | `server` 声明 MCP 工具；`cli` 声明命令；`app` 连接查询、刷新与存储。来源字段解析不放在工具层 |
+| 实例与接入 | `hosting.HostRuntime` 组装一个人的服务与生命周期；`transports/http` 只处理私有鉴权、入口约束与 SDK 的 HTTP 传输。HTTP 客户端共用一个实例，断开连接不关闭实例，不为每个请求重建 App |
 | 功能与服务目录 | `sources` 声明功能、目标地址和认证依赖；`services` 区分业务用途、校区与来源证据。用途核验、即时可用性、表单和提交验收分别记录 |
 | 来源功能包 | `features/repair`、`notices`、`mystu`、`jw`、`yuketang`、`charging`、`huyou` 分别拥有该领域的契约、纯解析、访问与业务编排 |
 | 课表文件生成 | `features/timetable/export.py` 是已核对输入到课次及 CSV/ICS 的唯一核心；技能脚本只选择并调用该核心，不请求学校或外部日历 |
@@ -32,8 +35,8 @@ flowchart LR
 | 兼容入口 | `parsers`、`collectors`、旧 `repair*`、`charging`、`huyou` 等保留 Python 导入与原注入点，转发功能包；功能包不反向依赖这些门面 |
 | 网络传输 | `network` 负责限定主机、HTTPS、显式教务 HTTP 兼容、会话范围、读取预算和脱敏错误；连接池、失败冷却与受限匿名重试见[访问策略](network.md) |
 | 连接诊断 | `access_policy`、`connectivity` 按服务及认证依赖检查匿名响应头、DNS和显式代理对照；`network_audit` 检查固定登记的第一方入口。不改配置，不作为普通采集的全量前置条件 |
-| 本机状态 | `runtime` 定义用户目录；`vault` 使用系统密钥库保护来源独立会话；`store` 保存缓存与来源范围。`charging_cache` / `charging_devices` 保持公开设备快照、租约与目录政策 |
-| 登录与安装 | `auth`、`webvpn`、`setup_web` 负责官方登录与本地设置；`clients` 保留配置、备份、预览和幂等接入；`skill_export` 提供可选技能资源归档 |
+| 宿主状态 | `runtime` 定义数据目录；`credentials` 选择系统密钥库或显式外置主密钥后端；`vault` 保护来源独立会话；`store` 保存缓存与来源范围。`charging_cache` / `charging_devices` 保持公开设备快照、租约与目录政策 |
+| 登录与安装 | `interaction` 声明桌面、虚拟显示或禁用的前提；`auth`、`webvpn`、`setup_web` 负责官方登录与宿主设置；`clients` 保留配置、备份、预览和幂等接入；`skill_export` 提供可选技能资源归档 |
 | 签到后台 | `checkin` 是本机控制客户端，`checkin_process` 负责独立启动；`stu_checkin` 随包分发后台、网页、监听、结果与加密状态。两页面共用回环 HTTP，绑定时不反向查 DNS |
 
 分层的依赖方向与学校改版维护步骤集中在[来源适配](source-adapters.md)。当前架构写在本文，历次迁移、兼容比对和测试证据保留在[验证记录](verification.md)，不在模块说明里累积批次历史。
@@ -81,7 +84,7 @@ flowchart LR
 
 公开来源无需账号；OA 先匿名读取，受保护访问才使用可选 WebVPN。只允许 HTTPS 认证代理，不向旧 HTTP 代理发 cookie。教务与 MySTU 各自完成学校统一认证；雨课堂在自己的官方页面登录，扫码不赋予读取微信消息的能力。系统目录和真实核验范围见[校园协议](campus-protocols.md)。
 
-默认登录由用户在官方交互页面完成，各来源独立加密保存会话，不要求全量 `.env` 或模型密钥。WebVPN 自动重登需本人在本机设置页启用；账号、密码和 TOTP 密钥只进系统密钥库。重登仅在 OA 受保护读取时触发，一轮读取至多一轮，进程间串行且失败冷却；拒绝或人工挑战会暂停，不自动绑令牌或保活。
+默认登录由用户在官方交互页面完成，各来源独立加密保存会话，不要求全量 `.env` 或模型密钥。WebVPN 自动重登需本人在宿主设置页启用；账号、密码和 TOTP 密钥只进受保护凭据后端。重登仅在 OA 受保护读取时触发，一轮读取至多一轮，进程间串行且失败冷却；拒绝或人工挑战会暂停，不自动绑令牌或保活。
 
 手动与自动登录都核对来源会话代次。退出写随机代次标记，阻止尚未提交的旧登录任务恢复旧账号；配置、保存和缓存提交分别核对版本，避免覆盖另一账号的新会话及缓存。各来源缺少认证只影响自己的读取。设置及兼容选项见[安装登录](install.md)。
 

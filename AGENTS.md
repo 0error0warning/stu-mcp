@@ -14,11 +14,14 @@ The source baseline is School Hub commit `13f1b216ac35269d9840b6854ccff64c1e25e5
 - Huyou is an independent public community source, not an official school notice source. Read anonymously;
   no account cookies or private posts. The caller's agent supplies literal search terms. No model calls or background sync.
 - Passwords, cookies and tokens never appear in tool parameters/results, logs or agent config.
-- Use the OS keyring. Session files are encrypted with a key held separately in that keyring.
+- Default to the approved OS keyring. An operator may explicitly select STU_MCP_KEY_FILE for a headless
+  personal server: an external private master-key file protects per-application encrypted credential mappings.
+  Never generate/rotate a key at service startup, accept it through MCP, or store it in either data directory.
 - Never silently fall back to plaintext credential storage.
 - Default login takes place in the user's own interactive browser, outside the agent conversation.
 - Optional WebVPN auto-login is explicitly enabled by the user in local setup. Store its account/password/TOTP seed
-  directly in the approved OS keyring; never in a file, command-line argument, MCP tool, or client configuration.
+  through the approved credential backend; never as plaintext in a file, command-line argument, MCP tool,
+  or client configuration. The optional file backend encrypts them with the external master key.
 - Renew WebVPN only during a protected OA read, with bounded attempts and a cooldown. Pause on rejected credentials
   or human challenges. Never automate CAPTCHA or token binding. Logout removes saved auto-login credentials.
 - Missing credentials or expired sessions affect only the dependent source.
@@ -72,6 +75,12 @@ The source baseline is School Hub commit `13f1b216ac35269d9840b6854ccff64c1e25e5
   paused monitoring, active monitoring and query errors. Closing MCP must not stop an authorized worker.
   Automated tests use synthetic attendance responses; do not present them as real classroom submission evidence.
 - Preserve user configuration; installation and connection must be idempotent and reversible.
+- Keep stdio and Streamable HTTP on the same tool/service implementation. HTTP is a single-user instance,
+  one worker with a private preconfigured Bearer, explicit Host/Origin protection and bounded sessions/requests;
+  do not describe it as public OAuth or multi-user hosting. Disconnecting a client must not close shared drafts.
+  Report network/display/storage/download scope as the MCP host, not the caller's computer. Never infer a
+  campus route from successful remote MCP access. Headless interaction requires a protected virtual display;
+  do not bypass school login proof, TLS, human review or the one-send submission guard.
 - Do not modify the original School Hub checkout or production services for this project.
 
 ## Validation

@@ -17,3 +17,6 @@ output/
 .nexus-map/
 .playwright-cli/
 .playwright/
+master.key
+http-token
+vnc_auth
