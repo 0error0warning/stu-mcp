@@ -11,7 +11,8 @@ from .app import App
 from .auth import interactive_login
 from .clients import CLIENTS, catalog, connect
 from .huyou import DEFAULT_CIRCLE
-from .runtime import AppError
+from .runtime import AppError, Runtime
+from .skill_export import SKILL_NAMES, export_skill
 
 
 def parser() -> argparse.ArgumentParser:
@@ -21,6 +22,9 @@ def parser() -> argparse.ArgumentParser:
     sub.add_parser("serve", help="启动 stdio MCP 服务")
     sub.add_parser("status", help="输出功能/登录/缓存状态")
     sub.add_parser("clients", help="查看客户端接入方式与官方说明")
+    skill = sub.add_parser("skill-export", help="预览或导出随包技能，不修改 agent 配置")
+    skill.add_argument("--skill", choices=SKILL_NAMES, default="stu-campus")
+    skill.add_argument("--apply", action="store_true", help="生成 ZIP；默认只预览")
     network = sub.add_parser("network", help="匿名诊断指定校园服务的直连、DNS及本机代理，不改设置")
     network.add_argument("--service-id", default="sangpushan_repair")
     network.add_argument("--location-hint", choices=("unknown", "campus", "off_campus"), default="unknown")
@@ -124,6 +128,8 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if args.command == "clients":
             return emit({"ok": True, "clients": catalog()})
+        if args.command == "skill-export":
+            return emit(export_skill(Runtime.default(), apply=args.apply, name=args.skill))
         if args.command == "network":
             from .connectivity import NetworkDiagnostics
             return emit(NetworkDiagnostics().diagnose(args.service_id, args.location_hint, args.refresh,
