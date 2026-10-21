@@ -246,7 +246,7 @@ class CampusHTTP:
                                         and destination.path.startswith("/portal"))
                         if destination.hostname == "sso.stu.edu.cn" or "/login" in destination.path.lower() or webvpn_login:
                             raise AppError("login_expired" if self.authenticated else "needs_login",
-                                           "此来源需要在本地浏览器登录。", self.source)
+                                           "此来源需要重新登录；请在 MCP 宿主终端运行对应的 stu-mcp login 命令。", self.source)
                         if response.status_code not in (301, 302, 303) and urlparse(target).netloc != urlparse(current).netloc:
                             raise AppError("unsafe_redirect", "已阻止跨站转发请求内容。", self.source)
                         current = target
@@ -280,7 +280,8 @@ class CampusHTTP:
                         # contain a login form. A form alone must not hide that board.
                         if (self.authenticated or self.source in {"jw", "mystu", "yuketang"}) and is_login(result.text):
                             raise AppError("login_expired" if self.authenticated else "needs_login",
-                                           "此来源需要在本地浏览器登录。", self.source, http_status=status)
+                                           "此来源需要重新登录；请在 MCP 宿主终端运行对应的 stu-mcp login 命令。",
+                                           self.source, http_status=status)
                     return result
             except AppError:
                 raise
@@ -321,7 +322,7 @@ class CampusHTTP:
             codes = [payload.get(k) for k in ("errcode", "code")]
             if any(code in (401000, "401000") for code in codes):
                 raise AppError("login_expired" if self.authenticated else "needs_login",
-                               "雨课堂已拒绝登录会话，请在本地设置页重新登录。", self.source)
+                               "雨课堂已拒绝登录会话；请在 MCP 宿主终端运行 stu-mcp login yuketang。", self.source)
             # v2 uses errcode, classroom v3 uses code, and LMS uses success.
             # Error messages can contain credentials or personal data; keep them
             # out of the MCP result and do not guess authentication from prose.

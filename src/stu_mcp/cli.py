@@ -145,6 +145,9 @@ def main(argv: list[str] | None = None) -> int:
     args = parser().parse_args(argv)
     try:
         if args.command == "browser":
+            from importlib.util import find_spec
+            if find_spec("playwright") is None:
+                raise AppError("browser_unavailable", "请先安装可选的 browser 依赖，再安装 Chromium；默认 HTTP 登录无需浏览器。")
             return subprocess.call([sys.executable, "-m", "playwright", "install", "chromium"])
         if args.command in (None, "serve"):
             from .server import build_server

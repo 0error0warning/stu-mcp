@@ -194,7 +194,7 @@ def parse_activities(payload: dict) -> Activities:
 
 def parse_elc(html: str, base: str) -> list[dict]:
     if is_login(html):
-        raise AppError("needs_elc_login", "ELC 还需在学校页面完成登录；请重新打开 MySTU 登录。", "mystu")
+        raise AppError("needs_elc_login", "ELC 会话需要重新登录；请在 MCP 宿主终端运行 stu-mcp login mystu。", "mystu")
     soup = BeautifulSoup(html, "html.parser")
     if len(soup.select(COURSE_CONTENT_SELECTOR)) != 1:
         raise schema_error("ELC 未返回唯一可识别的课程内容。")
