@@ -1,2 +1,2 @@
 帮我安装 STU MCP：https://github.com/0error0warning/stu-mcp
-按 docs/install.md 接入当前客户端，保留已有配置并验证公开查询。需要登录时打开本地设置页，我自己来。
+按 docs/install.md 接入当前客户端，保留已有配置并验证公开查询。需要登录时先核对宿主 capabilities；当前分支默认 HTTP CLI，由我在宿主终端完成敏感输入或手机授权，不默认启动浏览器。

@@ -2,7 +2,7 @@
 
 本页对应开发版本，尚未随 v0.5.0 发布。模板面向 Linux 服务器上的一个用户、一个 HTTP worker，
 由 tini 直接启动 `stu-mcp`，不包含显示服务、远程桌面或额外管理网页进程。
-镜像保留 headless Chromium 供已有 WebVPN 自动重登使用；无桌面不等于所有来源都已有无头首次登录。
+默认镜像不安装 Playwright、Chromium、Xvfb 或远程桌面；各来源默认通过 HTTP 和本人 CLI 认证。
 连接方式、授权边界和网络诊断见[服务器部署](server.md)。目前需本地构建镜像，没有已发布镜像地址。
 
 ## 初始化并启动
@@ -69,17 +69,26 @@ docker compose exec -it stu-mcp stu-mcp webvpn-auto remove
 
 `configure` 仅由本人隐藏输入学校账号、密码和**已经绑定的 TOTP 密钥或 otpauth 地址**。
 这沿用原有按需自动重登能力，不在配置时验证登录、执行令牌绑定或识别验证码；保存会使旧 WebVPN 会话失效并清理旧 OA 缓存。
-手机显示的六位动态码不能代替 TOTP 密钥。没有原密钥时，不承诺可用此方式完成认证。
+手机六位码不能代替长期 TOTP 密钥；单次登录可用 `docker compose exec -it stu-mcp stu-mcp login webvpn` 输入当前码，不必保存长期密钥。
 
-受保护 OA 读取需要重新认证时，既有流程才使用 headless Chromium。遇到 `randCode` 图形验证码、
+受保护 OA 读取确需重新认证时才使用纯 HTTP 密码/TOTP。遇到 `randCode` 图形验证码、
 首次令牌绑定或其他人工挑战应暂停，不反复提交凭据。`status` 只报告配置／失败状态，不显示凭据；
 `remove` 关闭自动重登并移除保存的自动登录凭据。
 
-### 其他来源
+### 教务、MySTU、雨课堂与报修
 
-公开来源无需登录；有可用会话及匹配密钥时，个人来源查询也不要求显示环境。
-JW、MySTU、雨课堂的首次登录和宿舍报修仍沿用本人操作的学校浏览器，当前没有完整的无头 CLI 路径。
-基础容器没有提供这些人工浏览器流程，不应把它宣传为全功能容器登录。报修实际提交仍需完整预览和本轮明确确认。
+```sh
+docker compose exec -it stu-mcp stu-mcp login mystu
+docker compose exec -it stu-mcp stu-mcp login yuketang
+docker compose exec -it stu-mcp stu-mcp login repair
+docker compose exec -it stu-mcp stu-mcp login jw --allow-http-callback
+```
+
+账号密码隐藏输入；雨课堂官方二维码显示于该终端，由本人手机确认。设置页不是必需步骤，也不把二维码转发给 agent。
+
+教务参数只允许本次官方 HTTP 票据回调。OA HTTP 8118 兼容需本人另行明确运行 `docker compose exec -it stu-mcp stu-mcp transport --oa-http on`，默认关闭；会话可能经明文 HTTP 传输，不能借用教务许可。两者均不允许密码/TOTP走 HTTP，不关闭证书校验。
+
+报修独立会话保存在加密 Vault，草稿和确认只在进程内存；默认 HTTP 填写，完整预览、本轮明确确认、单次正式 POST 和回执核对规则仍全部适用。用法见[报修](repair.md)，协议及失败范围见[认证说明](authentication.md)。人工挑战会停止，不自动安装浏览器或桌面。
 
 ## 数据与验证边界
 
@@ -89,5 +98,5 @@ JW、MySTU、雨课堂的首次登录和宿舍报修仍沿用本人操作的学�
 - 重启会丢失内存中的报修草稿和确认；提交结果不确定时先只读查单，不能据此重提。
 - SSH/Tailscale 连接解决客户端到 MCP 的访问。学校 DNS、SSO 和来源请求发生在容器服务器；
   连接 MCP 成功不证明服务器能进入校园内网。不自动改 DNS、路由、代理或 TLS 校验。
-- 已检查模板结构、端口／密钥隔离、真实 SDK 的合成 HTTP 交互，以及本机 headless 合成渲染。
-  当前开发机无 Docker，尚未构建运行镜像；容器内真实微信回调、WebVPN TOTP 续登录和学校业务仍未验收。
+- 已检查模板结构、端口／密钥隔离、真实 SDK 的回环交互及 HTTP 认证/业务的合成测试。
+  当前开发机无 Docker，尚未构建运行镜像；宿主实测不能充当容器或跨机验收，最新真实记录见[验证索引](verification.md)。

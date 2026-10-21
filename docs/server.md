@@ -55,43 +55,32 @@ stu-mcp serve --transport streamable-http \
 
 私有预配置 Bearer 模式尚未实现 [MCP OAuth 授权发现](https://modelcontextprotocol.io/specification/latest/basic/authorization)。它适用于支持自定义 Bearer 的客户端；只接受 OAuth 的托管客户端目前不能直接接入。也不能假定云端 agent 能访问你电脑的 localhost 或 tailnet。标准传输与具体客户端实测分开判断，参见 [MCP Streamable HTTP](https://modelcontextprotocol.io/specification/latest/basic/transports/streamable-http)。
 
-## 按已有认证路线登录
+## 在宿主终端登录
 
-`STU_MCP_INTERACTION=disabled` 只禁用现有人工浏览器流程，不阻止公开查询、已有会话读取、对分易回调或 WebVPN 无头自动重登。能力以 `get_capabilities.hosting.login_flows` 为准，`interaction.available` 只说明人工浏览器的显示前提，不代表全部认证功能不可用。各模块调用链见[认证基线](authentication.md)。
-
-### 对分易：原微信回调
-
-在宿主的人工终端执行，保持同一个运行账号、数据目录和主密钥配置：
+认证默认走纯 HTTP 和本人终端，不需要 DISPLAY、虚拟桌面或 Chromium。保持与 MCP 服务相同的运行账号、数据目录和密钥后端：
 
 ```sh
+stu-mcp login mystu
+stu-mcp login yuketang
+stu-mcp login repair
+stu-mcp login webvpn
 stu-mcp login duifene
+stu-mcp login jw --allow-http-callback
 ```
 
-命令提供已有固定微信授权地址，由本人在微信完成授权，再在**隐藏输入**中粘贴返回链接。程序复用同一个对分易后台和原 `/api/connect → P.aspx` 交换，不创建另一套 Controller、不新增官网扫码协议。非 TTY 或不能隐藏输入时拒绝；不接受回调命令参数、环境变量或管道，也不能把链接发进聊天。
+账号、密码、动态码和回调均不放在参数、环境变量、stdin 管道或聊天中。雨课堂在终端显示官方二维码，由本人手机确认；对分易提供原微信授权地址，由本人完成授权并隐藏粘贴返回链接，复用原 worker，不改成官网 QR/SignalR 方案。
 
-回调仅发送一次；CLI 未收到可信后台回执时返回 `unknown` 并只读检查状态，不重发。上游交换或课程读取失败仍沿用原后台的回滚与失败响应，不能把 `rejected` 一律理解为账号被拒绝。旧会话仍有效也不能证明新回调成功。命令不调用选课或 start、不新建监听计划；后台课程选择回显和原已授权持续计划恢复均沿用原规则，结果显示 `monitoring` / `resume_enabled`。普通 MCP 退出不关闭该后台。
+教务 `--allow-http-callback` 仅允许本次已知官方票据回调，不改变设置。需要持久兼容时，用 `stu-mcp transport --jw-http on`。OA 的 `stu-mcp transport --oa-http on` 是另一项独立选择，默认关闭；只允许已核验目录指定的官方 HTTP 8118 路由。HTTP 可能暴露该来源会话及内容，不能由 agent 自动开启。密码和 TOTP 始终只发 HTTPS 认证源。
 
-### WebVPN：配置原有自动重登
+WebVPN 长期自动重登可选，另行运行 `stu-mcp webvpn-auto configure`，隐藏输入已有绑定的 TOTP 密钥/otpauth 地址；`status/remove` 查看或移除配置。普通 `login webvpn` 也可输入当前动态码，不要求为单次登录保存长期密钥。自动认证只在受保护 OA 按需读取时触发，使用纯 HTTP；拒绝、绑定和人工挑战停止，不保活、不反复提交。
 
-```sh
-stu-mcp webvpn-auto configure
-stu-mcp webvpn-auto status
-stu-mcp webvpn-auto remove
-```
+对分易 CLI 登录不选课、不调用 start、不创建监听计划。原已授权持续计划仍按后台账号与课程规则恢复，结果展示 `monitoring/resume_enabled`；回执未知只读检查，不重发。普通 MCP 退出不停止该 worker。
 
-`configure` 是明确启用按需自动重登，要求人工 TTY，账号、密码、已绑定 TOTP 密钥都隐藏输入，并复用设置页已有的配置和加密存储。保存会断开原 WebVPN 会话、清理旧 OA 缓存；不在配置时发起认证。`status` 只返回开关/失败/冷却，不读取或显示凭据；`remove` 沿用原移除逻辑。特殊密钥编码可使用 `configure --encoding base32|base64|hex`，密钥本身不在参数里。
+报修 `login repair` 建立独立加密会话，MCP 默认通过 HTTP 填写并展示实际完整表单，只有本轮用户明确确认后提交一次。本人终端也可使用 `repair drill`；具体字段、预览及回执规则统一见[报修流程](repair.md)。
 
-仅受保护 OA 读取需要时才调用已有 `headless=True` 登录，实际读通目标资源后保存会话。它不需要 DISPLAY；首次令牌绑定、学校图片码 `randCode` 或其他人工挑战会暂停，不承诺全自动解决。没有绑定密钥时，不能用当前六位动态码冒充长期配置。
+默认设置页的登录按钮只返回宿主 CLI 指引，不让后台线程读取 TTY。需要旧浏览器兼容时，安装 `browser` extra 并明确选择 `login 来源 --browser`；该方式才受显示环境和 `STU_MCP_INTERACTION` 检查。项目不启动显示服务，HTTP 不自动回退浏览器。完整来源及存储契约见[认证说明](authentication.md)。
 
-### 仍需人工浏览器的来源
-
-教务、MySTU、雨课堂首次登录，以及报修独立临时认证，当前仍沿用原人工浏览器，没有通过这次部署整理变成全 CLI。**这是现有实现的范围，不是学校强制使用桌面的结论；此前并未验证纯 HTTP 首次登录。** 本轮补做的匿名接口结果与尚缺的真实账号证明见[纯 HTTP 调查](verification/2026-10-21-http-auth.md)。桌面 `stu-mcp setup`、原 `login` 和报修工具保持原行为；已有有效会话的查询本身无需显示。
-
-之后的[本人账号实测](verification/2026-10-21-http-auth-live.md)已跑通教务、MySTU、报修和雨课堂的纯 HTTP 登录及对应读取，WebVPN 仍被接入策略拒绝。实验尚未替换产品适配器，不能将实验通过写成现有安装包已经支持全 CLI，也不能再把有界面实现当作上游必需条件。
-
-无显示的宿主遇到这些操作会明确返回 `interaction_unavailable`，不在后台等待一个用户看不到的登录窗口。不要通过导出 cookies 或改认证域绕过。可选设置页仍只绑定回环，`--port` 和私有端口转发保持可用，但转发设置页不会让服务器拥有显示能力。兼容的 `virtual-display` 配置值只检查操作者已有 DISPLAY，项目不启动显示服务，也不提供默认桌面部署栈。
-
-[容器模板](server-container.md)现在只运行 MCP、保留无头 Chromium；没有 noVNC、VNC、桌面密码或设置页桥接。需要对分易网页时，可在宿主运行 `stu-checkin --port 8767 --no-browser`，独立转发其回环端口；CLI 回调不需要这一步。
+[默认容器](server-container.md)没有浏览器或桌面。若本人需要签到网页，可运行 `stu-checkin --port 8767 --no-browser` 并独立私有转发其回环端口；原回调 CLI 不需要此步骤。
 
 ## 网络与验证范围
 
@@ -99,4 +88,4 @@ stu-mcp webvpn-auto remove
 
 `get_capabilities` 的 `hosting`、`execution` 说明实例角色、交互前提和存储后端选择，不假装已经验证后端可用。单项/批量网络结果的 `execution.scope=mcp_host` 和原核查时间一起阅读；缓存换实例标签不重做网络检查。诊断不会改 DNS、代理、TUN、hosts 或切换无线网络，业务站与 SSO 分开处理。
 
-验证覆盖回环 HTTP 的真实 SDK 握手、两个客户端共用草稿、断开连接后的生命周期、错误鉴权、Host/Origin、请求大小限制、外置密钥合成读写及原 stdio 接口。CLI 回调/自动重登配置使用合成账号和回环后台验证；Docker 构建、真实账号认证、Tailscale 端到端及学校业务另列验收，不能由单元测试代替。公开 OAuth、多租户、自动账号迁移和跨机文件下载不在本版能力内。
+验证覆盖回环 HTTP 的真实 SDK 握手、两个客户端共用草稿、断开连接后的生命周期、错误鉴权、Host/Origin、请求大小限制、外置密钥合成读写及原 stdio 接口。HTTP 认证、加密保存、退出屏障及 CLI 以合成账号测试；历史真人 HTTP 实验与正式适配器的新真人回执分别记录。Docker 构建、自然过期和 Tailscale 端到端不能由这些测试代替，最新范围见[验证索引](verification.md)。公开 OAuth、多租户、自动账号迁移和跨机文件下载不在本版能力内。

@@ -2,6 +2,8 @@
 
 雨课堂课程查询按请求运行，沿用 `refresh_source(source="yuketang")` 和既有课程、任务、资源、公告查询；`collectors.yuketang(vault, limit)` 仍是原 Python 入口。本模块属于开源 `stu-mcp`，不依赖 Hermes 私有 `school_hub`。
 
+当前开发分支用 `stu-mcp login yuketang` 申请官方二维码，在本人终端显示并由本人手机确认；服务端不启动浏览器。`auth_http/yuketang` 负责认证协议与学生课程正向 proof，本功能包继续负责课程业务。临时扫码原料不经 MCP/日志/文件；来源专用认证头与 Cookie 仅进入加密会话。详见[认证说明](authentication.md)。
+
 ## 分层与维护入口
 
 | 文件（`src/stu_mcp/features/yuketang/`） | 职责 |

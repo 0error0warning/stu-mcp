@@ -56,26 +56,32 @@ stu-mcp refresh oa --limit 5
 
 客户端加载 MCP 后，调用 `get_capabilities`，再按用户目标刷新相应来源。公开查询验证失败时，保留成功安装和客户端配置，并准确报告网络/数据源限制。
 
-## 4. 按需登录
+## 4. 按安装版本登录
 
-设置页首次点击登录会按需准备浏览器。agent 也可以在用户需要个人功能时提前准备：
+**已发布 v0.5.0**：沿用该版本的 `stu-mcp setup` 与学校交互浏览器。缺浏览器时 `stu-mcp browser install`；不把下列开发命令行为套到旧包。不要向 agent 提供密码、Cookie、票据或验证码，也不要导出浏览器资料。
+
+**当前开发分支**：在已经明确选择的源码版本中安装，例如仓库根目录 `uv tool install --python 3.12 .`，记录实际 revision。默认认证不安装浏览器或桌面，在运行 MCP 的同一账号、数据目录和凭据后端中由本人执行：
 
 ```sh
-stu-mcp browser install
-stu-mcp setup
+stu-mcp login mystu
+stu-mcp login yuketang
+stu-mcp login repair
+stu-mcp login webvpn
+stu-mcp login duifene
+stu-mcp login jw --allow-http-callback
 ```
 
-也可以用 MCP `open_setup`。设置页或 CLI `stu-mcp login jw|mystu|yuketang|webvpn` 打开学校/雨课堂页面，用户自己操作。验证码、MFA 或二维码在官方页面处理。agent 不索要、不代填、不记录密码、cookie、token、验证码或 TOTP 密钥，不截图用户登录过程，不导出 storage-state。
+账号密码/动态码/回调只在本人 TTY 隐藏输入，不放参数、环境变量或管道。雨课堂在终端显示官方二维码，由本人手机确认；对分易使用原微信授权回调。设置页默认引导宿主 CLI，不在后台索取认证输入。学校新挑战会明确停止，不自动转浏览器或重复提交。
 
-若用户希望 WebVPN 过期后自动重登，可由本人在设置页点 WebVPN 的「设置」，填写学校账号、密码和已绑定令牌的密钥或完整 `otpauth://totp/` 地址后保存。不要让 agent 读取/截图/代填这个表单，也不要把密钥或当前验证码发进对话。该配置完全可选，保存在系统密钥库；表单不回填，状态只显示开关和失败状态。
+教务参数仅允许本次官方 HTTP 票据回调，不改持久选项。`stu-mcp transport --jw-http on` 可明确开启教务兼容；`stu-mcp transport --oa-http on` 是另一项默认关闭的 OA HTTP 8118 兼容。HTTP 可暴露票据、会话或内容，两者不能互相借用许可，agent 不自动替用户开启。密码和动态码始终只发 HTTPS。
 
-受保护 OA 读取会复用会话，失效时尝试一次自动认证；账号密码或令牌被拒绝、学校要求人工验证时会暂停。`auto_login_paused` 表示需本人更新配置或手动登录，`auto_login_cooldown` 表示稍后再试，不能反复刷新登录。手动重新登录会移除旧自动配置；退出 WebVPN 会移除会话、缓存和自动凭据。设置页「断开」与 `stu-mcp logout webvpn` 相同。没有定时保活或后台 AI。
+WebVPN 长期自动重登可选，由本人运行 `stu-mcp webvpn-auto configure` 或使用宿主设置页，输入已绑定 TOTP 密钥/otpauth 地址。状态不回填凭据，不在配置时认证或绑定。普通 `login webvpn` 可使用当前动态码；长期配置不能用该六位码替代。受保护读取先复用会话，必要时一轮纯 HTTP 认证，拒绝/人工挑战暂停，网络错误不应触发反复重登。`logout webvpn` 移除该来源会话、OA缓存及自动凭据。
 
-需要教务成绩时，让用户在设置页登录教务；首次登录会先说明学校的 HTTP 回调，由用户点「继续登录」确认。该选项默认关闭，只兼容教务。成绩和考试优先使用 HTTPS 查询，HTTP 回调中的教务会话与票据仍存在传输风险；密码在 HTTPS 统一认证页输入。不要让 agent 自动替用户改这个传输选项。自 0.4.1 的教务入口与表头修复起，更早解析器产生的成绩/考试缓存不再用于查询和统计；从这些旧版升级时请重新登录教务，再运行 `stu-mcp refresh jw`。
+当前分支仅在本人明确选择兼容时才使用 Playwright；源码可 `uv sync --extra browser` 后运行 `uv run stu-mcp browser install`、`uv run stu-mcp login mystu --browser`。默认 Docker 不包含此依赖或显示服务。完整流程与成功证明统一见[认证说明](authentication.md)，服务器密钥初始化见[服务器部署](server.md)。
 
-在有桌面的电脑上完成浏览器登录。Linux 安全密钥库未运行或被锁定时，向用户报告 `secure_storage_unavailable`，不要安装明文 keyring 后端作为替代。无账号功能仍能使用。
+密钥库不可用时报告 `secure_storage_unavailable`，不安装明文 keyring 后端。服务器可由本人显式初始化外置私密主密钥后端；不读取项目 `.env`、私有 School Hub 配置或其他浏览器账户。公开功能无需账号和解密密钥。
 
-教务和雨课堂部分读取已经完成本机真实账号验收，其他个人来源、更多题型及账号仍需继续测试，学校页面也可能改变。报告本次实际成功的来源，不把适配器单元测试当作用户账号验证。账户切换/重新登录会清除此来源缓存，随后重新刷新。
+登录返回会话保存不等于全部业务通过。随后刷新用户请求的来源，核实实际数据和范围；失败保留已有配置并准确分类。更多账号、会话自然过期、Docker及跨机仍分别验收，见[验证索引](verification.md)。
 
 ## 5. 汇报
 
