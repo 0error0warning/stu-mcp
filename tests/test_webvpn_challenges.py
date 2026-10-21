@@ -56,7 +56,18 @@ def login_document(challenge="", *, reveal_on_username=False, totp_challenge=Fal
 
 @pytest.fixture
 def offline_browser(monkeypatch):
-    evidence = SimpleNamespace(document="", requests=[], snapshots=[], launches=[])
+    evidence = SimpleNamespace(document="", requests=[], fulfilled=[], snapshots=[], launches=[],
+                               captcha_rejections=[], synthetic_pages=[])
+    reject_captcha = webvpn._reject_captcha
+
+    def checked_rejection(page):
+        try:
+            reject_captcha(page)
+        except AppError as error:
+            evidence.captcha_rejections.append(error.code)
+            raise
+
+    monkeypatch.setattr(webvpn, "_reject_captcha", checked_rejection)
     with sync_playwright() as real:
         if not Path(real.chromium.executable_path).is_file():
             pytest.skip("offline WebVPN challenge contract requires installed Chromium")
@@ -83,19 +94,33 @@ def offline_browser(monkeypatch):
                         route.fulfill(status=200, content_type="application/json", body="{}")
                     else:
                         route.fulfill(status=200, content_type="text/html", body="<p>Synthetic resource</p>")
+                    evidence.fulfilled.append((request.method, path))
 
                 # Page routes take precedence over the product's context guard.
                 # This test checks DOM/challenge behavior; no request reaches STU.
                 page.route("**/*", fulfill)
 
             def new_context(**settings):
-                context = browser.new_context(**settings)
-                context.on("page", install)
-                return context
+                # A page event may be delivered only during the next API call.
+                # Install the higher-priority page route before product goto,
+                # and make any accidentally unhandled request fail offline.
+                context = browser.new_context(**{**settings, "offline": True})
+
+                class RoutedContext:
+                    def __getattr__(self, name):
+                        return getattr(context, name)
+
+                    def new_page(self, *args, **kwargs):
+                        page = context.new_page(*args, **kwargs)
+                        install(page)
+                        return page
+
+                return RoutedContext()
 
             def close():
                 for page in pages:
                     if not page.is_closed():
+                        evidence.synthetic_pages.append(page.locator("#password-form, #totp-form").count() > 0)
                         evidence.snapshots.append(page.evaluate(
                             "({inputs:window.offlineInputEvents||[],filled:[...document.querySelectorAll('input')]"
                             ".filter(e=>e.value).map(e=>e.id)})"
@@ -116,6 +141,8 @@ def offline_browser(monkeypatch):
         monkeypatch.setattr("stu_mcp.auth_http.webvpn.acquire_state",
                             lambda **_: pytest.fail("offline DOM test cannot start HTTP authentication"))
         yield evidence
+        assert evidence.requests and evidence.requests == evidence.fulfilled
+        assert evidence.synthetic_pages and all(evidence.synthetic_pages)
 
 
 @pytest.mark.parametrize("challenge", CHALLENGES.values(), ids=CHALLENGES)
@@ -128,6 +155,7 @@ def test_visible_challenge_pauses_before_any_credential_or_login_post(app, offli
         protected_access(app.vault, OA_SECURE_PROXY + "/offline-protected", lambda _: pytest.fail("not authenticated"))
 
     assert error.value.code == "auto_login_interaction_required"
+    assert offline_browser.captcha_rejections == ["auto_login_interaction_required"]
     assert config.status()["status"] == "paused"
     assert config.status()["reason"] == "auto_login_interaction_required"
     assert offline_browser.snapshots == [{"inputs": [], "filled": []}]
@@ -146,6 +174,7 @@ def test_challenges_inside_hidden_ancestor_do_not_block_normal_login(app, offlin
     state = automatic_login(config.credentials(config.marker()), lambda: None)
 
     assert any(cookie["name"] == "offline_session" for cookie in state["cookies"])
+    assert offline_browser.captcha_rejections == []
     assert [(method, path) for method, path in offline_browser.requests if method == "POST"] == [
         ("POST", "/offline-password")]
     assert offline_browser.snapshots[0]["inputs"] == ["offline-user", "loginPwd"]
@@ -160,6 +189,7 @@ def test_challenge_appearing_after_username_stops_before_password(app, offline_b
         automatic_login(config.credentials(config.marker()), lambda: None)
 
     assert error.value.code == "auto_login_interaction_required"
+    assert offline_browser.captcha_rejections == ["auto_login_interaction_required"]
     assert offline_browser.snapshots == [{"inputs": ["offline-user"], "filled": ["offline-user"]}]
     assert not any(method == "POST" for method, _ in offline_browser.requests)
 
@@ -173,6 +203,7 @@ def test_challenge_at_totp_stage_stops_before_dynamic_code(app, offline_browser)
         automatic_login(config.credentials(config.marker()), lambda: None)
 
     assert error.value.code == "auto_login_interaction_required"
+    assert offline_browser.captcha_rejections == ["auto_login_interaction_required"]
     assert offline_browser.snapshots[0]["inputs"] == ["offline-user", "loginPwd"]
     assert not offline_browser.snapshots[0]["filled"]
     assert [(method, path) for method, path in offline_browser.requests if method == "POST"] == [

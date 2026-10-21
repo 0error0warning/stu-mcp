@@ -35,7 +35,7 @@ jobs:
         run: uv run python -m playwright install --with-deps chromium
       - run: uv run --extra dev ruff check .
       - name: Run tests with per-case progress and bounded-wait diagnostics
-        run: uv run --extra dev pytest -v --durations=10 -o faulthandler_timeout=90
+        run: uv run --extra dev pytest -v --durations=10 -o faulthandler_timeout=${{ matrix.python == '3.13' && 15 || 90 }}
       - run: uv build
       - name: Verify isolated core wheel, MCP transports, clients and worker lifecycle
         run: uv run --locked --extra dev python scripts/check_installed_runtime.py
