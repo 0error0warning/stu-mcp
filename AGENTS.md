@@ -9,6 +9,15 @@ The source baseline is School Hub commit `13f1b216ac35269d9840b6854ccff64c1e25e5
   Dorm repair submission is a separate, explicitly user-confirmed transaction.
 - No model API keys, LLM routing, autonomous AI jobs or Hermes runtime dependencies.
 - No private WeChat messages, group chats, decryption, historical scans or chat connectors.
+- Takeout is an independent third-party catalog source. Keep packet capture/package analysis outside
+  this product. Import only its app signing configuration through host CLI into the approved Vault;
+  never take signing or customer tokens through MCP. Current tools read catalogs/specifications and
+  prepare a nontransactional meal selection; they do not submit orders, pay, claim coupons or edit addresses.
+  Meal categories intersect explicit delivery areas; an empty list is not proof of a closed meal period.
+  Calculate delivery cutoffs in Asia/Shanghai on every read, including cached raw schedules. Keep provider
+  meal labels, inferred delivery-time meal labels, business hours and checkout eligibility distinct.
+  Provider lunch/dinner categories do not cover the main-campus catalog. Actual meal searches must
+  scan bounded pages of an explicit area and report unknowns/partial coverage; never silently change campuses.
 - Public WeChat article integration is undecided and is not included in this release.
 - Public tools work without accounts. Configure only the credentials a requested feature needs.
 - Huyou is an independent public community source, not an official school notice source. Read anonymously;

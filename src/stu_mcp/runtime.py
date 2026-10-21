@@ -46,6 +46,8 @@ class AppError(Exception):
             "oa_route_unavailable": "check_source_resource_catalog",
             "repair_direct_unavailable": "diagnose_campus_network",
             "network_diagnosis_running": "wait_then_retry",
+            "takeout_not_configured": "configure_on_host_cli",
+            "takeout_config_rejected": "update_takeout_config_on_host",
         }
         result = {"ok": False, "status": self.code, "message": self.message, "source": self.source,
                   "retryable": self.code in {"rate_limited", "source_unavailable", "network_error",
@@ -98,7 +100,7 @@ def reject_symlinks(path: Path) -> None:
 @contextmanager
 def key_lock(home: Path, name: str = "key"):
     """Serialize key creation / short session mutations across MCP processes."""
-    if name not in {"key", "webvpn", "webvpn-login", "jw", "mystu", "yuketang", "repair"}:
+    if name not in {"key", "webvpn", "webvpn-login", "jw", "mystu", "yuketang", "repair", "takeout"}:
         raise AppError("unknown_lock", "不支持此本地状态锁。")
     path = home / f".{name}-lock"
     reject_symlinks(path)
@@ -155,7 +157,7 @@ class Runtime:
         return self.home / "cache.sqlite3"
 
     def session_file(self, service: str) -> Path:
-        if service not in ("webvpn", "mystu", "jw", "yuketang", "repair"):
+        if service not in ("webvpn", "mystu", "jw", "yuketang", "repair", "takeout"):
             raise AppError("unknown_service", "不支持此登录服务。")
         return self.home / "sessions" / f"{service}.enc"
 

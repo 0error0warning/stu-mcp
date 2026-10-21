@@ -14,6 +14,7 @@ from .clients import detected_clients
 from .connectivity import CAPABILITY as NETWORK_CAPABILITY
 from .credentials import backend_name
 from .features.repair import CAPABILITY as REPAIR_CAPABILITY
+from .features.takeout import TakeoutService
 from .huyou import (
     DEFAULT_CIRCLE,
     HuyouClient,
@@ -42,6 +43,7 @@ class App:
         self.vault = vault or Vault(self.runtime)
         self.store = Store(self.runtime, self.vault)
         self._refresh_lock = threading.Lock()
+        self.takeout = TakeoutService(self.vault)
 
     def status(self) -> dict:
         features = []
@@ -59,6 +61,7 @@ class App:
                 "repair": dict(REPAIR_CAPABILITY),
                 "network_diagnostics": dict(NETWORK_CAPABILITY),
                 "network_audit": copy.deepcopy(NETWORK_AUDIT_CAPABILITY),
+                "takeout": self.takeout.status(),
                 "privacy": {"model_api_key_required": False, "background_ai": False,
                             "private_wechat": False, "storage": "os_keyring_and_encrypted_sessions"
                             if backend_name() == "os_keyring" else "external_key_and_encrypted_sessions",

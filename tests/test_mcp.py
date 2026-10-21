@@ -25,7 +25,11 @@ async def test_real_stdio_handshake_schema_and_feature_gating(tmp_path):
         tools = await client.list_tools()
         names = {t.name for t in tools.tools}
         assert {"get_capabilities", "refresh_source", "get_grades", "get_tasks", "open_setup"}.issubset(names)
-        assert len(names) == 38
+        assert len(names) == 45
+        assert {"search_takeout_shops", "get_takeout_shop", "get_takeout_menu", "prepare_takeout_selection"} <= names
+        assert "get_takeout_product" in names
+        assert "get_takeout_delivery_slots" in names
+        assert "find_takeout_meal_shops" in names
         assert "diagnose_campus_network" in names
         assert "audit_campus_network" in names
         assert {"prepare_repair_draft", "open_repair_form", "get_repair_draft", "close_repair_form"} <= names
@@ -42,6 +46,10 @@ async def test_real_stdio_handshake_schema_and_feature_gating(tmp_path):
         result = capabilities.model_dump(by_alias=True)["structuredContent"]
         assert result["privacy"]["model_api_key_required"] is False
         assert result["privacy"]["private_wechat"] is False
+        assert result["takeout"]["configured"] is False
+        assert result["takeout"]["ordering_supported"] is False
+        takeout = await client.call_tool("search_takeout_shops", {"query": "奶茶"})
+        assert takeout.model_dump(by_alias=True)["structuredContent"]["status"] == "takeout_not_configured"
         assert result["webvpn_auto_login"]["configured"] is False
         assert result["checkin"]["status"] == "service_not_started"
         assert result["repair"]["submission_supported"] is True

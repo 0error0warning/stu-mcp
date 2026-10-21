@@ -12,7 +12,9 @@ import pytest
 import uvicorn
 from mcp import ClientSession
 from mcp.client.streamable_http import streamable_http_client
+from test_takeout import Catalog
 
+from stu_mcp.features.takeout.client import BASE
 from stu_mcp.hosting import HostRuntime
 from stu_mcp.runtime import AppError
 from stu_mcp.server import build_server
@@ -85,7 +87,7 @@ async def test_real_http_two_clients_share_state_and_disconnect_does_not_close_h
     url, host, closed = http_server
     async with client_for(url) as first:
         tools = await first.list_tools()
-        assert len(tools.tools) == 38
+        assert len(tools.tools) == 45
         capabilities = structured(await first.call_tool("get_capabilities", {}))
         assert capabilities["hosting"]["transport"] == "streamable-http"
         assert capabilities["hosting"]["identity_scope"] == "single_user_instance"
@@ -104,6 +106,24 @@ async def test_real_http_two_clients_share_state_and_disconnect_does_not_close_h
         setup = structured(await first.call_tool("open_setup", {}))
         assert setup["status"] == "host_setup_required"
         assert "url" not in setup and TOKEN not in json.dumps(setup)
+        # Exercise the new planner over the actual transport using synthetic API
+        # data, independently of the third party's current network availability.
+        class Scheduled(Catalog):
+            def settings(self, shop_id):
+                return {"shopId": shop_id, "isOpenTakeoutBook": "T", "customTakeoutBookDay": "2",
+                        "customTakeoutOrderBookTimeNew": '[{"time":690,"advanceOrderMinutes":"50"}]'}
+        host.app.vault.save("takeout", {"cookies": [], "takeout_config": {
+            "server": BASE, "userId": "123", "appletId": "456", "default_area": "700",
+            "apiToken": "SYNTHETIC_API", "signToken": "SYNTHETIC_SIGN",
+            "salt": "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"}})
+        host.app.takeout.client_factory = Scheduled
+        host.app.takeout.clock = lambda: 0  # 1970-01-01 08:00+08:00, before the synthetic cutoff
+        meal = structured(await first.call_tool("find_takeout_meal_shops", {
+            "area_id": "700", "meal_period": "午餐", "scan_limit": 1}))
+        assert meal["ok"] and meal["matched_in_page"] == 1
+        assert meal["has_more"] and meal["next_offset"] == 1
+        assert meal["items"][0]["slots"][0]["delivery_end"] is None
+        assert meal["ordering_supported"] is False and "SYNTHETIC_API" not in json.dumps(meal)
     assert closed == [] and host._setup is None
 
 

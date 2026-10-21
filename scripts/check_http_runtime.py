@@ -33,15 +33,15 @@ CONTRACT_FIELDS = ("name", "inputSchema", "outputSchema", "annotations")
 
 
 def assert_tool_contract(tools) -> list[str]:
-    """Compare all public tool fields against the committed v0.5.0 contract.
+    """Compare all public tool fields against the committed tool contract.
 
     Descriptions may clarify behavior; they are reported separately. Everything
-    used by existing clients to discover or invoke the 38 tools stays exact.
+    used by existing clients to discover or invoke the tools stays exact.
     """
     baseline = json.loads(CONTRACT.read_text(encoding="utf-8"))
     previous = {tool["name"]: tool for tool in baseline["tools"]}
     current = {tool.name: tool.model_dump(by_alias=True, exclude_none=True) for tool in tools}
-    assert len(tools) == len(current) == len(previous) == baseline["tool_count"] == 38, "tool count changed"
+    assert len(tools) == len(current) == len(previous) == baseline["tool_count"], "tool count changed"
     assert current.keys() == previous.keys(), "tool names changed"
     for name in previous:
         assert all(current[name].get(field) == previous[name].get(field) for field in CONTRACT_FIELDS), (
@@ -208,7 +208,7 @@ async def _handshake(url: str, token: str, child: OwnedHTTPProcess) -> None:
         # Invalid inputs exercise the installed tools without sending school requests.
         invalid = await session.call_tool("diagnose_campus_network", {"service_id": "synthetic-invalid"})
         assert invalid.model_dump(by_alias=True)["structuredContent"]["status"] == "invalid_network_service"
-    print("HTTP: 38 tool names, input/output schemas and annotations match v0.5.0; description updates: "
+    print(f"HTTP: {len(tools)} tool names, input/output schemas and annotations match the committed contract; description updates: "
           + (", ".join(descriptions) or "none"), flush=True)
 
 

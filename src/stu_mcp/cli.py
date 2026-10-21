@@ -131,6 +131,41 @@ def parser() -> argparse.ArgumentParser:
     device = charge.add_parser("device", help="读取一台设备的插座状态")
     device.add_argument("device_code")
     device.add_argument("--local", action="store_true", help="仅读取本机缓存")
+    takeout = sub.add_parser("takeout", help="STU外卖目录和选餐；不提交订单或支付")
+    takeout_actions = takeout.add_subparsers(dest="takeout_action", required=True)
+    configure = takeout_actions.add_parser("configure", help="从宿主既有配置文件导入加密库，不输出签名材料")
+    configure.add_argument("--file", type=Path, required=True)
+    takeout_actions.add_parser("status", help="只查配置是否保存，不验证在线状态")
+    takeout_actions.add_parser("remove", help="移除外卖加密配置")
+    shops = takeout_actions.add_parser("shops", help="列出或搜索外卖商家")
+    shops.add_argument("query", nargs="?", default="")
+    shops.add_argument("--category-id", default="-1")
+    shops.add_argument("--area-id", default="")
+    shops.add_argument("--meal-period", default="")
+    shops.add_argument("--limit", type=int, default=20)
+    shops.add_argument("--offset", type=int, default=0)
+    meals = takeout_actions.add_parser("meal-shops", help="逐页核对区域内实际配送批次，不依赖平台餐段分类")
+    meals.add_argument("--area-id", required=True)
+    meals.add_argument("--meal-period", required=True)
+    meals.add_argument("--date", default="")
+    meals.add_argument("--query", default="")
+    meals.add_argument("--scan-limit", type=int, default=5)
+    meals.add_argument("--offset", type=int, default=0)
+    meals.add_argument("--include-closed", action="store_true")
+    meals.add_argument("--refresh", action="store_true")
+    for action in ("shop", "menu", "slots"):
+        entry = takeout_actions.add_parser(action)
+        entry.add_argument("shop_id")
+        if action == "slots":
+            entry.add_argument("--date", default="")
+            entry.add_argument("--meal-period", default="")
+            entry.add_argument("--only-open", action="store_true", help="只列未截单及状态未知的批次")
+            entry.add_argument("--refresh", action="store_true")
+        if action == "menu":
+            entry.add_argument("--query", default="")
+            entry.add_argument("--category-id", default="")
+            entry.add_argument("--limit", type=int, default=30)
+            entry.add_argument("--offset", type=int, default=0)
     return p
 
 
@@ -266,6 +301,28 @@ def main(argv: list[str] | None = None) -> int:
             from .terminal import require_terminal
             require_terminal()
         app = App()
+        if args.command == "takeout":
+            if args.takeout_action == "configure":
+                from .features.takeout.configuration import import_config
+                return emit(import_config(app.vault, args.file))
+            if args.takeout_action == "remove":
+                from .runtime import key_lock
+                with key_lock(app.runtime.home, "takeout"):
+                    return emit(app.vault.logout("takeout"))
+            if args.takeout_action == "status":
+                return emit({"ok": True, **app.takeout.status()})
+            if args.takeout_action == "shops":
+                return emit(app.takeout.shops(args.query, args.category_id, args.area_id, args.limit, args.offset,
+                                             meal_period=args.meal_period))
+            if args.takeout_action == "shop":
+                return emit(app.takeout.detail(args.shop_id))
+            if args.takeout_action == "meal-shops":
+                return emit(app.takeout.meal_shops(args.area_id, args.meal_period, args.date, args.query,
+                                                  args.scan_limit, args.offset, args.include_closed, args.refresh))
+            if args.takeout_action == "slots":
+                return emit(app.takeout.delivery_slots(args.shop_id, args.date, args.meal_period,
+                                                       not args.only_open, args.refresh))
+            return emit(app.takeout.menu(args.shop_id, args.query, args.category_id, args.limit, args.offset))
         if args.command == "webvpn-auto":
             from .webvpn import WebVPNConfig
             if args.auto_action == "configure":

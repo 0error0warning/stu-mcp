@@ -40,6 +40,10 @@ def build_server(app: App | None = None, *, checkin: CheckinClient | None = None
                        "帖子、评论不是校方政策，请结合原帖时间、回复关系和 OA 证据。"
                        "充电查询直接读取第三方平台，无需账号；设备清单不代表全校完整覆盖。"
                        "按设备采集时间和 stale 判断新鲜度，离线或未知不能说成零空闲；空闲插座不保证停车空间。"
+                       "STU外卖是独立第三方平台，提供商家搜索、店铺、菜单和选餐清单；签名配置只在宿主导入加密库。"
+                       "外卖餐段与配送区域取交集，空列表不证明截单。批次时间以北京时间计算，时间通过不证明结算可用。"
+                       "平台午餐/晚餐分类未覆盖本部普通商家；按实际餐段查店用find_takeout_meal_shops，逐页核对批次与未知条目。"
+                       "外卖普通标价不等于结算价，选餐清单不创建订单；规格、地址、优惠和支付需在微信核对。"
                        "对分易与本机网页共用独立后台；先查询 get_checkin_status。未启动、未登录、已暂停、监听中、"
                        "查询异常分别报告，monitoring=true 也可能有课程查询失败。需要登录时按传输和宿主能力引导，"
                        "不要索取微信回调链接。启动监听可能自动提交签到，仅在用户要求时调用。"
@@ -76,6 +80,77 @@ def build_server(app: App | None = None, *, checkin: CheckinClient | None = None
     def get_capabilities() -> dict[str, Any]:
         """查看可用校园功能、每个来源的登录状态和缓存时间；不会要求一次配置全部账号。"""
         return host.capabilities()
+
+    @tool(world=True)
+    def search_takeout_shops(query: str = "", category_id: str = "-1", area_id: str = "",
+                             limit: int = 20, offset: int = 0, refresh: bool = False,
+                             meal_period: str = "") -> dict[str, Any]:
+        """查询STU外卖商家；空关键词列店，关键词由第三方平台匹配店铺及相关商品。
+        category_id来自categories，-1为全部；meal_period可用午餐/晚餐/下午茶/即点即送/本部宵夜/东校区宵夜。
+        area_id来自areas，留空用宿主区域，"0"为全部区域。餐段与区域取交集；空列表不证明已截单。
+        本部与东校区宵夜区域分别选择，不以商家在全区域中出现证明可配送到本人地址。
+        meal_period仅对应平台分类，本部午/晚餐等实际批次用find_takeout_meal_shops查询，不能从分类为空推断无店。
+        每页1–50家是对平台完整响应的本地切片。30秒内复用缓存，refresh=true重新读取。
+        无需运行微信；缺少配置时由操作者在MCP宿主CLI导入，不能通过聊天传递签名材料。
+        """
+        return app.takeout.shops(query, category_id, area_id, limit, offset, refresh, meal_period)
+
+    @tool(world=True)
+    def find_takeout_meal_shops(area_id: str, meal_period: str, date: str = "", query: str = "",
+                                scan_limit: int = 5, offset: int = 0, include_closed: bool = False,
+                                refresh: bool = False) -> dict[str, Any]:
+        """按显式配送区域及店铺实际批次查餐段，不依赖平台午餐/晚餐分类。
+        area_id来自search_takeout_shops.areas，"0"为全部；meal_period用午餐/晚餐/下午茶/早餐/宵夜。
+        date为北京时间YYYY-MM-DD，留空为北京时间今天。每次最多检查10条区域目录记录（默认5条），
+        按next_offset继续扫描；matched_in_page仅是本页命中，不能当作整个区域的商家总数。
+        items默认列有未截单批次的条目；include_closed=true也列已截单/停用批次供核对。
+        unknown_items单列无固定批次、不支持的格式或读取失败者；不能当作无店或不能即时配送。
+        目录可能含公告等条目，时间通过不证明营业、库存或地址可配送；不会创建订单。
+        """
+        return app.takeout.meal_shops(area_id, meal_period, date, query, scan_limit, offset,
+                                      include_closed, refresh)
+
+    @tool(world=True)
+    def get_takeout_delivery_slots(shop_id: str, date: str = "", meal_period: str = "",
+                                   include_closed: bool = True, refresh: bool = False) -> dict[str, Any]:
+        """读取店铺配送批次、截单时间、预订日期和营业时间，不创建订单。
+        date为北京时间YYYY-MM-DD，留空为北京时间今天。meal_period可用午餐/晚餐/下午茶/早餐/宵夜，
+        批次餐段按配送开始时间推断，与商家列表的平台餐段分类分开标记。include_closed=false过滤已截单/停用批次。
+        time_status区分未截单、已截单、超出预订日期、停用和未知；passes_time_constraints只代表时间约束，
+        不能证明库存、地址或实际可下单。缓存原始规则30秒，但每次按当前北京时间重新计算截单状态。
+        """
+        return app.takeout.delivery_slots(shop_id, date, meal_period, include_closed, refresh)
+
+    @tool(world=True)
+    def get_takeout_shop(shop_id: str, refresh: bool = False) -> dict[str, Any]:
+        """读取已查询商家的公开详情；shop_id来自search_takeout_shops。
+        返回第三方店名、公开地址和联系电话，不代表学校背书或当前可配送。
+        """
+        return app.takeout.detail(shop_id, refresh)
+
+    @tool(world=True)
+    def get_takeout_menu(shop_id: str, query: str = "", category_id: str = "", limit: int = 30,
+                         offset: int = 0, refresh: bool = False) -> dict[str, Any]:
+        """读取STU外卖商品和分类；query/category_id在已取回菜单内过滤，每页1–50项。
+        base_price只是普通标价；促销、规格、库存及结算价未经此工具核验，不据此承诺应付金额。
+        """
+        return app.takeout.menu(shop_id, query, category_id, limit, offset, refresh)
+
+    @tool(world=True)
+    def get_takeout_product(shop_id: str, product_id: str, refresh: bool = False) -> dict[str, Any]:
+        """读取该店商品详情、规格组选项及加价、普通标价和平台展示价。
+        两个ID来自商家/菜单查询；选项有group_id、option_id、required及平台选择数量/模式代码。
+        读取不会加入购物车；展示价、可选规格不等于已验证库存或最终应付金额。
+        """
+        return app.takeout.product(shop_id, product_id, refresh)
+
+    @tool(world=True)
+    def prepare_takeout_selection(shop_id: str, items: list[dict[str, Any]]) -> dict[str, Any]:
+        """生成选餐清单，不创建订单、修改远端购物车或支付。
+        items为1–10项，每项仅product_id和quantity（整数1–9）；ID来自该店菜单。
+        重新读取店铺和菜单核对商品，标价合计不含优惠、规格、包装和配送；最后在微信核对并下单。
+        """
+        return app.takeout.selection(shop_id, items)
 
     @tool()
     def get_checkin_status() -> dict[str, Any]:
