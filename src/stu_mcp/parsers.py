@@ -1,4 +1,4 @@
-"""Pure parsers adapted from the pinned School Hub source; never read credentials."""
+"""Compatibility imports for feature parsers and shared pure helpers."""
 from __future__ import annotations
 
 from .features.jw.parser import jw_authenticated as jw_authenticated
