@@ -11,6 +11,7 @@ import dns.resolver
 import pytest
 
 from stu_mcp import network_audit as net
+from stu_mcp.execution import execution_context
 from stu_mcp.runtime import AppError
 from stu_mcp.services import SERVICE_DIRECTORY
 from stu_mcp.sources import SOURCES
@@ -135,6 +136,7 @@ def test_batch_keeps_service_identity_and_does_not_route_http_via_positive_publi
     assert len(matrix) == len(net.ENDPOINTS) + len(net.HOSTS) * 2
     assert result["summary"]["os_dns_unresolved_hosts"] == ["repair.stu.edu.cn"]
     assert result["status"] == "complete"  # Complete observations include observed probe failures.
+    assert result["execution"] == execution_context()
 
 
 def test_batch_cache_is_detached_keyed_and_explicitly_refreshed(matrix):
@@ -185,6 +187,7 @@ def test_incomplete_probes_and_concurrent_runs_are_explicit(monkeypatch, matrix)
     audit = net.NetworkAudit()
     result = audit.audit()
     assert result["status"] == "partial"
+    assert result["execution"] == execution_context()
     assert all(c["status"] == "inconclusive" for c in result["checks"])
     assert not result["summary"]["os_dns_unresolved_hosts"]
     assert len(result["summary"]["incomplete_dns_checks"]) == len(net.HOSTS)
@@ -230,3 +233,20 @@ def test_capability_map_cannot_be_mutated_by_a_caller(app):
     first = app.status()
     first["network_audit"]["public_dns_resolvers"]["alidns"] = "changed"
     assert app.status()["network_audit"]["public_dns_resolvers"]["alidns"] == "223.5.5.5"
+
+
+def test_batch_cached_evidence_keeps_its_scope_when_instance_label_changes(monkeypatch, matrix):
+    monkeypatch.setenv("STU_MCP_INSTANCE_NAME", "original-host")
+    audit = net.NetworkAudit()
+    original = audit.audit("off_campus", compare_public_dns=True)
+    count = len(matrix)
+    monkeypatch.setenv("STU_MCP_INSTANCE_NAME", "replacement-host")
+    cached = audit.audit("off_campus", compare_public_dns=True)
+    assert cached["cached"] is True and len(matrix) == count
+    assert cached["execution"] == execution_context()
+    assert cached["execution"]["instance_name"] == "replacement-host"
+    assert original["execution"]["instance_name"] == "original-host"
+    for key in ("hosts", "checks", "summary", "network_context", "checked_at", "status"):
+        assert cached[key] == original[key]
+    cached["execution"]["scope"] = "client"
+    assert audit.audit("off_campus", compare_public_dns=True)["execution"]["scope"] == "mcp_host"

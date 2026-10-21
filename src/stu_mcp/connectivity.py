@@ -23,6 +23,7 @@ from urllib.request import getproxies_environment, proxy_bypass_environment
 import httpx
 
 from .access_policy import POLICIES
+from .execution import execution_context
 from .network import TransportEvidence, failure_layer
 from .runtime import AppError
 
@@ -240,8 +241,9 @@ def _decision(checks: list[dict], location: str) -> dict:
     policy = POLICIES[checks[0]["service_id"]]
     login_checked = any(c["service_id"] == "school_sso" for c in checks)
     if ready:
-        observations.append("本机直连已收到服务及统一认证的匿名响应；尚未验证登录、表单或受理。" if login_checked and len(checks) > 1
-                            else "本机直连已收到该入口的匿名响应；未核验正文、登录或业务流程。")
+        observations.append("MCP 执行主机直连已收到服务及统一认证的匿名响应；尚未验证登录、表单或受理。"
+                            if login_checked and len(checks) > 1 else
+                            "MCP 执行主机直连已收到该入口的匿名响应；未核验正文、登录或业务流程。")
     else:
         if location == "off_campus" and policy.preferred_access == "campus_access_if_needed":
             steps.append("校外直连可能没有校内路由；普通代理不等于校园 VPN。检查学校认可的接入方式及其覆盖范围。")
@@ -288,7 +290,8 @@ class NetworkDiagnostics:
             cached = self._cache.get(key)
             age = time.monotonic() - cached[0] if cached else 0
             if not refresh and cached and age < 15:
-                return copy.deepcopy(cached[1]) | {"cached": True, "age_seconds": round(age, 2)}
+                return copy.deepcopy(cached[1]) | {"cached": True, "age_seconds": round(age, 2),
+                                                 "execution": execution_context()}
             start, jobs = time.monotonic(), {}
             for name, url in targets.items():
                 host = urlparse(url).hostname
@@ -313,6 +316,7 @@ class NetworkDiagnostics:
             configured = configuration["configured"]
             suffix = "proxy_configured" if configured else "no_proxy_configured" if configured is False else "proxy_unknown"
             result = {"ok": True, "status": decision["status"], "service_id": service_id,
+                      "execution": execution_context(),
                       "access_policy": POLICIES[service_id].public(),
                       "proxy_comparison_requested": compare_proxy,
                       "checked_at": datetime.now(UTC).isoformat(), "cached": False, "age_seconds": 0,
@@ -321,7 +325,9 @@ class NetworkDiagnostics:
                                           "scenario": location_hint + "_" + suffix},
                       "proxy_configuration": configuration, "checks": checks, "decision": decision,
                       "scope": "anonymous_GET_response_headers_and_OS_DNS_only",
-                      "limitations": ["应用层直连忽略环境/系统 HTTP 代理，不能绕过 TUN、DNS 或系统路由。",
+                      "limitations": ["网络检查发生在 MCP 执行主机；不检查调用客户端的 DNS、代理、路由或物理位置。",
+                                      "客户端到 MCP 的连接须由客户端传输握手验证；本报告只探测执行主机到学校的路径。",
+                                      "应用层直连忽略环境/系统 HTTP 代理，不能绕过 TUN、DNS 或系统路由。",
                                       "代理配置不证明流量路径；不识别实际客户端名称，不自动判断物理校内/校外。",
                                       "只比较无凭据的本机 HTTP(S)/SOCKS5 代理；远端、PAC 和需凭据代理不探测。",
                                       "各服务与统一认证分别报告；可达不代表登录、填表或报修已成功。"]}
