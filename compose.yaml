@@ -11,22 +11,13 @@ services:
     # interfaces. Reach these loopback ports through an authenticated tunnel.
     ports:
       - "127.0.0.1:8765:8765"
-      - "127.0.0.1:8766:8876"
-      - "127.0.0.1:6080:6080"
-    environment:
-      STU_MCP_INTERACTION: ${STU_MCP_INTERACTION:-disabled}
-      STU_MCP_SETUP: "1"
-      STU_MCP_VNC_AUTH_FILE: /run/secrets/vnc_auth
     volumes:
       - stu-mcp-data:/var/lib/stu-mcp
-      # server-init creates master.key + http-token separately. vnc_auth is
-      # required only for virtual-display and is created by x11vnc -storepasswd.
+      # server-init creates master.key + http-token outside the data volume.
       - type: bind
         source: ${STU_MCP_SECRETS_DIR:?Set STU_MCP_SECRETS_DIR to a private absolute secrets directory}
         target: /run/secrets
         read_only: true
-    tmpfs:
-      - /run/stu-mcp:uid=${STU_MCP_UID:-10001},gid=${STU_MCP_GID:-10001},mode=0700
     shm_size: "256mb"
     security_opt:
       - no-new-privileges:true
