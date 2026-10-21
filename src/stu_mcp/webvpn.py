@@ -35,7 +35,9 @@ PAUSE_ERRORS = frozenset({"auto_login_failed", "auto_login_interaction_required"
 TOTP_INPUT = ("[data-dialog-ctr='totp_signature']:visible input.input-txt:not([disabled]), "
               ".totp_signature-box:visible input.input-txt:not([disabled])")
 CAPTCHA = ("input[name*='captcha' i]:visible, input[id*='captcha' i]:visible, "
-           "img[src*='captcha' i]:visible, iframe[src*='recaptcha']:visible")
+           "img[src*='captcha' i]:visible, iframe[src*='recaptcha']:visible, "
+           ".auto-input-randCode:visible, [data-input-ctr-value='randCode']:visible, "
+           ".password__code__image:visible")
 
 
 def parse_totp(value: str, encoding: str = "auto") -> pyotp.TOTP:
@@ -147,7 +149,7 @@ class WebVPNConfig:
         except AppError:
             raise
         except Exception:
-            raise AppError("secure_storage_unavailable", "无法访问系统密钥库；未使用明文保存凭据。", "oa") from None
+            raise AppError("secure_storage_unavailable", "无法访问安全凭据存储；未使用明文保存凭据。", "oa") from None
 
     def configure(self, fields: dict) -> dict:
         if (set(fields) - {"enabled", "username", "password", "totp", "encoding"}
@@ -172,7 +174,7 @@ class WebVPNConfig:
                                                           json.dumps(record, ensure_ascii=False)))
             self._write(marker)
         return {"ok": True, "status": "auto_login_configured",
-                "message": "凭据已保存到系统密钥库。需要受保护 OA 信息时，会在会话失效后自动重新登录。"}
+                "message": "凭据已保存到安全凭据存储。需要受保护 OA 信息时，会在会话失效后自动重新登录。"}
 
     def remove_locked(self) -> None:
         """Caller owns the short webvpn mutation lock. Fence running logins before deletion."""
@@ -190,7 +192,7 @@ class WebVPNConfig:
                 self._keyring(lambda store: store.delete_password(KEYRING_SERVICE, self.vault.account))
             except AppError:
                 self._write({**marker, "failure": "secure_storage_unavailable"})
-                raise AppError("secure_storage_unavailable", "自动重登已关闭，但系统密钥库暂时无法移除凭据；恢复后请再次移除。", "oa") from None
+                raise AppError("secure_storage_unavailable", "自动重登已关闭，但安全凭据存储暂时无法移除凭据；恢复后请再次移除。", "oa") from None
         self._write({**marker, "configured": False})
 
     def remove(self) -> dict:
@@ -212,7 +214,7 @@ class WebVPNConfig:
             totp.at(0)
             return Credentials(record["username"], record["password"], totp)
         except Exception:
-            raise AppError("auto_login_config_invalid", "系统密钥库中的自动登录配置无效，请重新填写。", "oa") from None
+            raise AppError("auto_login_config_invalid", "安全凭据存储中的自动登录配置无效，请重新填写。", "oa") from None
 
     def snapshot(self) -> Snapshot:
         with key_lock(self.vault.runtime.home, "webvpn"):
@@ -247,6 +249,11 @@ def _visible(page, selector):
     return matches.first if matches.count() else None
 
 
+def _reject_captcha(page) -> None:
+    if _visible(page, CAPTCHA):
+        raise AppError("auto_login_interaction_required", "学校要求人工验证码，请手动登录。", "oa")
+
+
 def automatic_login(credentials: Credentials, check: Callable[[], None], *, timeout: int = 50) -> dict:
     """No screenshots, traces, persistent browser profile, debug dumps, or automatic MFA binding."""
     submitted_password = submitted_totp = had_credentials = False
@@ -276,8 +283,7 @@ def automatic_login(credentials: Credentials, check: Callable[[], None], *, time
                     _official_page(page)
                     if blocked[0]:
                         raise AppError("auto_login_interaction_required", "学校要求其他登录步骤，请在学校页面手动完成。", "oa")
-                    if _visible(page, CAPTCHA):
-                        raise AppError("auto_login_interaction_required", "学校要求人工验证码，请手动登录。", "oa")
+                    _reject_captcha(page)
                     # The login page's help links themselves mention "password error" and "login failed".
                     errors = page.locator(".error-content:visible, [data-dialog-ctr='common_message']:visible, "
                                           ".common_message:visible, .message-box:visible")
@@ -294,12 +300,15 @@ def automatic_login(credentials: Credentials, check: Callable[[], None], *, time
                             raise AppError("auto_login_interaction_required", "学校账号表单已变化，请手动登录。", "oa")
                         check()
                         had_credentials = True
+                        _reject_captcha(page)
                         username.fill(credentials.username, timeout=5000)
+                        _reject_captcha(page)
                         password.fill(credentials.password, timeout=5000)
                         checkbox = page.locator(".include-box__privacy .checkbox__input")
                         if checkbox.count() and not checkbox.first.is_checked():
                             page.locator(".include-box__privacy .checkbox__label:visible").click(timeout=5000)
                         check()
+                        _reject_captcha(page)
                         page.locator("button.button--normal:visible").filter(has_text="登录").click(timeout=5000)
                         submitted_password = True
                     else:
@@ -310,8 +319,10 @@ def automatic_login(credentials: Credentials, check: Callable[[], None], *, time
                                 page.wait_for_timeout(int((remaining + 0.2) * 1000))
                             check()
                             _official_page(page)
+                            _reject_captcha(page)
                             totp_input.fill(credentials.totp.at(time.time()), timeout=5000)
                             check()
+                            _reject_captcha(page)
                             confirm = page.locator("[data-dialog-ctr='totp_signature']:visible button.button--normal, "
                                                    ".totp_signature-box:visible button.button--normal").filter(has_text="确定")
                             if confirm.count():
