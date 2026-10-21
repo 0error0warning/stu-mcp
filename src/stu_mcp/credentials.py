@@ -23,6 +23,11 @@ from .runtime import AppError, Runtime, checkin_home
 MAX_CREDENTIAL_BYTES = 1024 * 1024
 
 
+def backend_name() -> str:
+    """Report the explicit selection without reading any key or claiming health."""
+    return "encrypted_file" if "STU_MCP_KEY_FILE" in os.environ else "os_keyring"
+
+
 class KeyStore(Protocol):
     def get_password(self, service: str, username: str) -> str | None: ...
     def set_password(self, service: str, username: str, password: str) -> None: ...

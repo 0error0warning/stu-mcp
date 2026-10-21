@@ -21,7 +21,8 @@ import httpx2
 from mcp import ClientSession
 from mcp.client.streamable_http import streamable_http_client
 
-from stu_mcp import __version__, credentials, execution, hosting
+from stu_checkin import auth as checkin_auth
+from stu_mcp import __version__, checkin_login, credentials, execution, hosting, terminal, webvpn_cli
 from stu_mcp.transports import http as http_transport
 
 
@@ -77,7 +78,16 @@ async def _handshake(url: str, token: str, process: subprocess.Popen) -> None:
         assert capabilities["hosting"]["multi_user"] is False
         assert capabilities["hosting"]["credential_backend"] == "encrypted_file"
         assert capabilities["hosting"]["interaction"]["available"] is False
+        assert capabilities["hosting"]["interaction"]["scope"] == "manual_browser"
+        flows = capabilities["hosting"]["login_flows"]
+        assert flows["duifene"]["method"] == "wechat_callback"
+        assert flows["duifene"]["requires_display"] is False
+        assert flows["webvpn"]["automatic_renewal"] == "headless_totp"
+        assert capabilities["privacy"]["credential_backend"] == "encrypted_file"
         assert capabilities["checkin"]["status"] == "service_not_started"
+        # A passive status read must not launch the worker or require a display.
+        status = await session.call_tool("get_checkin_status", {})
+        assert status.model_dump(by_alias=True)["structuredContent"]["status"] == "service_not_started"
         # Invalid inputs exercise the installed tools without sending school requests.
         invalid = await session.call_tool("diagnose_campus_network", {"service_id": "synthetic-invalid"})
         assert invalid.model_dump(by_alias=True)["structuredContent"]["status"] == "invalid_network_service"
@@ -85,7 +95,7 @@ async def _handshake(url: str, token: str, process: subprocess.Popen) -> None:
 
 def main() -> None:
     interpreter, root, token_file = sys.argv[1], Path(sys.argv[2]).resolve(), Path(sys.argv[3]).resolve()
-    for module in (credentials, execution, hosting, http_transport):
+    for module in (credentials, execution, hosting, http_transport, checkin_login, terminal, webvpn_cli, checkin_auth):
         assert Path(module.__file__).is_relative_to(root / "tools")
     master_file = Path(os.environ["STU_MCP_KEY_FILE"]).resolve()
     assert master_file.is_relative_to(root) and token_file.is_relative_to(root)
@@ -100,6 +110,14 @@ def main() -> None:
     assert status.returncode == 0
     assert json.loads(status.stdout)["version"] == __version__
     assert token.encode() not in status.stdout + status.stderr
+    # Actual installed CLI dispatch must fail before input or App side effects.
+    for arguments in (("login", "duifene"), ("webvpn-auto", "configure")):
+        denied = subprocess.run([interpreter, "-m", "stu_mcp", *arguments], env=env, cwd=root,
+                                input=b"", capture_output=True, timeout=15, check=False)
+        assert denied.returncode == 1
+        assert json.loads(denied.stdout)["status"] == "terminal_required"
+        assert token.encode() not in denied.stdout + denied.stderr
+    assert not Path(env["STU_CHECKIN_HOME"]).exists()
     # The child binds only loopback. A rare bind race fails this bounded check;
     # it never searches for or terminates another process using the port.
     with socket.socket() as available:

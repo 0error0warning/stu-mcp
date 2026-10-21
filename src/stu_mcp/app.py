@@ -12,6 +12,7 @@ from . import __version__, collectors
 from .charging import ChargingService
 from .clients import detected_clients
 from .connectivity import CAPABILITY as NETWORK_CAPABILITY
+from .credentials import backend_name
 from .features.repair import CAPABILITY as REPAIR_CAPABILITY
 from .huyou import (
     DEFAULT_CIRCLE,
@@ -59,7 +60,9 @@ class App:
                 "network_diagnostics": dict(NETWORK_CAPABILITY),
                 "network_audit": copy.deepcopy(NETWORK_AUDIT_CAPABILITY),
                 "privacy": {"model_api_key_required": False, "background_ai": False,
-                            "private_wechat": False, "storage": "os_keyring_and_encrypted_sessions"}}
+                            "private_wechat": False, "storage": "os_keyring_and_encrypted_sessions"
+                            if backend_name() == "os_keyring" else "external_key_and_encrypted_sessions",
+                            "credential_backend": backend_name(), "credential_backend_verified": False}}
 
     def refresh(self, source: str, limit: int = 20, semester: str = "") -> dict:
         if source == "huyou":
