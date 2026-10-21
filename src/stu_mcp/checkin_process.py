@@ -9,7 +9,7 @@ def worker_environment(env):
     names = {"systemroot", "windir", "path", "pathext", "userprofile", "username", "userdomain",
              "homedrive", "homepath", "appdata", "localappdata", "temp", "tmp", "programfiles",
              "programfiles(x86)", "programdata", "commonprogramfiles", "commonprogramfiles(x86)",
-             "stu_checkin_home", "pythonpath", "pythonioencoding"}
+             "stu_checkin_home", "stu_mcp_home", "stu_mcp_key_file", "pythonpath", "pythonioencoding"}
     return [f"{key}={value}" for key, value in env.items() if key.lower() in names]
 
 

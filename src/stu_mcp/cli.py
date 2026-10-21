@@ -53,8 +53,14 @@ def parser() -> argparse.ArgumentParser:
     setup = sub.add_parser("setup", help="打开本机设置页")
     setup.add_argument("--no-browser", action="store_true", help="仅在终端输出本机设置地址")
     setup.add_argument("--port", type=int, default=0, help="本机设置端口，默认随机；远程转发可指定8766")
-    login = sub.add_parser("login", help="在独立浏览器中手动登录学校")
-    login.add_argument("service", choices=("jw", "mystu", "yuketang", "webvpn"))
+    login = sub.add_parser("login", help="按来源登录；duifene 在本人终端隐藏输入原微信回调")
+    login.add_argument("service", choices=("jw", "mystu", "yuketang", "webvpn", "duifene"))
+    auto = sub.add_parser("webvpn-auto", help="在本人终端配置原有 WebVPN 按需自动重登")
+    auto_actions = auto.add_subparsers(dest="auto_action", required=True)
+    configure = auto_actions.add_parser("configure", help="启用自动重登；凭据只在终端隐藏输入")
+    configure.add_argument("--encoding", choices=("auto", "base32", "base64", "hex"), default="auto")
+    auto_actions.add_parser("status", help="仅查看开关和失败状态，不读取或输出凭据")
+    auto_actions.add_parser("remove", help="关闭自动重登并移除所存凭据")
     logout = sub.add_parser("logout", help="移除指定来源的会话和缓存")
     logout.add_argument("service", choices=("jw", "mystu", "yuketang", "webvpn"))
     client = sub.add_parser("connect", help="预览或保存客户端接入，保留其他配置")
@@ -205,7 +211,20 @@ def main(argv: list[str] | None = None) -> int:
                 return 0
             finally:
                 drafts.shutdown()
+        if args.command == "login" and args.service == "duifene":
+            from .checkin_login import login_via_callback
+            return emit(login_via_callback())
+        if args.command == "webvpn-auto" and args.auto_action == "configure":
+            from .terminal import require_terminal
+            require_terminal()
         app = App()
+        if args.command == "webvpn-auto":
+            from .webvpn import WebVPNConfig
+            if args.auto_action == "configure":
+                from .webvpn_cli import configure
+                return emit(configure(app.vault, encoding=args.encoding))
+            config = WebVPNConfig(app.vault)
+            return emit({"ok": True, **config.status()} if args.auto_action == "status" else config.remove())
         if args.command == "charging":
             if args.charging_action == "overview":
                 return emit(app.charging_overview(args.location, args.limit, args.offset, not args.local))
