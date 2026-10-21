@@ -12,12 +12,10 @@ import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import TypeVar
-from urllib.parse import parse_qsl, urlparse
+from urllib.parse import parse_qsl, urlparse, urlunparse
 
 import httpx
 import pyotp
-from playwright.sync_api import Error as BrowserError
-from playwright.sync_api import sync_playwright
 
 from .auth import prepare_browser
 from .network import CampusHTTP, checked_url, scoped_state
@@ -35,7 +33,9 @@ PAUSE_ERRORS = frozenset({"auto_login_failed", "auto_login_interaction_required"
 TOTP_INPUT = ("[data-dialog-ctr='totp_signature']:visible input.input-txt:not([disabled]), "
               ".totp_signature-box:visible input.input-txt:not([disabled])")
 CAPTCHA = ("input[name*='captcha' i]:visible, input[id*='captcha' i]:visible, "
-           "img[src*='captcha' i]:visible, iframe[src*='recaptcha']:visible")
+           "img[src*='captcha' i]:visible, iframe[src*='recaptcha']:visible, "
+           ".auto-input-randCode:visible, [data-input-ctr-value='randCode']:visible, "
+           ".password__code__image:visible")
 
 
 def parse_totp(value: str, encoding: str = "auto") -> pyotp.TOTP:
@@ -147,7 +147,7 @@ class WebVPNConfig:
         except AppError:
             raise
         except Exception:
-            raise AppError("secure_storage_unavailable", "无法访问系统密钥库；未使用明文保存凭据。", "oa") from None
+            raise AppError("secure_storage_unavailable", "无法访问安全凭据存储；未使用明文保存凭据。", "oa") from None
 
     def configure(self, fields: dict) -> dict:
         if (set(fields) - {"enabled", "username", "password", "totp", "encoding"}
@@ -172,7 +172,7 @@ class WebVPNConfig:
                                                           json.dumps(record, ensure_ascii=False)))
             self._write(marker)
         return {"ok": True, "status": "auto_login_configured",
-                "message": "凭据已保存到系统密钥库。需要受保护 OA 信息时，会在会话失效后自动重新登录。"}
+                "message": "凭据已保存到安全凭据存储。需要受保护 OA 信息时，会在会话失效后自动重新登录。"}
 
     def remove_locked(self) -> None:
         """Caller owns the short webvpn mutation lock. Fence running logins before deletion."""
@@ -190,7 +190,7 @@ class WebVPNConfig:
                 self._keyring(lambda store: store.delete_password(KEYRING_SERVICE, self.vault.account))
             except AppError:
                 self._write({**marker, "failure": "secure_storage_unavailable"})
-                raise AppError("secure_storage_unavailable", "自动重登已关闭，但系统密钥库暂时无法移除凭据；恢复后请再次移除。", "oa") from None
+                raise AppError("secure_storage_unavailable", "自动重登已关闭，但安全凭据存储暂时无法移除凭据；恢复后请再次移除。", "oa") from None
         self._write({**marker, "configured": False})
 
     def remove(self) -> dict:
@@ -212,7 +212,7 @@ class WebVPNConfig:
             totp.at(0)
             return Credentials(record["username"], record["password"], totp)
         except Exception:
-            raise AppError("auto_login_config_invalid", "系统密钥库中的自动登录配置无效，请重新填写。", "oa") from None
+            raise AppError("auto_login_config_invalid", "安全凭据存储中的自动登录配置无效，请重新填写。", "oa") from None
 
     def snapshot(self) -> Snapshot:
         with key_lock(self.vault.runtime.home, "webvpn"):
@@ -247,8 +247,48 @@ def _visible(page, selector):
     return matches.first if matches.count() else None
 
 
-def automatic_login(credentials: Credentials, check: Callable[[], None], *, timeout: int = 50) -> dict:
+def _reject_captcha(page) -> None:
+    if _visible(page, CAPTCHA):
+        raise AppError("auto_login_interaction_required", "学校要求人工验证码，请手动登录。", "oa")
+
+
+def sync_playwright():
+    """Load the optional legacy backend only when explicitly selected."""
+    from playwright.sync_api import sync_playwright as engine
+    return engine()
+
+
+def automatic_login(credentials: Credentials, check: Callable[[], None], *, timeout: int = 50,
+                    backend: str = "http") -> dict:
+    if backend == "browser":
+        return _browser_automatic_login(credentials, check, timeout=timeout)
+    if backend != "http":
+        raise AppError("invalid_authentication_backend", "请选择 HTTP 或显式浏览器兼容认证。", "oa")
+    from .auth_http.webvpn import acquire_state
+
+    def current_code():
+        check()
+        remaining = credentials.totp.interval - time.time() % credentials.totp.interval
+        if remaining <= 5:
+            time.sleep(remaining + .1)
+        check()
+        return credentials.totp.now()
+
+    try:
+        state, _ = acquire_state(username=credentials.username, password=credentials.password,
+                                 totp_code=current_code, check=check, timeout=timeout)
+        return state
+    except AppError as error:
+        if error.code in {"authentication_outcome_unknown", "authentication_response_limit",
+                          "authentication_budget", "schema_changed"}:
+            raise AppError("auto_login_failed", "WebVPN 认证结果或协议无法确认，已暂停，未重发凭据。", "oa") from None
+        raise
+
+
+def _browser_automatic_login(credentials: Credentials, check: Callable[[], None], *, timeout: int = 50) -> dict:
     """No screenshots, traces, persistent browser profile, debug dumps, or automatic MFA binding."""
+    from playwright.sync_api import Error as BrowserError
+
     submitted_password = submitted_totp = had_credentials = False
     blocked = [False]
     try:
@@ -276,8 +316,7 @@ def automatic_login(credentials: Credentials, check: Callable[[], None], *, time
                     _official_page(page)
                     if blocked[0]:
                         raise AppError("auto_login_interaction_required", "学校要求其他登录步骤，请在学校页面手动完成。", "oa")
-                    if _visible(page, CAPTCHA):
-                        raise AppError("auto_login_interaction_required", "学校要求人工验证码，请手动登录。", "oa")
+                    _reject_captcha(page)
                     # The login page's help links themselves mention "password error" and "login failed".
                     errors = page.locator(".error-content:visible, [data-dialog-ctr='common_message']:visible, "
                                           ".common_message:visible, .message-box:visible")
@@ -294,12 +333,15 @@ def automatic_login(credentials: Credentials, check: Callable[[], None], *, time
                             raise AppError("auto_login_interaction_required", "学校账号表单已变化，请手动登录。", "oa")
                         check()
                         had_credentials = True
+                        _reject_captcha(page)
                         username.fill(credentials.username, timeout=5000)
+                        _reject_captcha(page)
                         password.fill(credentials.password, timeout=5000)
                         checkbox = page.locator(".include-box__privacy .checkbox__input")
                         if checkbox.count() and not checkbox.first.is_checked():
                             page.locator(".include-box__privacy .checkbox__label:visible").click(timeout=5000)
                         check()
+                        _reject_captcha(page)
                         page.locator("button.button--normal:visible").filter(has_text="登录").click(timeout=5000)
                         submitted_password = True
                     else:
@@ -310,8 +352,10 @@ def automatic_login(credentials: Credentials, check: Callable[[], None], *, time
                                 page.wait_for_timeout(int((remaining + 0.2) * 1000))
                             check()
                             _official_page(page)
+                            _reject_captcha(page)
                             totp_input.fill(credentials.totp.at(time.time()), timeout=5000)
                             check()
+                            _reject_captcha(page)
                             confirm = page.locator("[data-dialog-ctr='totp_signature']:visible button.button--normal, "
                                                    ".totp_signature-box:visible button.button--normal").filter(has_text="确定")
                             if confirm.count():
@@ -339,24 +383,79 @@ def automatic_login(credentials: Credentials, check: Callable[[], None], *, time
         raise AppError("auto_login_failed", "自动登录未完成，已暂停自动尝试；没有输出任何凭据。", "oa") from None
 
 
-def _request(state: dict, url: str, parse: Callable[[httpx.Response], T]) -> T:
-    with CampusHTTP("oa", state) as http:
-        response = http.request(url)
+def _request(state: dict, url: str, parse: Callable[[httpx.Response], T], *, allow_oa_http: bool = False) -> T:
+    # Preserve canonical URLs/IDs in the cache; only transport uses the exact
+    # authenticated catalog route. Old browser sessions retain HTTPS behavior.
+    canonical = urlparse(url)
+    route = state.get("webvpn_oa_route")
+    target = url
+    if canonical.hostname == "oa-stu-edu-cn.webvpn.stu.edu.cn":
+        if route is not None:
+            route = scoped_state(state, "oa")["webvpn_oa_route"]
+            if route["scheme"] == "http" and not allow_oa_http:
+                raise AppError("oa_http_compat_required", "学校 OA 当前使用 HTTP 8118；请本人显式开启 OA HTTP 兼容后读取。", "oa")
+            authority = route["host"] + (":" + str(route["port"]) if route["port"] != 443 else "")
+            target = urlunparse((route["scheme"], authority, canonical.path, canonical.params,
+                                 canonical.query, ""))
+        elif state.get("webvpn_catalog_verified") is True:
+            raise AppError("oa_route_unavailable", "当前 WebVPN 目录没有已支持的 OA 路由；认证已通过。", "oa")
+    options = {"allow_oa_http": True} if allow_oa_http else {}
+    with CampusHTTP("oa", state, **options) as http:
+        response = http.request(target)
     html = "html" in response.headers.get("content-type", "").lower() or response.content.lstrip().startswith(b"<")
-    if html and (is_login(response.text) or re.search(r"<title[^>]*>[^<]*WebVPN|"
+    login_document = html and is_login(response.text)
+    if login_document and canonical.path == "/login/Login.jsp" and canonical.query == "logintype=1":
+        # The established OA board legitimately includes a separate OA login
+        # form. Recognize the actual board before treating it as expired VPN.
+        from .features.notices.parser import parse_oa
+        try:
+            parse_oa(response.text, "https://oa-stu-edu-cn.webvpn.stu.edu.cn", 1)
+        except AppError:
+            pass
+        else:
+            login_document = False
+    if html and (login_document or re.search(r"<title[^>]*>[^<]*WebVPN|"
                                                     r"<script[^>]+src=[\"'][^\"']*jssdk/common/errcode\.js", response.text, re.I)):
         raise AppError("login_expired", "WebVPN 会话已失效。", "oa")
+    if html and target != url:
+        from bs4 import BeautifulSoup
+
+        document = BeautifulSoup(response.text, "html.parser")
+        for node in document.find_all(True):
+            for attribute in ("href", "src", "action"):
+                value = node.get(attribute)
+                if not isinstance(value, str):
+                    continue
+                try:
+                    parsed = urlparse(value)
+                    if (parsed.hostname in {"oa.stu.edu.cn", "oa-stu-edu-cn.webvpn.stu.edu.cn"}
+                            and not parsed.username and not parsed.password and parsed.port in {None, 80, 443, 8118}):
+                        node[attribute] = urlunparse(("https", "oa-stu-edu-cn.webvpn.stu.edu.cn",
+                                                     parsed.path, parsed.params, parsed.query, parsed.fragment))
+                except ValueError:
+                    continue
+        headers = response.headers.copy()
+        headers.pop("content-encoding", None)
+        body = str(document).encode("utf-8")
+        headers["content-type"] = "text/html; charset=utf-8"
+        headers["content-length"] = str(len(body))
+        response = httpx.Response(response.status_code, headers=headers, content=body,
+                                  request=httpx.Request("GET", url))
     return parse(response)
 
 
 def protected_access(vault: Vault, url: str, parse: Callable[[httpx.Response], T]) -> Access:
     # Reject the destination before reading credentials or contacting a login endpoint.
     checked_url("oa", url, authenticated=True)
+    allow_http = vault.runtime.preferences().get("oa_http_compat", False)
+    def read(state):
+        return (_request(state, url, parse, allow_oa_http=True) if allow_http
+                else _request(state, url, parse))
     config = WebVPNConfig(vault)
     initial = config.snapshot()
     if initial.state is not None:
         try:
-            return Access(_request(initial.state, url, parse), initial.version)
+            return Access(read(initial.state), initial.version)
         except AppError as exc:
             if exc.code not in LOGIN_ERRORS:
                 raise
@@ -366,7 +465,7 @@ def protected_access(vault: Vault, url: str, parse: Callable[[httpx.Response], T
         if current.generation != initial.generation:
             raise AppError("session_changed", "WebVPN 配置已改变，请重新请求。", "oa")
         if current.version != initial.version and current.state is not None:
-            return Access(_request(current.state, url, parse), current.version)
+            return Access(read(current.state), current.version)
         with key_lock(vault.runtime.home, "webvpn"):
             config.check(current)
             marker = config.marker()
@@ -380,7 +479,7 @@ def protected_access(vault: Vault, url: str, parse: Callable[[httpx.Response], T
         try:
             state = automatic_login(credentials, lambda: config.check(current))
             config.check(current)
-            value = _request(state, url, parse)  # Verify access before saving a new session.
+            value = read(state)  # Verify access before saving a new session.
             version = vault.save("webvpn", state, guard=lambda: config.check(current),
                                  on_relogin=lambda: Store(vault.runtime, vault).forget("oa"))
             return Access(value, version)

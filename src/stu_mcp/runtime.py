@@ -36,6 +36,14 @@ class AppError(Exception):
             "render_unavailable": "check_local_browser", "media_unavailable": "retry_media",
             "operation_failed": "check_local_state", "source_error": "report_source_change",
             "response_too_large": "reduce_scope",
+            "authentication_network_error": "check_dns_and_route",
+            "authentication_outcome_unknown": "verify_source_login",
+            "authentication_schema_changed": "report_source_change",
+            "interaction_required": "complete_source_challenge",
+            "host_cli_required": "run_host_cli",
+            "repair_login_required": "run_host_cli",
+            "oa_http_compat_required": "choose_transport_compatibility",
+            "oa_route_unavailable": "check_source_resource_catalog",
             "repair_direct_unavailable": "diagnose_campus_network",
             "network_diagnosis_running": "wait_then_retry",
         }
@@ -55,6 +63,15 @@ class AppError(Exception):
                                          else "check_tls" if self.network["failure_layer"] in {"tls", "tls_verification"}
                                          else "check_network")
         return result
+
+
+def checkin_home() -> Path:
+    """One physical worker home for the MCP client and the independent worker."""
+    raw = os.environ.get("STU_CHECKIN_HOME")
+    if raw:
+        return Path(raw).expanduser().resolve()
+    # Packaged desktop clients may redirect LocalAppData per process.
+    return Path.home() / ".local" / "share" / "stu-checkin"
 
 
 def private_write(path: Path, data: bytes) -> None:
@@ -81,7 +98,7 @@ def reject_symlinks(path: Path) -> None:
 @contextmanager
 def key_lock(home: Path, name: str = "key"):
     """Serialize key creation / short session mutations across MCP processes."""
-    if name not in {"key", "webvpn", "webvpn-login", "jw", "mystu", "yuketang"}:
+    if name not in {"key", "webvpn", "webvpn-login", "jw", "mystu", "yuketang", "repair"}:
         raise AppError("unknown_lock", "不支持此本地状态锁。")
     path = home / f".{name}-lock"
     reject_symlinks(path)
@@ -138,7 +155,7 @@ class Runtime:
         return self.home / "cache.sqlite3"
 
     def session_file(self, service: str) -> Path:
-        if service not in ("webvpn", "mystu", "jw", "yuketang"):
+        if service not in ("webvpn", "mystu", "jw", "yuketang", "repair"):
             raise AppError("unknown_service", "不支持此登录服务。")
         return self.home / "sessions" / f"{service}.enc"
 
@@ -172,10 +189,15 @@ class Runtime:
             value = json.loads(path.read_text(encoding="utf-8"))
         except (ValueError, OSError):
             value = {}
-        return {"jw_http_compat": isinstance(value, dict) and value.get("jw_http_compat") is True}
+        result = {"jw_http_compat": isinstance(value, dict) and value.get("jw_http_compat") is True}
+        if isinstance(value, dict) and "oa_http_compat" in value:
+            result["oa_http_compat"] = value.get("oa_http_compat") is True
+        return result
 
     def save_preferences(self, fields: dict) -> dict:
-        if set(fields) != {"jw_http_compat"} or type(fields["jw_http_compat"]) is not bool:
-            raise AppError("invalid_preferences", "教务 HTTP 兼容选项必须明确设置为开启或关闭。")
-        private_write(self.home / "preferences.json", json.dumps(fields).encode())
-        return fields
+        if (not fields or set(fields) - {"jw_http_compat", "oa_http_compat"}
+                or any(type(value) is not bool for value in fields.values())):
+            raise AppError("invalid_preferences", "HTTP 兼容选项必须明确设置为开启或关闭。")
+        result = self.preferences() | fields
+        private_write(self.home / "preferences.json", json.dumps(result).encode())
+        return result

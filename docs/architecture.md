@@ -1,20 +1,23 @@
 # 架构与产品边界
 
-STU MCP 是面向汕头大学学生的本地校园工具。标准 stdio MCP 是主要接入方式，CLI 提供安装、诊断和无 MCP 环境的补充入口；分析、总结与模型调用由用户自己的 agent 完成。同一实现服务各客户端，不维护互不相通的客户端专版。
+STU MCP 是面向汕头大学学生的校园工具。桌面默认使用 stdio，个人服务器可通过 Streamable HTTP 复用同一实例；CLI 提供安装、诊断和补充入口。分析、总结与模型调用由用户自己的 agent 完成。同一实现服务各客户端，不维护客户端或服务器专版。v0.6.0 已包含个人服务器接入，部署与验证边界见[服务器说明](server.md)。
 
 本仓库是独立开源产品；Hermes 上的私有 `school_hub` 是另一个部署，不由本仓库运行或修改。仓库不包含原项目历史、运行数据库、个人画像、登录态、Hermes 运行目录或部署配置。
 
 ```mermaid
 flowchart LR
-    A[用户的 agent] -->|stdio MCP| B[server / App]
+    A[用户的 agent] -->|stdio / Streamable HTTP| T[传输边界]
+    T --> R[HostRuntime]
+    R --> B[server 工具 / App]
     C[CLI] --> B
     B --> D[features 业务服务]
     D --> E[来源访问适配]
     E --> F[纯解析与契约]
     E --> G[学校或第三方来源]
     B --> H[Store 与缓存]
-    I[本地设置页] --> J[用户在官方页面登录]
-    J --> K[独立加密会话 / 系统密钥库]
+    C --> J[auth_http 来源协议与正向证明]
+    I[本地设置页] -->|默认引导宿主CLI| C
+    J --> K[Vault 来源代次屏障 / 独立加密会话]
     K --> E
     B -->|本机 HTTP| L[stu_checkin 独立后台]
     M[签到网页] --> L
@@ -25,31 +28,34 @@ flowchart LR
 | 边界 | 模块与职责 |
 | --- | --- |
 | 产品入口 | `server` 声明 MCP 工具；`cli` 声明命令；`app` 连接查询、刷新与存储。来源字段解析不放在工具层 |
+| 实例与接入 | `hosting.HostRuntime` 组装一个人的服务与生命周期；`transports/http` 只处理私有鉴权、入口约束与 SDK 的 HTTP 传输。HTTP 客户端共用一个实例，断开连接不关闭实例，不为每个请求重建 App |
 | 功能与服务目录 | `sources` 声明功能、目标地址和认证依赖；`services` 区分业务用途、校区与来源证据。用途核验、即时可用性、表单和提交验收分别记录 |
 | 来源功能包 | `features/repair`、`notices`、`mystu`、`jw`、`yuketang`、`charging`、`huyou` 分别拥有该领域的契约、纯解析、访问与业务编排 |
 | 课表文件生成 | `features/timetable/export.py` 是已核对输入到课次及 CSV/ICS 的唯一核心；技能脚本只选择并调用该核心，不请求学校或外部日历 |
 | 共用采集类型 | `parsing`、`collection`、`pagination` 提供纯函数、结果类型和保守完整性判定，不依赖来源功能包 |
 | 兼容入口 | `parsers`、`collectors`、旧 `repair*`、`charging`、`huyou` 等保留 Python 导入与原注入点，转发功能包；功能包不反向依赖这些门面 |
-| 网络传输 | `network` 负责限定主机、HTTPS、显式教务 HTTP 兼容、会话范围、读取预算和脱敏错误；连接池、失败冷却与受限匿名重试见[访问策略](network.md) |
+| 网络传输 | `network` 负责业务来源范围、HTTPS、各自显式的教务/OA HTTP 兼容、读取预算和脱敏错误；`auth_http/transport` 负责认证直连、一次提交及独立预算。策略见[访问说明](network.md) |
 | 连接诊断 | `access_policy`、`connectivity` 按服务及认证依赖检查匿名响应头、DNS和显式代理对照；`network_audit` 检查固定登记的第一方入口。不改配置，不作为普通采集的全量前置条件 |
-| 本机状态 | `runtime` 定义用户目录；`vault` 使用系统密钥库保护来源独立会话；`store` 保存缓存与来源范围。`charging_cache` / `charging_devices` 保持公开设备快照、租约与目录政策 |
-| 登录与安装 | `auth`、`webvpn`、`setup_web` 负责官方登录与本地设置；`clients` 保留配置、备份、预览和幂等接入；`skill_export` 提供可选技能资源归档 |
+| 宿主状态 | `runtime` 定义数据目录；`credentials` 选择系统密钥库或显式外置主密钥后端；`vault` 保护来源独立会话；`store` 保存缓存与来源范围。`charging_cache` / `charging_devices` 保持公开设备快照、租约与目录政策 |
+| 登录与安装 | `auth_http` 分离共享传输、CAS/平台协议和 Vault 保存编排；`terminal` 只接本人 TTY；`webvpn` 管可选凭据与按需重登，`checkin_login` 复用原回调。`auth` 保留显式浏览器兼容，`interaction` 只检查该后端的显示条件。`clients/skill_export` 管幂等接入与资源归档 |
 | 签到后台 | `checkin` 是本机控制客户端，`checkin_process` 负责独立启动；`stu_checkin` 随包分发后台、网页、监听、结果与加密状态。两页面共用回环 HTTP，绑定时不反向查 DNS |
 
 分层的依赖方向与学校改版维护步骤集中在[来源适配](source-adapters.md)。当前架构写在本文，历次迁移、兼容比对和测试证据保留在[验证记录](verification.md)，不在模块说明里累积批次历史。
 
 ## 报修模块的分层
 
-七项报修 MCP 工具和旧 Python 入口保持兼容，CLI 只做草稿和演练。`RepairService` 通过 `RepairSession` 接口使用学校浏览器适配器；业务流程不操作 DOM 或导入 Playwright。
+七项报修 MCP 工具和旧 Python 入口保持兼容。`RepairService` 通过 `RepairSession` 接口默认使用直连 HTTP WebForms；CLI 也可展示预览并在本人确认后提交一次。旧工具名中的 form/window 保留兼容语义，不代表默认创建浏览器。业务服务不操作 DOM 或导入 Playwright。
 
 | `features/repair/` 文件 | 职责 |
 | --- | --- |
-| `__init__.py` | 默认组装；测试可注入内存会话 |
+| `__init__.py` | 默认组装 HTTP 会话；测试可注入内存会话 |
 | `models.py` | 业务字段、捕获结果类型和会话接口 |
 | `service.py` | 草稿、窗口生命周期、预览时效、命令队列和重复提交保护 |
 | `schema.py` | 系统地址、字段、列名、状态词和 DOM 提取契约 |
 | `parser.py` | 从提取结果形成业务数据，不访问网络或浏览器 |
-| `adapter.py` | 新鲜直连预检、临时浏览器、路由限制、登录等待、填写与回读 |
+| `http_adapter.py` / `http_parser.py` | 独立 repair 会话、固定地址、WebForms 隐藏状态及预约回发、实际值回读和回执读取；解析与 I/O 分开 |
+| `adapter.py` | 保留显式浏览器兼容，不是默认认证/填写路径 |
+| `cli.py` | 同一服务的本人终端演练、完整预览和精确确认，不经 MCP 接收凭据 |
 | `submission.py` | 一次精确匹配的 POST；未知结果不重试 |
 | `receipt.py` | 有预算的列表/详情读取、初次创建证明与后续只读刷新 |
 
@@ -79,9 +85,11 @@ flowchart LR
 
 ## 认证依赖
 
-公开来源无需账号；OA 先匿名读取，受保护访问才使用可选 WebVPN。只允许 HTTPS 认证代理，不向旧 HTTP 代理发 cookie。教务与 MySTU 各自完成学校统一认证；雨课堂在自己的官方页面登录，扫码不赋予读取微信消息的能力。系统目录和真实核验范围见[校园协议](campus-protocols.md)。
+各模块的真实入口、成功证明、持久化、退出和服务器审查结果集中在[认证基线](authentication.md)。修改前先沿源码调用链核实；官网新登录方式、匿名技术研究与已接入能力分别记录。
 
-默认登录由用户在官方交互页面完成，各来源独立加密保存会话，不要求全量 `.env` 或模型密钥。WebVPN 自动重登需本人在本机设置页启用；账号、密码和 TOTP 密钥只进系统密钥库。重登仅在 OA 受保护读取时触发，一轮读取至多一轮，进程间串行且失败冷却；拒绝或人工挑战会暂停，不自动绑令牌或保活。
+公开来源无需账号；OA 先匿名，受保护访问才使用 WebVPN。认证密码和 TOTP 只用 HTTPS；学校目录指定的 OA HTTP 8118 仅在本人单独开启兼容后允许该来源会话，不能自动降级。教务与 MySTU 分别完成 CAS；雨课堂通过官方二维码和本人手机确认，不读取微信消息。系统目录及历史证据见[校园协议](campus-protocols.md)。
+
+默认登录由 HTTP 适配器和本人宿主终端完成，各来源独立加密保存会话，不要求全量 `.env`、模型密钥、浏览器或桌面。适配器返回内存 Candidate，只有编排层在正向 proof 及来源代次通过后保存。WebVPN 长期自动重登需本人额外启用；账号、密码和 TOTP 密钥只进受保护后端。按需重登使用纯 HTTP，一轮读取至多一轮，进程间串行且失败冷却；拒绝或人工挑战暂停，不绑令牌或保活。
 
 手动与自动登录都核对来源会话代次。退出写随机代次标记，阻止尚未提交的旧登录任务恢复旧账号；配置、保存和缓存提交分别核对版本，避免覆盖另一账号的新会话及缓存。各来源缺少认证只影响自己的读取。设置及兼容选项见[安装登录](install.md)。
 

@@ -4,15 +4,15 @@ build-backend = "hatchling.build"
 
 [project]
 name = "stu-mcp"
-version = "0.5.0"
-description = "汕头大学学生的校园工具，供 MCP agents 按需调用"
+version = "0.6.0"
+description = "面向 AI agents 的汕大校园工具，默认 HTTP/CLI，支持本地与个人服务器"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
 dependencies = [
   "mcp>=2.3,<3", "httpx[socks]>=0.28,<1", "beautifulsoup4>=4.13,<5",
   "keyring>=25.6,<26", "cryptography>=45", "platformdirs>=4.3,<5",
-  "tomlkit>=0.13,<1", "ruamel.yaml>=0.18,<0.20", "pypdf>=5,<7", "playwright>=1.55,<2",
+  "tomlkit>=0.13,<1", "ruamel.yaml>=0.18,<0.20", "pypdf>=5,<7", "qrcode>=8,<9",
   "pyotp>=2.9,<3",
   "dnspython>=2.9,<3",
   "pywin32>=311; sys_platform == 'win32'",
@@ -20,7 +20,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8,<10", "pytest-asyncio>=0.26", "ruff>=0.12"]
+browser = ["playwright>=1.55,<2"]
+dev = ["pytest>=8,<10", "pytest-asyncio>=0.26", "ruff>=0.12", "playwright>=1.55,<2"]
 
 [project.scripts]
 stu-mcp = "stu_mcp.cli:main"

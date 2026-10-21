@@ -34,6 +34,21 @@ jobs:
         if: matrix.os == 'ubuntu-latest' && matrix.python == '3.13'
         run: uv run python -m playwright install --with-deps chromium
       - run: uv run --extra dev ruff check .
-      - run: uv run --extra dev pytest -q
+      - name: Run tests with per-case progress and bounded-wait diagnostics
+        run: uv run --extra dev pytest -v --durations=10 -o faulthandler_timeout=${{ matrix.python == '3.13' && 15 || 90 }}
       - run: uv build
-      - run: uv run --extra dev python scripts/check_installed_runtime.py
+      - name: Verify isolated core wheel, MCP transports, clients and worker lifecycle
+        run: uv run --locked --extra dev python scripts/check_installed_runtime.py
+  docker-core:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Build the default core image without a desktop or browser extra
+        run: docker build --tag stu-mcp-core-smoke .
+      - name: Verify version and core imports without Playwright
+        run: |
+          docker run --rm --network none stu-mcp-core-smoke --version
+          docker run --rm --network none --entrypoint python stu-mcp-core-smoke -c "import importlib.util; from stu_mcp.cli import parser; from stu_mcp.server import build_server; assert importlib.util.find_spec('playwright') is None; assert parser().parse_args(['login','mystu']).browser is False; print('core imports and default HTTP CLI available; Playwright absent')"
+      - name: Read isolated offline status without starting school authentication
+        run: docker run --rm --network none stu-mcp-core-smoke status

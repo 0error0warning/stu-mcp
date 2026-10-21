@@ -12,6 +12,7 @@ import pytest
 
 from stu_checkin.http_server import LoopbackHTTPServer
 from stu_mcp import connectivity as net
+from stu_mcp.execution import execution_context
 from stu_mcp.repair import direct_preflight
 from stu_mcp.runtime import AppError
 
@@ -330,3 +331,38 @@ def test_duplicate_proxy_addresses_share_probe_without_losing_source_bypass_evid
     assert len(compared) == 2
     assert compared[0]["bypass_matches_target"] is False
     assert compared[1]["bypass_matches_target"] is True
+
+
+@pytest.mark.parametrize("reachable,status", [(True, "direct_ready"), (False, "direct_blocked"),
+                                             (None, "direct_inconclusive")])
+def test_execution_scope_is_present_for_complete_failed_and_inconclusive_reports(monkeypatch, reachable, status):
+    fixture_proxy(monkeypatch)
+    monkeypatch.setenv("STU_MCP_INSTANCE_NAME", "remote-fixture")
+    monkeypatch.setattr(net, "_dns", lambda _: {"status": "dns_error"})
+    monkeypatch.setattr(net, "_http", lambda *_: {"status": "synthetic", "reachable": reachable})
+    report = net.NetworkDiagnostics().diagnose(location_hint="campus")
+    assert report["status"] == status
+    assert report["execution"] == execution_context()
+    assert report["execution"]["client_network_checked"] is False
+    assert report["network_context"]["location_verified"] is False
+    assert any("MCP 执行主机" in text for text in report["limitations"])
+
+
+def test_renaming_instance_updates_cached_label_without_reprobing_or_relabeling_network(monkeypatch):
+    fixture_proxy(monkeypatch)
+    monkeypatch.setenv("STU_MCP_INSTANCE_NAME", "first-host")
+    monkeypatch.setattr(net, "_dns", lambda _: {"status": "resolved"})
+    calls = []
+    monkeypatch.setattr(net, "_http", lambda *args: calls.append(args) or {"reachable": True})
+    diagnostic = net.NetworkDiagnostics()
+    original = diagnostic.diagnose("sangpushan_repair", "off_campus")
+    assert len(calls) == 2
+    monkeypatch.setenv("STU_MCP_INSTANCE_NAME", "renamed-host")
+    cached = diagnostic.diagnose("sangpushan_repair", "off_campus")
+    assert cached["cached"] is True and len(calls) == 2
+    assert cached["execution"]["instance_name"] == "renamed-host"
+    assert original["execution"]["instance_name"] == "first-host"
+    for key in ("checks", "decision", "network_context", "access_policy", "checked_at"):
+        assert cached[key] == original[key]
+    cached["execution"]["scope"] = "client"
+    assert diagnostic.diagnose("sangpushan_repair", "off_campus")["execution"]["scope"] == "mcp_host"

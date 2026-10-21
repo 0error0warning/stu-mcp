@@ -28,6 +28,11 @@
       const error = new Error(body.message || (response.status === 403
         ? "页面已失效，请重新运行 stu-mcp setup。" : "操作没有完成，请重试。"));
       error.httpStatus = response.status;
+      error.status = body.status;
+      if (body.status === "host_cli_required" && typeof body.command === "string"
+          && /^stu-mcp login (jw|mystu|yuketang|webvpn)$/.test(body.command)) {
+        error.message += "\n" + body.command;
+      }
       throw error;
     }
     return body;
@@ -135,7 +140,7 @@
     if (mode === "enabled") note = "账号存在系统钥匙串里，会话过期时自动重新登录。";
     else if (mode === "paused") note = "上次自动登录没有成功，已暂停。请更新账号，或改用浏览器登录。";
     else if (mode === "broken") note = "保存的账号无法读取，请重新填写或断开。";
-    else if (manual) note = "已通过浏览器登录，过期后需要再登录一次。保存账号后可以自动续期。";
+    else if (manual) note = "已保存登录会话。保存账号后可在过期时通过 HTTP 自动续期。";
     $("vpn-status").textContent = note;
     $("vpn-edit").textContent = mode === "none" ? "保存账号" : "更新账号";
     $("vpn-manage").hidden = !manage;
@@ -143,13 +148,14 @@
     if (!manage) $("vpn-user").focus();
   }
 
-  async function login(id) {
+  async function login(id, backend = "http") {
     try {
-      await api("/api/login", {service: id});
+      await api("/api/login", {service: id, backend});
       watching = true;
       await load();
     } catch (error) {
-      pollFailure(error);
+      if (error.status === "host_cli_required") toast(error.message);
+      else pollFailure(error);
     }
   }
 
@@ -211,7 +217,7 @@
   $("vpn-alt").addEventListener("click", () => {
     clearCredentials();
     closePanels();
-    login("oa");
+    login("oa", "browser");
   });
 
   function disarm() {

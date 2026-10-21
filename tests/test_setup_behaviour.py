@@ -76,11 +76,18 @@ def synthetic_login(monkeypatch, app, session):
         on_phase("waiting_for_login")
         if not complete.wait(20):
             return {"ok": False, "message": "Synthetic test did not finish"}
-        vault.save("mystu", session, on_relogin=lambda: app.store.forget("mystu"))
+        state = {"cookies": [{**cookie, "domain": "webvpn.stu.edu.cn"} for cookie in session["cookies"]],
+                 "origins": []}
+        vault.save("webvpn", state, on_relogin=lambda: app.store.forget("oa"))
         return {"ok": True, "status": "session_saved"}
 
     monkeypatch.setattr("stu_mcp.auth.interactive_login", login)
     return complete, calls
+
+
+def start_explicit_browser_login(page):
+    page.locator('[data-service="oa"] .act').click()
+    page.locator("#vpn-alt").click()
 
 
 def wait_for_requests(page, requests, count):
@@ -106,12 +113,12 @@ def test_login_finishes_after_one_status_read_failure(setup_page, app, session, 
     page.route("**/api/status", status)
     try:
         page.goto(ui.url)
-        page.locator('[data-service="mystu"] .act').click()
+        start_explicit_browser_login(page)
         wait_for_requests(page, requests, failed_request)
         complete.set()
-        expect(page.locator('[data-service="mystu"] .meta')).to_have_text("已登录", timeout=10000)
-        expect(page.locator('[data-service="mystu"] .act')).to_be_enabled()
-        assert calls == ["mystu"]
+        expect(page.locator('[data-service="oa"] .meta')).to_have_text("已登录", timeout=10000)
+        expect(page.locator('[data-service="oa"] .act')).to_be_enabled()
+        assert calls == ["oa"]
     finally:
         complete.set()
 
@@ -136,10 +143,30 @@ def test_status_retries_stop_on_forbidden_or_retry_budget(setup_page, app, sessi
     page.route("**/api/status", status)
     try:
         page.goto(ui.url)
-        page.locator('[data-service="mystu"] .act').click()
+        start_explicit_browser_login(page)
         expected = 2 if http_status == 403 else 7
         wait_for_requests(page, requests, expected)
         page.wait_for_timeout(250)
-        assert len(requests) == expected and calls == ["mystu"]
+        assert len(requests) == expected and calls == ["oa"]
     finally:
         complete.set()
+
+
+def test_default_http_login_displays_host_command_without_browser_or_background_job(setup_page, monkeypatch):
+    page, ui = setup_page
+    monkeypatch.setattr("stu_mcp.auth.interactive_login", lambda *_args, **_kwargs: pytest.fail("implicit browser"))
+    monkeypatch.setattr("stu_mcp.auth_http.login_http", lambda *_args, **_kwargs: pytest.fail("background credentials"))
+    submitted = []
+
+    def record(route):
+        submitted.append(route.request.post_data_json)
+        route.continue_()
+
+    page.route("**/api/login", record)
+    page.goto(ui.url)
+    page.locator('[data-service="mystu"] .act').click()
+    expect(page.locator("#toast")).to_contain_text("stu-mcp login mystu")
+    expect(page.locator("#toast")).to_have_attribute("role", "status")
+    expect(page.locator('[data-service="mystu"] .act')).to_be_enabled()
+    assert submitted == [{"service": "mystu", "backend": "http"}]
+    assert ui.jobs.snapshot() == []

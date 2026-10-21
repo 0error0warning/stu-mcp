@@ -15,6 +15,7 @@ import httpx
 from bs4 import BeautifulSoup
 
 from .access_policy import policy_for_url
+from .http_privacy import private_http_logging
 from .parsing import is_login
 from .runtime import AppError
 from .sources import SOURCES
@@ -76,15 +77,19 @@ def retry_after(value: str | None) -> int | None:
         return None
 
 
-def checked_url(source: str, url: str, *, authenticated: bool = False, allow_legacy_http: bool = False) -> str:
+def checked_url(source: str, url: str, *, authenticated: bool = False, allow_legacy_http: bool = False,
+                allow_oa_http: bool = False) -> str:
     parsed = urlparse(url)
     spec = SOURCES[source]
     if parsed.username or parsed.password or parsed.hostname not in spec.hosts or parsed.fragment:
         raise AppError("unsafe_url", "请求地址不在此来源的允许范围内。", source)
     legacy_jw = source == "jw" and allow_legacy_http and parsed.hostname == "jw.stu.edu.cn"
-    if parsed.port not in (None, 443) and not (parsed.port == 80 and (legacy_jw or source == "oa" and not authenticated)):
+    legacy_oa = (source == "oa" and allow_oa_http and parsed.scheme == "http"
+                 and parsed.hostname == "oa-stu-edu-cn.webvpn.stu.edu.cn" and parsed.port == 8118)
+    if parsed.port not in (None, 443) and not legacy_oa and not (
+            parsed.port == 80 and (legacy_jw or source == "oa" and not authenticated)):
         raise AppError("unsafe_url", "该来源端口不受支持。", source)
-    if parsed.scheme != "https" and not (parsed.scheme == "http" and (legacy_jw or source == "oa"
+    if parsed.scheme != "https" and not legacy_oa and not (parsed.scheme == "http" and (legacy_jw or source == "oa"
                                         and parsed.hostname == "oa.stu.edu.cn" and not authenticated)):
         raise AppError("insecure_transport", "已阻止通过非 HTTPS 连接发送登录态。", source)
     if any(k.lower() in AUTH_QUERY_KEYS for k, _ in parse_qsl(parsed.query)):
@@ -104,16 +109,38 @@ def scoped_state(state: dict, source: str) -> dict:
     origins = [o for o in state.get("origins", []) if isinstance(o, dict)
                and urlparse(str(o.get("origin", ""))).hostname in hosts
                and urlparse(str(o.get("origin", ""))).scheme == "https"]
-    return {"cookies": cookies, "origins": origins}
+    result = {"cookies": cookies, "origins": origins}
+    if source == "yuketang" and "yuketang_authorization" in state:
+        authorization = state["yuketang_authorization"]
+        if (not isinstance(authorization, str) or not authorization.startswith("Bearer ")
+                or not 8 <= len(authorization) <= 8192
+                or any(not 33 <= ord(char) <= 126 for char in authorization[7:])):
+            raise AppError("session_invalid", "雨课堂认证字段无效，请重新登录。", source)
+        result["yuketang_authorization"] = authorization
+    if source == "oa" and "webvpn_oa_route" in state:
+        route = state["webvpn_oa_route"]
+        if not isinstance(route, dict) or set(route) != {"scheme", "host", "port"} or route not in (
+            {"scheme": "http", "host": "oa-stu-edu-cn.webvpn.stu.edu.cn", "port": 8118},
+            {"scheme": "https", "host": "oa-stu-edu-cn.webvpn.stu.edu.cn", "port": 443},
+        ):
+            raise AppError("session_invalid", "WebVPN 资源路由无效，请重新登录。", source)
+        result["webvpn_oa_route"] = dict(route)
+    if source == "oa" and state.get("webvpn_catalog_verified") is True:
+        result["webvpn_catalog_verified"] = True
+    return result
 
 
 class CampusHTTP:
-    def __init__(self, source: str, state: dict | None = None, *, transport=None, allow_legacy_http: bool = False):
+    def __init__(self, source: str, state: dict | None = None, *, transport=None, allow_legacy_http: bool = False,
+                 allow_oa_http: bool = False):
         self.source = source
         self.authenticated = state is not None
         if allow_legacy_http and source != "jw":
             raise AppError("unsafe_policy", "HTTP 兼容只允许用于学校教务来源。", source)
         self.allow_legacy_http = allow_legacy_http
+        if allow_oa_http and source != "oa":
+            raise AppError("unsafe_policy", "OA HTTP 兼容不能用于其他来源。", source)
+        self.allow_oa_http = allow_oa_http
         self.used_legacy_http = False
         cookies = httpx.Cookies()
         for c in scoped_state(state or {}, source)["cookies"]:
@@ -126,6 +153,9 @@ class CampusHTTP:
             domain = str(c["domain"])
             if allow_legacy_http and domain.lstrip(".").lower() != "jw.stu.edu.cn":
                 continue  # Do not reuse central SSO cookies on the legacy JW endpoint.
+            if allow_oa_http and domain.lstrip(".").lower() not in {
+                "webvpn.stu.edu.cn", "oa-stu-edu-cn.webvpn.stu.edu.cn"}:
+                continue  # Never expose a central SSO/parent-domain cookie through OA HTTP.
             cookies.jar.set_cookie(Cookie(0, str(c["name"]), str(c["value"]), None, False,
                                          domain, bool(domain), domain.startswith("."), str(c.get("path", "/")),
                                          True, bool(c.get("secure", False)), None if expiry <= 0 else int(expiry),
@@ -137,6 +167,8 @@ class CampusHTTP:
             headers["Referer"] = "https://my.stu.edu.cn/discussion/my-courses"
         if source == "yuketang":
             headers["xtbz"] = "ykt"
+            if authorization := scoped_state(state or {}, source).get("yuketang_authorization"):
+                headers["Authorization"] = authorization
         self.client = httpx.Client(cookies=cookies, headers=headers, verify=True, trust_env=False,
                                    timeout=httpx.Timeout(18, connect=AUTH_CONNECT_SECONDS),
                                    follow_redirects=False, transport=transport)
@@ -155,7 +187,10 @@ class CampusHTTP:
     def request(self, url: str, *, data: dict | None = None, max_bytes: int = MAX_BYTES) -> httpx.Response:
         current, method = url, "POST" if data is not None else "GET"
         for _ in range(5):
-            checked_url(self.source, current, authenticated=self.authenticated, allow_legacy_http=self.allow_legacy_http)
+            checked_url(self.source, current, authenticated=self.authenticated, allow_legacy_http=self.allow_legacy_http,
+                        allow_oa_http=self.allow_oa_http)
+            if self.allow_oa_http and urlparse(current).scheme == "http" and method != "GET":
+                raise AppError("insecure_transport", "OA HTTP 兼容仅允许读取，不发送表单或认证输入。", self.source)
             target = urlparse(current)
             host_key = (target.scheme, target.hostname, target.port or (443 if target.scheme == "https" else 80))
             anonymous_get = method == "GET" and not self.authenticated and data is None
@@ -177,10 +212,11 @@ class CampusHTTP:
             evidence = TransportEvidence()
             connect_seconds = CONNECT_SECONDS if anonymous_get else AUTH_CONNECT_SECONDS
             try:
-                with self.client.stream(method, current, data=data if method == "POST" else None,
-                                        extensions={"trace": evidence.trace},
-                                        timeout=httpx.Timeout(min(18, remaining),
-                                                              connect=min(connect_seconds, remaining))) as response:
+                with private_http_logging(self.authenticated), self.client.stream(
+                    method, current, data=data if method == "POST" else None,
+                    extensions={"trace": evidence.trace},
+                    timeout=httpx.Timeout(min(18, remaining), connect=min(connect_seconds, remaining)),
+                ) as response:
                     status = response.status_code
                     if status == 401:
                         raise AppError("login_expired" if self.authenticated else "needs_login",
@@ -210,7 +246,7 @@ class CampusHTTP:
                                         and destination.path.startswith("/portal"))
                         if destination.hostname == "sso.stu.edu.cn" or "/login" in destination.path.lower() or webvpn_login:
                             raise AppError("login_expired" if self.authenticated else "needs_login",
-                                           "此来源需要在本地浏览器登录。", self.source)
+                                           "此来源需要重新登录；请在 MCP 宿主终端运行对应的 stu-mcp login 命令。", self.source)
                         if response.status_code not in (301, 302, 303) and urlparse(target).netloc != urlparse(current).netloc:
                             raise AppError("unsafe_redirect", "已阻止跨站转发请求内容。", self.source)
                         current = target
@@ -244,7 +280,8 @@ class CampusHTTP:
                         # contain a login form. A form alone must not hide that board.
                         if (self.authenticated or self.source in {"jw", "mystu", "yuketang"}) and is_login(result.text):
                             raise AppError("login_expired" if self.authenticated else "needs_login",
-                                           "此来源需要在本地浏览器登录。", self.source, http_status=status)
+                                           "此来源需要重新登录；请在 MCP 宿主终端运行对应的 stu-mcp login 命令。",
+                                           self.source, http_status=status)
                     return result
             except AppError:
                 raise
@@ -285,7 +322,7 @@ class CampusHTTP:
             codes = [payload.get(k) for k in ("errcode", "code")]
             if any(code in (401000, "401000") for code in codes):
                 raise AppError("login_expired" if self.authenticated else "needs_login",
-                               "雨课堂已拒绝登录会话，请在本地设置页重新登录。", self.source)
+                               "雨课堂已拒绝登录会话；请在 MCP 宿主终端运行 stu-mcp login yuketang。", self.source)
             # v2 uses errcode, classroom v3 uses code, and LMS uses success.
             # Error messages can contain credentials or personal data; keep them
             # out of the MCP result and do not guess authentication from prose.

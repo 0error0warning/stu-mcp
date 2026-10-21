@@ -1,2 +1,2 @@
 帮我安装 STU MCP：https://github.com/0error0warning/stu-mcp
-按 docs/install.md 接入当前客户端，保留已有配置并验证公开查询。需要登录时打开本地设置页，我自己来。
+按 docs/install.md 安装 v0.6.0 学生预览版并接入当前客户端，保留已有数据与配置，重新加载后验证版本、get_capabilities 和公开查询。需要登录时由我在 MCP 宿主交互终端完成隐藏输入或手机授权，不默认安装或启动浏览器；远程连接与学校网络分别核实。

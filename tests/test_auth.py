@@ -44,6 +44,7 @@ def fake_playwright(tmp_path, session):
     return fake, settings
 
 
+@pytest.mark.usefixtures("synthetic_login_interaction")
 def test_first_login_prepares_browser_and_saves_no_password(app, session, tmp_path, monkeypatch):
     import stu_mcp.auth as auth
     fake, settings = fake_playwright(tmp_path, session)
@@ -61,6 +62,7 @@ def test_first_login_prepares_browser_and_saves_no_password(app, session, tmp_pa
     assert app.vault.load("mystu") == session
 
 
+@pytest.mark.usefixtures("synthetic_login_interaction")
 def test_failed_download_does_not_save_authentication(app, session, tmp_path, monkeypatch):
     import stu_mcp.auth as auth
     fake, _ = fake_playwright(tmp_path, session)
@@ -75,6 +77,7 @@ def test_failed_download_does_not_save_authentication(app, session, tmp_path, mo
 @pytest.mark.parametrize("service", ["jw", "mystu", "yuketang"])
 @pytest.mark.parametrize("existing", [False, True])
 @pytest.mark.parametrize("action", ["logout", "replace"])
+@pytest.mark.usefixtures("synthetic_login_interaction")
 def test_manual_login_cannot_restore_logout_or_replace_newer_account(
         app, session, keys, tmp_path, monkeypatch, service, existing, action):
     from stu_mcp import auth
@@ -111,6 +114,7 @@ def test_manual_login_cannot_restore_logout_or_replace_newer_account(
 
 
 @pytest.mark.parametrize("service", ["jw", "mystu", "yuketang"])
+@pytest.mark.usefixtures("synthetic_login_interaction")
 def test_fresh_manual_login_after_logout_still_succeeds(app, session, tmp_path, monkeypatch, service):
     from stu_mcp import auth
     session = deepcopy(session)
@@ -124,6 +128,7 @@ def test_fresh_manual_login_after_logout_still_succeeds(app, session, tmp_path, 
     assert app.vault.load(service) == session
 
 
+@pytest.mark.usefixtures("synthetic_login_interaction")
 def test_logout_also_cancels_a_login_job_before_its_worker_starts(app, session, tmp_path, monkeypatch):
     from stu_mcp import auth
     fake, _ = fake_playwright(tmp_path, session)
@@ -133,7 +138,7 @@ def test_logout_also_cancels_a_login_job_before_its_worker_starts(app, session, 
     queued = []
     monkeypatch.setattr(auth.threading, "Thread", lambda *, target, **_: SimpleNamespace(start=lambda: queued.append(target)))
     jobs = auth.LoginJobs(app.vault)
-    jobs.start("mystu")
+    jobs.start("mystu", backend="browser")
     app.logout("mystu")
     queued.pop()()
     assert jobs.snapshot()[0]["result"]["status"] == "session_changed"

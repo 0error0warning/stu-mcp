@@ -8,4 +8,8 @@ structured form encoding, three-state login-response validation and a cancellati
 application replaces the single-course GUI watcher with a shared, sequential
 multi-course monitor and encrypted continuous-monitor preferences. The browser application, local
 HTTP server and encrypted persistence are separate from the upstream GUI.
+Local security adaptation for v0.6.0: configured proxies no longer disable
+certificate verification. Legacy verify_tls=false settings are normalized to
+verified HTTPS; SignalR negotiation and WSS enforce certificate/hostname checks.
+Untrusted interception certificates fail safely instead of disabling TLS checks.
 No upstream credentials, personal configuration or runtime data are included.

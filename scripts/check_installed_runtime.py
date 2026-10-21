@@ -12,6 +12,7 @@ import zipfile
 from pathlib import Path
 
 import httpx
+from check_http_runtime import assert_tool_contract
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
@@ -19,7 +20,7 @@ from stu_mcp import __version__
 from stu_mcp.checkin import CheckinClient
 
 EXPORT = r'''
-import json, sys, zipfile
+import importlib.util, json, sys, zipfile
 from pathlib import Path
 import tomlkit
 import stu_checkin
@@ -51,6 +52,7 @@ from stu_mcp.runtime import Runtime
 from stu_mcp.skill_export import export_skill
 
 root = Path(sys.argv[1])
+assert importlib.util.find_spec("playwright") is None, "the installed core wheel must not contain Playwright"
 assert Path(stu_checkin.__file__).is_relative_to(root / "tools"), "worker must come from the installed wheel"
 assert Path(repair_feature.__file__).is_relative_to(root / "tools"), "repair must come from the installed wheel"
 assert Path(skill_export_module.__file__).is_relative_to(root / "tools"), "skill export must come from the installed wheel"
@@ -136,7 +138,8 @@ print(json.dumps({"configs": configs, "skills": skills}))
 
 def run(command: list[str], env: dict, cwd: Path) -> str:
     completed = subprocess.run(command, env=env, cwd=cwd, capture_output=True,
-                               text=True, encoding="utf-8", timeout=180)
+                               text=True, encoding="utf-8", timeout=180,
+                               creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
     if completed.returncode:
         # This check owns a fresh sandbox and contains no student credentials.
         raise RuntimeError("Installed runtime check failed:\n" + completed.stdout[-4000:] + completed.stderr[-4000:])
@@ -145,23 +148,36 @@ def run(command: list[str], env: dict, cwd: Path) -> str:
 
 async def handshake(config: dict, env: dict, cwd: Path) -> None:
     params = StdioServerParameters(command=config["command"], args=config["args"], env=env, cwd=str(cwd))
-    async with stdio_client(params) as (read, write), ClientSession(read, write) as session:
-        initialized = await session.initialize()
-        assert initialized.server_info.name == "stu-mcp"
-        installed_tools = (await session.list_tools()).tools
-        names = {tool.name for tool in installed_tools}
-        assert {"get_capabilities", "get_charging_overview", "get_charging_device", "get_checkin_status",
-                "open_checkin_page", "list_checkin_courses", "select_checkin_courses", "start_checkin_monitor",
-                "pause_checkin_monitor", "get_checkin_results", "stop_checkin_service",
-                "diagnose_campus_network", "audit_campus_network"} <= names
-        # Exercise the installed diagnostic without contacting a school endpoint.
-        invalid = await session.call_tool("diagnose_campus_network", {"service_id": "https://invalid.example/"})
-        assert invalid.model_dump(by_alias=True)["structuredContent"]["status"] == "invalid_network_service"
-        audit_tool = next(tool for tool in installed_tools if tool.name == "audit_campus_network")
-        assert audit_tool.annotations.read_only_hint is True
-        assert audit_tool.input_schema["properties"]["compare_public_dns"]["default"] is False
-        invalid_audit = await session.call_tool("audit_campus_network", {"location_hint": "guess_from_ip"})
-        assert invalid_audit.model_dump(by_alias=True)["structuredContent"]["status"] == "invalid_network_location"
+    with open(os.devnull, "w", encoding="utf-8") as errors:
+        async with stdio_client(params, errlog=errors) as (read, write), ClientSession(
+                read, write, read_timeout_seconds=12) as session:
+            await check_stdio_session(session)
+
+
+async def check_stdio_session(session) -> None:
+    initialized = await session.initialize()
+    assert initialized.server_info.name == "stu-mcp"
+    assert initialized.server_info.version == __version__
+    installed_tools = (await session.list_tools()).tools
+    assert_tool_contract(installed_tools)
+    capabilities = (await session.call_tool("get_capabilities", {})).model_dump(by_alias=True)["structuredContent"]
+    assert capabilities["hosting"]["transport"] == "stdio"
+    assert capabilities["hosting"]["default_authentication"] == "http"
+    assert capabilities["hosting"]["browser_backend"] == "optional_explicit"
+    assert capabilities["repair"]["default_backend"] == "http"
+    names = {tool.name for tool in installed_tools}
+    assert {"get_capabilities", "get_charging_overview", "get_charging_device", "get_checkin_status",
+            "open_checkin_page", "list_checkin_courses", "select_checkin_courses", "start_checkin_monitor",
+            "pause_checkin_monitor", "get_checkin_results", "stop_checkin_service",
+            "diagnose_campus_network", "audit_campus_network"} <= names
+    # Exercise the installed diagnostic without contacting a school endpoint.
+    invalid = await session.call_tool("diagnose_campus_network", {"service_id": "https://invalid.example/"})
+    assert invalid.model_dump(by_alias=True)["structuredContent"]["status"] == "invalid_network_service"
+    audit_tool = next(tool for tool in installed_tools if tool.name == "audit_campus_network")
+    assert audit_tool.annotations.read_only_hint is True
+    assert audit_tool.input_schema["properties"]["compare_public_dns"]["default"] is False
+    invalid_audit = await session.call_tool("audit_campus_network", {"location_hint": "guess_from_ip"})
+    assert invalid_audit.model_dump(by_alias=True)["structuredContent"]["status"] == "invalid_network_location"
 
 
 async def check_checkin(config: dict, env: dict, cwd: Path) -> None:
@@ -201,9 +217,12 @@ def main() -> None:
         # Only the disposable data directory is canonicalized, never the Python entry point.
         root = Path(directory).resolve()
         env = {**os.environ, "UV_TOOL_DIR": str(root / "tools"), "UV_TOOL_BIN_DIR": str(root / "bin"),
-               "STU_MCP_HOME": str(root / "runtime"), "STU_CHECKIN_HOME": str(root / "checkin")}
+               "STU_MCP_HOME": str(root / "runtime"), "STU_CHECKIN_HOME": str(root / "checkin"),
+               "STU_MCP_INTERACTION": "disabled"}
         env.pop("PYTHONPATH", None)
         env.pop("STU_CHECKIN_PYTHON", None)
+        env.pop("STU_MCP_KEY_FILE", None)
+        env.pop("STU_MCP_INSTANCE_NAME", None)
         # Validate the locked dependency set. A fresh CI cache may contain wheels
         # from uv sync but no package-index metadata, so allow bounded online resolution.
         constraints = root / "constraints.txt"
@@ -214,6 +233,22 @@ def main() -> None:
         entry = root / "bin" / ("stu-mcp.exe" if os.name == "nt" else "stu-mcp")
         assert run([str(entry), "--version"], env, root).strip() == __version__
         generic = json.loads(run([str(entry), "connect", "generic"], env, root))["mcpServers"]["stu-mcp"]
+        runtime = json.loads(run([generic["command"], "-c", (
+            "import importlib.util,json; from stu_mcp import __version__; "
+            "print(json.dumps({'version':__version__,'playwright_present':importlib.util.find_spec('playwright') is not None}))"
+        )], env, root))
+        assert runtime == {"version": __version__, "playwright_present": False}
+        assert "--browser" in run([str(entry), "login", "--help"], env, root)
+        print("core: isolated wheel contains no Playwright; default HTTP CLI imports without browser extras", flush=True)
+        secrets = json.loads(run([generic["command"], "-m", "stu_mcp", "server-init",
+                                  str(root / "server-secrets")], env, root))
+        assert secrets["status"] == "server_secrets_created"
+        env["STU_MCP_KEY_FILE"] = secrets["master_key_file"]
+        # Use the exported interpreter verbatim: resolving a POSIX uv symlink
+        # would escape its installed wheel environment.
+        http_check = Path(__file__).with_name("check_http_runtime.py").resolve()
+        print(run([generic["command"], str(http_check), generic["command"], str(root),
+                   secrets["auth_token_file"]], env, root).strip(), flush=True)
         exported = json.loads(run([generic["command"], "-c", EXPORT, str(root)], env, root))
         timetable_cli = json.loads(run([str(entry), "skill-export", "--skill", "stu-timetable-export", "--apply"], env, root))
         assert timetable_cli["status"] == "skill_exported"

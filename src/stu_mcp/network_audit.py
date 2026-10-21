@@ -16,6 +16,7 @@ import dns.resolver
 
 from .access_policy import POLICIES
 from .connectivity import _http
+from .execution import execution_context
 from .runtime import AppError
 from .services import SERVICE_DIRECTORY
 from .sources import OA_DIRECT, SOURCES
@@ -204,7 +205,7 @@ class NetworkAudit:
             cached = self._cache
             if not refresh and cached and cached[0] == key and time.monotonic() - cached[1] < 15:
                 return copy.deepcopy(cached[2]) | {"cached": True,
-                    "age_seconds": round(time.monotonic() - cached[1], 2)}
+                    "age_seconds": round(time.monotonic() - cached[1], 2), "execution": execution_context()}
             start, jobs = time.monotonic(), {}
             for host in HOSTS:
                 jobs[host + ":os"] = lambda host=host: _os_dns(host)
@@ -237,6 +238,7 @@ class NetworkAudit:
                                "temporary_failure", "os_resolution_error", "dns_inconclusive"}
                            or value.get("complete") is False]}
             result = {"ok": True, "status": "partial" if incomplete else "complete", "summary": summary,
+                      "execution": execution_context(),
                       "checked_at": datetime.now(UTC).isoformat(), "cached": False, "age_seconds": 0,
                       "elapsed_ms": round((time.monotonic() - start) * 1000),
                       "network_context": {"location_hint": location_hint, "location_verified": False,
@@ -245,7 +247,9 @@ class NetworkAudit:
                       "endpoint_count": len(ENDPOINTS), "host_count": len(HOSTS),
                       "hosts": hosts, "checks": checks, "public_dns_comparison_requested": compare_public_dns,
                       "changes_system_settings": False, "automatic_proxy_fallback": False,
-                      "limitations": ["每个结论仅覆盖本次运行主机的网络与检查时间，不代表所有校外Wi-Fi或学校停服。",
+                      "limitations": ["网络检查发生在 MCP 执行主机；不检查调用客户端的 DNS、代理、路由或物理位置。",
+                                      "客户端到 MCP 的连接须由客户端传输握手验证；本报告只探测执行主机到学校的路径。",
+                                      "每个结论仅覆盖本次运行主机的网络与检查时间，不代表所有校外Wi-Fi或学校停服。",
                                       "OS解析包含本机缓存和hosts；公共DNS显式查询不改变HTTP解析器或路由。",
                                       "显式DNS地址不排除网络劫持；未认证解析器身份，未强制验证每个解析IP的连通性。",
                                       "应用层直连不使用HTTP代理，仍可能受TUN、系统DNS及路由影响。",

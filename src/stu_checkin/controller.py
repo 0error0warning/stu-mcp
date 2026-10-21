@@ -5,9 +5,12 @@ import re
 import threading
 import time
 from pathlib import Path
-from urllib.parse import parse_qs, urlencode, urlparse
+
+from stu_mcp.http_privacy import private_http_logging
 
 from . import __version__
+from .auth import AUTH_URL, callback_code
+from .auth import CALLBACK as CALLBACK
 from .monitor import CourseMonitor, MonitorStopped
 from .status import describe
 from .storage import SecureStore, StorageError
@@ -15,16 +18,6 @@ from .vendor.duifene.bridge import Bridge
 from .vendor.duifene.errors import AuthError
 from .vendor.duifene.models import Course, Outcome
 from .vendor.duifene.settings import Settings
-
-CALLBACK = (
-    "https://www.duifene.com/_FileManage/PdfView.aspx?file="
-    "https%3A%2F%2Ffs.duifene.com%2Fres%2Fr2%2Fu6106199%2F"
-    "%E5%AF%B9%E5%88%86%E6%98%93%E7%99%BB%E5%BD%95_876c9d439ca68ead389c.pdf"
-)
-AUTH_URL = "https://open.weixin.qq.com/connect/oauth2/authorize?" + urlencode({
-    "appid": "wx1b5650884f657981", "redirect_uri": CALLBACK, "response_type": "code",
-    "scope": "snsapi_userinfo", "state": "1", "connect_redirect": "1",
-}) + "#wechat_redirect"
 
 
 class OperationError(RuntimeError):
@@ -344,21 +337,20 @@ class Controller:
 
     def connect(self, link: str):
         try:
-            parsed = urlparse(str(link).strip())
-            values = parse_qs(parsed.query).get("code", [])
+            code = callback_code(link)
         except ValueError:
-            values = []
-            parsed = None
-        if (parsed is None or parsed.scheme != "https" or parsed.hostname not in {"www.duifene.com", "duifene.com"}
-                or len(values) != 1 or not re.fullmatch(r"[A-Za-z0-9_-]{32}", values[0])):
-            raise OperationError("请粘贴微信打开后、包含 code 的对分易完整链接。")
+            raise OperationError("请粘贴微信打开后、包含 code 的对分易完整链接。") from None
         with self._operation:
             bridge = self._ready()
             if bridge._watcher.is_running:
                 raise OperationError("请先暂停监听，再切换微信连接。")
             self._busy = True
             try:
-                result = bridge.login_by_link("https://www.duifene.com/?code=" + values[0])
+                # LocalServer calls connect synchronously on its handler thread.
+                # Keep the upstream one-time callback and session traces private
+                # on that same thread; do not rely on executor propagation.
+                with private_http_logging():
+                    result = bridge.login_by_link("https://www.duifene.com/?code=" + code)
                 if not result.get("ok"):
                     raise OperationError(clean_message(result.get("message", "连接未完成，请重新获取微信链接。")))
                 bridge._sentinel.start()

@@ -118,6 +118,7 @@ def test_unsupported_student_home_reports_error_instead_of_waiting_forever(monke
 
 
 @pytest.mark.parametrize("compat", [False, True])
+@pytest.mark.usefixtures("synthetic_login_interaction")
 def test_manual_login_uses_the_new_entry_and_saves_verified_session(app, jw_session, monkeypatch, compat):
     app.runtime.save_preferences({"jw_http_compat": compat})
     visits = []

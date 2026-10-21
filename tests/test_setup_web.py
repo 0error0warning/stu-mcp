@@ -59,7 +59,7 @@ def test_setup_csrf_host_and_secret(app):
             page = client.get("/")
             assert "frame-ancestors 'none'" in page.headers["content-security-policy"]
             assert "Access-Control-Allow-Origin" not in page.headers
-            assert "学校页面" in page.text
+            assert "账号认证默认在本机终端" in page.text and "stu-mcp login" in page.text
     finally:
         ui.close()
 

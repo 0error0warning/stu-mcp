@@ -1,4 +1,4 @@
-"""Small encrypted state file; the key stays in the OS credential store."""
+"""Small encrypted state file, using the shared explicit credential policy."""
 from __future__ import annotations
 
 import copy
@@ -11,17 +11,16 @@ from typing import Any
 
 from cryptography.fernet import Fernet, InvalidToken
 
+from stu_mcp.credentials import configured_key_store
+from stu_mcp.runtime import AppError, checkin_home, key_lock
+
 
 class StorageError(RuntimeError):
     pass
 
 
 def default_home() -> Path:
-    override = os.environ.get("STU_CHECKIN_HOME")
-    if override:
-        return Path(override).expanduser().resolve()
-    # AppData can be virtualized by a packaged client; all launchers must use one physical home.
-    return Path.home() / ".local" / "share" / "stu-checkin"
+    return checkin_home()
 
 
 class SecureStore:
@@ -34,28 +33,20 @@ class SecureStore:
 
     def _cipher(self, *, create: bool = False) -> Fernet:
         try:
-            if self.key_store is None:
-                import keyring
-                backend = keyring.get_keyring()
-                if type(backend).__module__ == "keyring.backends.chainer":
-                    backend = next(iter(backend.backends), None)
-                if backend is None or type(backend).__module__ not in {
-                    "keyring.backends.Windows", "keyring.backends.macOS", "keyring.backends.SecretService",
-                    "keyring.backends.kwallet",
-                }:
-                    raise StorageError("系统密钥库不可用，连接信息未保存。")
-            else:
-                backend = self.key_store
+            backend = self.key_store if self.key_store is not None else configured_key_store(self.home)
             account = "session:" + str(self.home)
-            raw = backend.get_password("stu-checkin", account)
-            if not raw and create:
-                raw = Fernet.generate_key().decode("ascii")
-                backend.set_password("stu-checkin", account, raw)
+            with key_lock(self.home):
+                raw = backend.get_password("stu-checkin", account)
+                if not raw and create:
+                    raw = Fernet.generate_key().decode("ascii")
+                    backend.set_password("stu-checkin", account, raw)
             if not raw:
                 raise StorageError("找不到本机密钥，请重新连接微信。")
             return Fernet(raw.encode("ascii"))
         except StorageError:
             raise
+        except AppError as exc:
+            raise StorageError(exc.message) from None
         except Exception:
             raise StorageError("无法访问系统密钥库，请检查本机凭据服务。") from None
 

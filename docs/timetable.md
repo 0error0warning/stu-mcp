@@ -2,7 +2,7 @@
 
 # 学期课表与文件导出
 
-STU MCP v0.5.0 学生预览版提供 `stu-timetable-export` 技能，组织 agent 核对完整课表、目标学期最新有效官方校历和节次时刻，再生成 WakeUp CSV / 日历 ICS。它不增加 MCP 工具，不猜学校课表接口，也不连接 Google/Microsoft 账号。当前课程库存和短期个人日程的含义保持不变。
+STU MCP v0.6.0 学生预览版提供 `stu-timetable-export` 技能，组织 agent 核对完整课表、目标学期最新有效官方校历和节次时刻，再生成 WakeUp CSV / 日历 ICS。它不增加 MCP 工具，不猜学校课表接口，也不连接 Google/Microsoft 账号。当前课程库存和短期个人日程的含义保持不变。
 
 ## 默认行为
 

@@ -216,7 +216,10 @@ def font_bytes(url: str) -> bytes:
 
 def render_inspection(inspection: Inspection) -> bytes:
     """Render sanitized content in a fresh, offline browser; output a PNG in memory."""
-    from playwright.sync_api import Error, sync_playwright
+    try:
+        from playwright.sync_api import Error, sync_playwright
+    except ImportError:
+        raise AppError("render_unavailable", "题目渲染需要可选的 browser 依赖；HTTP 读取不受影响。", "yuketang") from None
 
     if inspection.report["question_count"] > 20:
         raise AppError("render_unavailable", "单张核验图最多 20 题，请在原页面分段核对。", "yuketang")

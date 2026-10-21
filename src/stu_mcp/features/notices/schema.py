@@ -4,6 +4,7 @@ from ...sources import OA_DIRECT, OA_SECURE_PROXY, PUBLIC_LISTINGS
 QUICK_LINKS = "https://www.stu.edu.cn/kstd.htm"
 OA_LIST_PATH = "/login/Login.jsp?logintype=1"
 OA_ARTICLE_PATH = "/newstemplateprotal.jsp"
+OA_ARTICLE_PATHS = frozenset({OA_ARTICLE_PATH, "/page/maint/template/news/newstemplateprotal.jsp"})
 PUBLIC_HOSTS = frozenset({"www.stu.edu.cn", "xsc.stu.edu.cn"})
 OA_HOSTS = frozenset({"oa.stu.edu.cn", "oa-stu-edu-cn.webvpn.stu.edu.cn"})
 
@@ -14,6 +15,9 @@ OA_COLUMNS = {
     "published_at": ("日期", "发布日期", "发布时间"),
 }
 BODY_SELECTORS = ("#docContent", "#vsb_content", ".v_news_content", "article", "#content", "main")
+# The current OA template has a specific article field, not a whole-page wrapper.
+OA_BODY_SELECTORS = ("#spanContent", *BODY_SELECTORS)
+OA_ATTACHMENT_FIELD_PATTERN = r"accessory[0-9]*"
 OA_EMPTY_TEXT = frozenset({"暂无通知", "暂无数据", "没有相关通知", "没有任何数据", "无相关记录"})
 AUTH_QUERY_KEYS = frozenset({"token", "access_token", "refresh_token", "ticket", "sessionid",
                             "authorization", "password", "passwd", "pwd", "userpassword", "j_password"})

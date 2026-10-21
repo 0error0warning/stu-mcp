@@ -12,16 +12,23 @@ from collections.abc import Callable
 from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urlparse
 
-from playwright.sync_api import Error as BrowserError
-from playwright.sync_api import sync_playwright
-
 from .features.jw.parser import jw_authenticated
+from .interaction import require_interaction
 from .network import PASSWORD_KEYS, CampusHTTP, scoped_state
 from .parsing import is_login
 from .runtime import AppError, key_lock
 from .sources import JW_HOME, JW_LOGIN_URL, MYSTU_API, MYSTU_BASE, SOURCES, YUKETANG_BASE
 from .store import Store
 from .vault import Vault
+
+
+def sync_playwright():
+    """Browser support is loaded only by an explicit compatibility login."""
+    try:
+        from playwright.sync_api import sync_playwright as start
+    except ImportError:
+        raise AppError("browser_unavailable", "浏览器兼容登录未安装；HTTP 登录不需要此依赖。") from None
+    return start()
 
 
 def login_service(service: str) -> str:
@@ -40,11 +47,12 @@ def proof(source: str, state: dict, *, legacy_jw: bool = False) -> bool:
                 return jw_authenticated(http.text(JW_HOME))
             elif source == "mystu":
                 data = http.json(MYSTU_API + "/user/validate?ver=1.1")
-                if data.get("authenticated") is False or data.get("success") is False:
-                    return False
+                from .auth_http.cas import validate_identity
+                validate_identity(data)
             elif source == "yuketang":
                 data = http.json(YUKETANG_BASE + "/v2/api/web/courses/list?identity=2")
-                return isinstance(data.get("data"), dict) and isinstance(data["data"].get("list"), list)
+                from .auth_http.yuketang import validate_student_courses
+                return validate_student_courses(data)["authenticated"]
             else:
                 # WebVPN is only stored provisionally; OA refresh must validate access over HTTPS.
                 return bool(state.get("cookies"))
@@ -92,6 +100,7 @@ def interactive_login(vault: Vault, service: str, *, timeout: int = 300,
                       on_phase: Callable[[str], None] | None = None,
                       expected_revision: bytes | None = None) -> dict:
     source = login_service(service)
+    require_interaction(source)
     spec = SOURCES[source]
     if expected_revision is None:
         with key_lock(vault.runtime.home, spec.session):
@@ -112,6 +121,10 @@ def interactive_login(vault: Vault, service: str, *, timeout: int = 300,
             webvpn_config.check(webvpn_snapshot)
     insecure_navigation = [False]
     try:
+        try:
+            from playwright.sync_api import Error as BrowserError
+        except ImportError:
+            raise AppError("browser_unavailable", "浏览器兼容登录未安装；HTTP 登录不需要此依赖。", source) from None
         with sync_playwright() as p:
             prepare_browser(p, on_phase)
             if on_phase:
@@ -187,8 +200,14 @@ class LoginJobs:
         self.jobs: dict[str, dict] = {}
         self.lock = threading.Lock()
 
-    def start(self, service: str) -> dict:
+    def start(self, service: str, *, backend: str = "http") -> dict:
         source = login_service(service)
+        if backend == "http":
+            command = "stu-mcp login " + ("webvpn" if source == "oa" else source)
+            return {"ok": False, "service": source, "status": "host_cli_required", "command": command,
+                    "message": "请在运行服务的主机终端执行该命令；认证输入不经过设置页或MCP。"}
+        if backend != "browser":
+            raise AppError("invalid_login_backend", "登录方式只接受 http 或显式 browser。", source)
         with self.lock:
             if any(j["status"] == "running" for j in self.jobs.values()):
                 raise AppError("login_running", "已有登录窗口，请先完成或关闭它。")

@@ -5,6 +5,7 @@ import json
 import subprocess
 import sys
 import time
+from pathlib import Path
 
 from . import __version__
 from .app import App
@@ -19,7 +20,15 @@ def parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="stu-mcp", description="汕头大学校园工具 · 本地 MCP 和按需查询")
     p.add_argument("--version", action="version", version=__version__)
     sub = p.add_subparsers(dest="command")
-    sub.add_parser("serve", help="启动 stdio MCP 服务")
+    serve = sub.add_parser("serve", help="启动 stdio 或个人实例 Streamable HTTP MCP")
+    serve.add_argument("--transport", choices=("stdio", "streamable-http"), default="stdio")
+    serve.add_argument("--host", default="127.0.0.1", help="HTTP 监听 IP；默认只监听回环")
+    serve.add_argument("--port", type=int, default=8765)
+    serve.add_argument("--auth-token-file", type=Path, help="私密随机 Bearer 令牌文件路径，不传令牌内容")
+    serve.add_argument("--public-url", help="私有 HTTPS 反向代理的完整 /mcp 地址，用于 Host/Origin 白名单")
+    serve.add_argument("--name", help="非敏感实例标签；字母数字、下划线、短横线，最多64字符")
+    init = sub.add_parser("server-init", help="在新目录生成服务器主密钥和 HTTP 令牌，仅输出路径")
+    init.add_argument("directory", type=Path)
     sub.add_parser("status", help="输出功能/登录/缓存状态")
     sub.add_parser("clients", help="查看客户端接入方式与官方说明")
     skill = sub.add_parser("skill-export", help="预览或导出随包技能，不修改 agent 配置")
@@ -39,14 +48,29 @@ def parser() -> argparse.ArgumentParser:
     audit.add_argument("--location-hint", choices=("unknown", "campus", "off_campus"), default="unknown")
     audit.add_argument("--compare-public-dns", action="store_true", help="额外对比阿里与腾讯公共DNS的A/AAAA")
     audit.add_argument("--refresh", action="store_true", help="切网后重新检测，跳过进程内缓存")
-    repair = sub.add_parser("repair", help="从标准输入JSON准备宿舍报修草稿或打开不提交的演练窗口")
-    repair.add_argument("repair_action", choices=("plan", "preview"))
+    repair = sub.add_parser("repair", help="从业务JSON准备宿舍报修草稿，默认HTTP填写并展示实际表单")
+    repair.add_argument("repair_action", choices=("plan", "preview", "drill"))
+    repair.add_argument("--submit", action="store_true", help="CLI演练后展示实际表单并等待本人明确确认，才提交")
+    repair.add_argument("--fields-file", type=Path, help="业务字段JSON文件路径；认证输入仍只从本人终端隐藏读取")
+    repair.add_argument("--browser", action="store_true", help="仅preview显式使用原浏览器兼容演练")
     setup = sub.add_parser("setup", help="打开本机设置页")
     setup.add_argument("--no-browser", action="store_true", help="仅在终端输出本机设置地址")
-    login = sub.add_parser("login", help="在独立浏览器中手动登录学校")
-    login.add_argument("service", choices=("jw", "mystu", "yuketang", "webvpn"))
+    setup.add_argument("--port", type=int, default=0, help="本机设置端口，默认随机；远程转发可指定8766")
+    login = sub.add_parser("login", help="默认纯HTTP登录；认证输入只在本人终端输入")
+    login.add_argument("service", choices=("jw", "mystu", "yuketang", "webvpn", "duifene", "repair"))
+    login.add_argument("--browser", action="store_true", help="显式使用原浏览器兼容登录，不自动回退")
+    login.add_argument("--allow-http-callback", action="store_true", help="仅本次教务登录允许官方HTTP票据回调；密码仍HTTPS")
+    transport = sub.add_parser("transport", help="查看或明确设置本地HTTP兼容选项")
+    transport.add_argument("--jw-http", choices=("on", "off"))
+    transport.add_argument("--oa-http", choices=("on", "off"))
+    auto = sub.add_parser("webvpn-auto", help="在本人终端配置原有 WebVPN 按需自动重登")
+    auto_actions = auto.add_subparsers(dest="auto_action", required=True)
+    configure = auto_actions.add_parser("configure", help="启用自动重登；凭据只在终端隐藏输入")
+    configure.add_argument("--encoding", choices=("auto", "base32", "base64", "hex"), default="auto")
+    auto_actions.add_parser("status", help="仅查看开关和失败状态，不读取或输出凭据")
+    auto_actions.add_parser("remove", help="关闭自动重登并移除所存凭据")
     logout = sub.add_parser("logout", help="移除指定来源的会话和缓存")
-    logout.add_argument("service", choices=("jw", "mystu", "yuketang", "webvpn"))
+    logout.add_argument("service", choices=("jw", "mystu", "yuketang", "webvpn", "repair"))
     client = sub.add_parser("connect", help="预览或保存客户端接入，保留其他配置")
     client.add_argument("client", choices=tuple(CLIENTS))
     client.add_argument("--apply", action="store_true", help="实际写入；默认只预览")
@@ -121,11 +145,40 @@ def main(argv: list[str] | None = None) -> int:
     args = parser().parse_args(argv)
     try:
         if args.command == "browser":
+            from importlib.util import find_spec
+            if find_spec("playwright") is None:
+                raise AppError("browser_unavailable", "请先安装可选的 browser 依赖，再安装 Chromium；默认 HTTP 登录无需浏览器。")
             return subprocess.call([sys.executable, "-m", "playwright", "install", "chromium"])
         if args.command in (None, "serve"):
             from .server import build_server
-            build_server().run(transport="stdio")
+            transport = getattr(args, "transport", "stdio")
+            if name := getattr(args, "name", None):
+                import os
+                import re
+                if re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,63}", name) is None:
+                    raise AppError("invalid_instance_name", "实例名仅接受字母数字、下划线或短横线，最多64字符。")
+                os.environ["STU_MCP_INSTANCE_NAME"] = name
+            if transport == "stdio":
+                if (getattr(args, "auth_token_file", None) or getattr(args, "public_url", None)
+                        or getattr(args, "host", "127.0.0.1") != "127.0.0.1"
+                        or getattr(args, "port", 8765) != 8765):
+                    raise AppError("invalid_transport_options", "HTTP 选项需要 --transport streamable-http。")
+                build_server().run(transport="stdio")
+            else:
+                from .hosting import HostRuntime
+                from .transports.http import HTTPSettings, load_bearer, run_http
+                settings = HTTPSettings(args.host, args.port, args.public_url)
+                settings.security()
+                load_bearer(args.auth_token_file)
+                host = HostRuntime(transport=transport)
+                try:
+                    run_http(build_server(host=host), settings, args.auth_token_file)
+                finally:
+                    host.close()
             return 0
+        if args.command == "server-init":
+            from .server_init import initialize_secrets
+            return emit(initialize_secrets(args.directory))
         if args.command == "clients":
             return emit({"ok": True, "clients": catalog()})
         if args.command == "skill-export":
@@ -138,19 +191,44 @@ def main(argv: list[str] | None = None) -> int:
             from .network_audit import NetworkAudit
             return emit(NetworkAudit().audit(args.location_hint, compare_public_dns=args.compare_public_dns,
                                               refresh=args.refresh))
+        if args.command == "transport":
+            runtime = Runtime.default()
+            updates = {key: value == "on" for key, value in
+                       (("jw_http_compat", args.jw_http), ("oa_http_compat", args.oa_http)) if value is not None}
+            if updates:
+                runtime.save_preferences(updates)
+            return emit({"ok": True, "transport": runtime.preferences(),
+                         "message": "HTTP兼容仅限已核验的学校官方路线；密码及动态码始终使用HTTPS。"})
         if args.command == "repair":
             from .features.repair import RepairDrafts
             from .features.repair.models import ACTIVE
             try:
                 if hasattr(sys.stdin, "reconfigure"):
                     sys.stdin.reconfigure(encoding="utf-8")
-                raw = sys.stdin.read(8193)
+                if args.fields_file:
+                    with args.fields_file.open(encoding="utf-8") as fields_stream:
+                        raw = fields_stream.read(8193)
+                else:
+                    raw = sys.stdin.read(8193)
                 fields = json.loads(raw) if len(raw) <= 8192 else None
                 if not isinstance(fields, dict) or "draft_id" in fields:
                     raise ValueError
             except (ValueError, TypeError):
                 raise AppError("invalid_repair_fields", "请从标准输入提供不超过8192字的报修字段JSON对象。") from None
-            drafts = RepairDrafts()
+            if args.browser and (args.repair_action != "preview" or args.submit):
+                raise AppError("invalid_repair_action", "浏览器兼容只用于不提交的 preview。", "repair")
+            if args.repair_action in {"drill", "preview"} and not args.browser:
+                from .features.repair.cli import run_cli
+                from .vault import Vault
+                result = run_cli(Vault(Runtime.default()), fields=fields, submit=args.submit, output=emit)
+                return 0 if result.get("ok", True) else 1
+            if args.submit:
+                raise AppError("invalid_repair_action", "提交选项只用于本人终端中的报修演练。", "repair")
+            if args.browser:
+                from .features.repair.adapter import open_browser
+                drafts = RepairDrafts(open_browser)
+            else:
+                drafts = RepairDrafts()
             result = drafts.prepare(**fields)
             if args.repair_action == "plan" or result["problems"]:
                 return emit(result)
@@ -169,7 +247,32 @@ def main(argv: list[str] | None = None) -> int:
                 return 0
             finally:
                 drafts.shutdown()
+        if args.command == "login" and args.service == "duifene":
+            if args.browser or args.allow_http_callback:
+                raise AppError("invalid_login_options", "对分易沿用原微信回调登录，不使用这些选项。")
+            from .checkin_login import login_via_callback
+            return emit(login_via_callback())
+        if args.command == "login":
+            if args.allow_http_callback and args.service != "jw":
+                raise AppError("invalid_login_options", "HTTP票据回调选项只适用于教务。")
+            if args.browser and args.allow_http_callback:
+                raise AppError("invalid_login_options", "本次回调选项用于HTTP登录；浏览器兼容请先明确设置教务传输兼容。")
+            if args.browser and args.service == "repair":
+                raise AppError("invalid_login_options", "报修CLI使用独立HTTP登录，请运行 login repair。")
+            if not args.browser:
+                from .terminal import require_terminal
+                require_terminal()
+        if args.command == "webvpn-auto" and args.auto_action == "configure":
+            from .terminal import require_terminal
+            require_terminal()
         app = App()
+        if args.command == "webvpn-auto":
+            from .webvpn import WebVPNConfig
+            if args.auto_action == "configure":
+                from .webvpn_cli import configure
+                return emit(configure(app.vault, encoding=args.encoding))
+            config = WebVPNConfig(app.vault)
+            return emit({"ok": True, **config.status()} if args.auto_action == "status" else config.remove())
         if args.command == "charging":
             if args.charging_action == "overview":
                 return emit(app.charging_overview(args.location, args.limit, args.offset, not args.local))
@@ -186,7 +289,7 @@ def main(argv: list[str] | None = None) -> int:
             return emit(app.status())
         if args.command == "setup":
             from .setup_web import SetupServer
-            ui = SetupServer(app)
+            ui = SetupServer(app, port=args.port)
             opened = ui.start(open_browser=not args.no_browser)
             # This URL is printed only by an explicit local terminal command, never an MCP tool.
             print("设置页已在本机浏览器打开。按 Ctrl+C 结束。" if opened else "本机设置地址：" + ui.url, flush=True)
@@ -199,7 +302,10 @@ def main(argv: list[str] | None = None) -> int:
                 ui.close()
             return 0
         if args.command == "login":
-            return emit(interactive_login(app.vault, args.service))
+            if args.browser:
+                return emit(interactive_login(app.vault, args.service))
+            from .auth_http import login_http
+            return emit(login_http(app.vault, args.service, allow_http_callback=args.allow_http_callback))
         if args.command == "logout":
             return emit(app.logout(args.service))
         if args.command == "connect":
@@ -223,6 +329,9 @@ def main(argv: list[str] | None = None) -> int:
                 app.runtime.save_profile(fields)
             return emit({"ok": True, "profile": app.runtime.profile()})
     except AppError as exc:
+        if args.command in (None, "serve"):
+            print(exc.message, file=sys.stderr)
+            return 1
         return emit(exc.result())
     except KeyboardInterrupt:
         return 130

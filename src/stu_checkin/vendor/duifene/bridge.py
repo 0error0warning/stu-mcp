@@ -9,7 +9,6 @@ import time
 from typing import Any
 
 import requests
-import urllib3
 
 from . import __version__
 from .api import DuifeneApi
@@ -90,7 +89,6 @@ class Bridge:
     # ─ 内部：会话与日志 ─────────────────────────────────────────────
     def _build_session(self, settings: Settings) -> requests.Session:
         """构造全局复用的 HTTP 会话。"""
-        urllib3.disable_warnings()
         session = requests.Session()
         session.headers["User-Agent"] = settings.user_agent
         session.trust_env = False
@@ -98,8 +96,9 @@ class Bridge:
         return session
 
     def _apply_session_config(self, session: requests.Session) -> None:
-        """把代理与 TLS 开关同步到会话（配置变更后需重新应用）。"""
-        session.verify = self._settings.verify_tls
+        """同步代理并保持证书校验，包括旧配置或直接修改的 Settings。"""
+        self._settings.verify_tls = True
+        session.verify = True
         session.proxies = self._settings.proxies or {}
 
     def _load_persisted_settings(self) -> None:

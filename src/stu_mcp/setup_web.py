@@ -3,24 +3,40 @@ from __future__ import annotations
 
 import hmac
 import json
+import os
 import secrets
+import socket
 import threading
-import webbrowser
+from collections.abc import Callable
 from http.server import BaseHTTPRequestHandler
 from pathlib import Path
 
 from stu_checkin.http_server import LoopbackHTTPServer
 
 from .auth import LoginJobs
+from .interaction import open_local_page
 from .runtime import AppError
 from .webvpn import WebVPNConfig
+
+
+class _SetupHTTPServer(LoopbackHTTPServer):
+    def server_bind(self):
+        if os.name == "nt":
+            # Windows SO_REUSEADDR permits a second process to hijack an active
+            # fixed port. Keep this page exclusive without changing POSIX reuse.
+            self.allow_reuse_address = False
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+        super().server_bind()
 
 
 class SetupServer:
     """Sign-in only. Client setup, refresh and profile belong to the agent via CLI/MCP."""
 
-    def __init__(self, app):
+    def __init__(self, app, *, port: int = 0, opener: Callable[[str], bool] | None = None):
         self.app = app
+        if type(port) is not int or not 0 <= port <= 65535:
+            raise AppError("invalid_setup_port", "设置页端口必须是 0–65535 的整数。")
+        self.opener = opener if opener is not None else open_local_page
         self.secret = secrets.token_urlsafe(32)
         self.jobs = LoginJobs(app.vault)
         owner = self
@@ -97,14 +113,14 @@ class SetupServer:
                     data = json.loads(self.rfile.read(length))
                     if not isinstance(data, dict):
                         raise ValueError
-                    allowed_keys = {"/api/login": {"service"}, "/api/logout": {"service"},
-                                    "/api/transport": {"jw_http_compat"},
+                    allowed_keys = {"/api/login": {"service", "backend"}, "/api/logout": {"service"},
+                                    "/api/transport": {"jw_http_compat", "oa_http_compat"},
                                     "/api/webvpn-auto": {"enabled", "username", "password", "totp", "encoding"},
                                     "/api/webvpn-auto/remove": set()}
                     if self.path not in allowed_keys or not set(data).issubset(allowed_keys[self.path]):
                         raise ValueError
                     if self.path == "/api/login":
-                        result = owner.jobs.start(str(data.get("service", "")))
+                        result = owner.jobs.start(str(data.get("service", "")), backend=str(data.get("backend", "http")))
                     elif self.path == "/api/logout":
                         result = owner.app.logout(str(data.get("service", "")))
                     elif self.path == "/api/transport":
@@ -122,7 +138,7 @@ class SetupServer:
                 except Exception:
                     self.json(500, {"ok": False, "status": "setup_error", "message": "操作未完成，请重试或通过命令行检查。"})
 
-        self.httpd = LoopbackHTTPServer(("127.0.0.1", 0), Handler)
+        self.httpd = _SetupHTTPServer(("127.0.0.1", port), Handler)
         self.httpd.daemon_threads = True
         self.host = f"127.0.0.1:{self.httpd.server_port}"
         self.origin = "http://" + self.host
@@ -131,9 +147,13 @@ class SetupServer:
 
     def start(self, *, open_browser: bool = True) -> bool:
         self.thread.start()
-        return bool(webbrowser.open(self.url)) if open_browser else False
+        return bool(self.opener(self.url)) if open_browser else False
 
     def close(self):
-        self.httpd.shutdown()
+        # shutdown waits for serve_forever; calling it after Thread.start failed
+        # would wait forever because no serving thread can signal completion.
+        if self.thread.is_alive():
+            self.httpd.shutdown()
         self.httpd.server_close()
-        self.thread.join(timeout=3)
+        if self.thread.ident is not None:
+            self.thread.join(timeout=3)

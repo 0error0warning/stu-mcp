@@ -1,4 +1,4 @@
-"""Session encryption. The encryption key exists only in an approved OS keyring."""
+"""Session encryption using a separately protected credential backend."""
 from __future__ import annotations
 
 import hashlib
@@ -6,46 +6,13 @@ import json
 import time
 import uuid
 from collections.abc import Callable
-from typing import Protocol
 
 from cryptography.fernet import Fernet, InvalidToken
 
+from .credentials import KeyStore as KeyStore
+from .credentials import SystemKeyStore as SystemKeyStore
+from .credentials import configured_key_store
 from .runtime import AppError, Runtime, key_lock, private_write, reject_symlinks
-
-
-class KeyStore(Protocol):
-    def get_password(self, service: str, username: str) -> str | None: ...
-    def set_password(self, service: str, username: str, password: str) -> None: ...
-    def delete_password(self, service: str, username: str) -> None: ...
-
-
-class SystemKeyStore:
-    # Reject plaintext, chained third-party and null backends rather than relying on priority.
-    APPROVED = frozenset({"keyring.backends.Windows", "keyring.backends.macOS", "keyring.backends.SecretService",
-                         "keyring.backends.kwallet"})
-
-    def __init__(self):
-        import keyring
-        backend = keyring.get_keyring()
-        if type(backend).__module__ == "keyring.backends.chainer":
-            backend = next((b for b in backend.backends if type(b).__module__ in self.APPROVED), backend)
-        if type(backend).__module__ not in self.APPROVED:
-            raise AppError("secure_storage_unavailable", "系统密钥库不可用；公开功能仍可使用。")
-        self.backend = backend
-
-    def get_password(self, service: str, username: str) -> str | None:
-        return self.backend.get_password(service, username)
-
-    def set_password(self, service: str, username: str, password: str) -> None:
-        self.backend.set_password(service, username, password)
-
-    def delete_password(self, service: str, username: str) -> None:
-        from keyring.errors import PasswordDeleteError
-        try:
-            self.backend.delete_password(service, username)
-        except PasswordDeleteError:
-            if self.backend.get_password(service, username) is not None:
-                raise
 
 
 class Vault:
@@ -59,7 +26,7 @@ class Vault:
         self._logical_account = hashlib.sha256(str(runtime.home.absolute()).encode()).hexdigest()[:24]
 
     def key_store(self) -> KeyStore:
-        return self._store or SystemKeyStore()
+        return self._store if self._store is not None else configured_key_store(self.runtime.home)
 
     def fingerprint(self, service: str) -> bytes | None:
         path = self.runtime.session_file(service)

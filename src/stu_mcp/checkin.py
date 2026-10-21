@@ -15,6 +15,8 @@ from urllib.parse import urlparse
 import httpx
 
 from .checkin_process import launch_windows_worker
+from .http_privacy import private_http_logging
+from .runtime import checkin_home
 
 LABELS = {"service_not_started": "服务未启动", "not_logged_in": "未登录", "paused": "已暂停",
           "monitoring": "监听中", "query_error": "查询异常", "starting": "正在启动", "stopping": "正在暂停"}
@@ -27,11 +29,7 @@ RESULT_KEYS = {"course_id", "course_name", "activity_id", "type", "status", "mes
 
 
 def default_home():
-    if raw := os.environ.get("STU_CHECKIN_HOME"):
-        return Path(raw).expanduser().resolve()
-    # LocalAppData is redirected inside packaged Windows clients; a user-profile
-    # location is shared with independently launched processes and desktop shortcuts.
-    return Path.home() / ".local" / "share" / "stu-checkin"
+    return checkin_home()
 
 
 def _lock(stream, *, release=False):
@@ -76,8 +74,13 @@ class CheckinClient:
                 "service_running": running, "monitoring": False if running is False else None,
                 "logged_in": None, "needs_login": False, "observed_at": time.time()}
 
+    @contextmanager
     def _client(self):
-        return httpx.Client(trust_env=False, follow_redirects=False, timeout=2, transport=self.transport)
+        # The loopback worker's session cookie authorizes real check-in control;
+        # its HTTP traces and hidden callback input are private like school auth.
+        with private_http_logging(), httpx.Client(trust_env=False, follow_redirects=False,
+                                                  timeout=2, transport=self.transport) as client:
+            yield client
 
     def _discover(self):
         try:
@@ -277,7 +280,7 @@ class CheckinClient:
             raise ValueError
         return course_ids
 
-    def _post(self, info, path, data):
+    def _post(self, info, path, data, *, open_login=True):
         try:
             with self._client() as client:
                 if self._verify(client, info).get("shutting_down"):
@@ -287,7 +290,7 @@ class CheckinClient:
                 result = response.json()
                 if response.status_code != 200 or result.get("ok") is not True:
                     view = self.status()
-                    if view.get("needs_login"):
+                    if open_login and view.get("needs_login"):
                         view.update(self._open(info, login=True))
                     return view | {"ok": False, "action_error": "operation_rejected",
                                    "message": "操作未完成，请检查当前状态和课程选择后重试。"}
@@ -296,6 +299,31 @@ class CheckinClient:
             # Never retry a mutation after a timeout: it may already have taken effect.
             return self._state("query_error", "operation_uncertain",
                                "未能确认操作结果，请先查询状态；没有自动重复发送。")
+
+    def connect_callback(self, link: str):
+        """Human CLI only: one callback goes to the existing worker, never MCP."""
+        from stu_checkin.auth import callback_code
+
+        # Invalid input must not start a worker or restore an existing plan.
+        normalized = "https://www.duifene.com/?code=" + callback_code(link)
+        with self._mutex:
+            view, info = self._ensure()
+            if info is None or view.get("busy") or view.get("stopping"):
+                return view | {"ok": False, "login_outcome": "not_sent"}
+            if view.get("monitoring"):
+                return view | {"ok": False, "login_outcome": "not_sent", "action_error": "pause_required",
+                               "message": "当前正在监听，请先暂停监听，再切换微信连接。"}
+            error = self._post(info, "api/connect", {"link": normalized}, open_login=False)
+            if error is not None:
+                if error.get("status_reason") == "operation_uncertain":
+                    return error | {"ok": False, "login_outcome": "unknown", "current_state": self.status()}
+                outcome = "not_sent" if error.get("status_reason") == "service_exiting" else "rejected"
+                return error | {"ok": False, "login_outcome": outcome}
+            current = self.status()
+            verified = current.get("ok") is True and current.get("logged_in") is True
+            return current | {"ok": verified, "login_outcome": "confirmed",
+                              "message": "微信连接已验证；已有持续计划按原规则恢复，请核对当前监听状态。" if verified
+                              else "后台已确认本次连接成功，但当前状态无法确认；请先查询状态。"}
 
     def select(self, course_ids=None, *, all_courses=False):
         with self._mutex:

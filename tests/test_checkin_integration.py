@@ -66,8 +66,12 @@ async def test_mcp_started_worker_survives_client_job_cleanup(tmp_path):
     observer = CheckinClient(home)
     code = ("import webbrowser; webbrowser.open=lambda *a,**k: True; "
             "from stu_mcp.server import build_server; build_server().run(transport='stdio')")
+    # Exercise the desktop branch with a synthetic display hint. The opener is
+    # stubbed above, so this needs neither a real display server nor a browser.
+    env = dict(os.environ, STU_MCP_HOME=str(tmp_path / "mcp"), STU_CHECKIN_HOME=str(home),
+               STU_MCP_INTERACTION="desktop", DISPLAY=":99")
     params = StdioServerParameters(command=sys.executable, args=["-c", code],
-                                  env=dict(os.environ, STU_MCP_HOME=str(tmp_path / "mcp"), STU_CHECKIN_HOME=str(home)))
+                                  env=env)
     try:
         async with stdio_client(params) as (read, write), ClientSession(read, write, read_timeout_seconds=40) as mcp:
             await mcp.initialize()

@@ -1,0 +1,25 @@
+services:
+  stu-mcp:
+    image: stu-mcp:local
+    build:
+      context: .
+      args:
+        STU_UID: ${STU_MCP_UID:-10001}
+        STU_GID: ${STU_MCP_GID:-10001}
+    restart: unless-stopped
+    # Publishing remains private even though the process binds all container
+    # interfaces. Reach these loopback ports through an authenticated tunnel.
+    ports:
+      - "127.0.0.1:8765:8765"
+    volumes:
+      - stu-mcp-data:/var/lib/stu-mcp
+      # server-init creates master.key + http-token outside the data volume.
+      - type: bind
+        source: ${STU_MCP_SECRETS_DIR:?Set STU_MCP_SECRETS_DIR to a private absolute secrets directory}
+        target: /run/secrets
+        read_only: true
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  stu-mcp-data:
