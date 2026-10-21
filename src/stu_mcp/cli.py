@@ -5,6 +5,7 @@ import json
 import subprocess
 import sys
 import time
+from pathlib import Path
 
 from . import __version__
 from .app import App
@@ -19,7 +20,15 @@ def parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="stu-mcp", description="汕头大学校园工具 · 本地 MCP 和按需查询")
     p.add_argument("--version", action="version", version=__version__)
     sub = p.add_subparsers(dest="command")
-    sub.add_parser("serve", help="启动 stdio MCP 服务")
+    serve = sub.add_parser("serve", help="启动 stdio 或个人实例 Streamable HTTP MCP")
+    serve.add_argument("--transport", choices=("stdio", "streamable-http"), default="stdio")
+    serve.add_argument("--host", default="127.0.0.1", help="HTTP 监听 IP；默认只监听回环")
+    serve.add_argument("--port", type=int, default=8765)
+    serve.add_argument("--auth-token-file", type=Path, help="私密随机 Bearer 令牌文件路径，不传令牌内容")
+    serve.add_argument("--public-url", help="私有 HTTPS 反向代理的完整 /mcp 地址，用于 Host/Origin 白名单")
+    serve.add_argument("--name", help="非敏感实例标签；字母数字、下划线、短横线，最多64字符")
+    init = sub.add_parser("server-init", help="在新目录生成服务器主密钥和 HTTP 令牌，仅输出路径")
+    init.add_argument("directory", type=Path)
     sub.add_parser("status", help="输出功能/登录/缓存状态")
     sub.add_parser("clients", help="查看客户端接入方式与官方说明")
     skill = sub.add_parser("skill-export", help="预览或导出随包技能，不修改 agent 配置")
@@ -43,6 +52,7 @@ def parser() -> argparse.ArgumentParser:
     repair.add_argument("repair_action", choices=("plan", "preview"))
     setup = sub.add_parser("setup", help="打开本机设置页")
     setup.add_argument("--no-browser", action="store_true", help="仅在终端输出本机设置地址")
+    setup.add_argument("--port", type=int, default=0, help="本机设置端口，默认随机；远程转发可指定8766")
     login = sub.add_parser("login", help="在独立浏览器中手动登录学校")
     login.add_argument("service", choices=("jw", "mystu", "yuketang", "webvpn"))
     logout = sub.add_parser("logout", help="移除指定来源的会话和缓存")
@@ -124,8 +134,34 @@ def main(argv: list[str] | None = None) -> int:
             return subprocess.call([sys.executable, "-m", "playwright", "install", "chromium"])
         if args.command in (None, "serve"):
             from .server import build_server
-            build_server().run(transport="stdio")
+            transport = getattr(args, "transport", "stdio")
+            if name := getattr(args, "name", None):
+                import os
+                import re
+                if re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,63}", name) is None:
+                    raise AppError("invalid_instance_name", "实例名仅接受字母数字、下划线或短横线，最多64字符。")
+                os.environ["STU_MCP_INSTANCE_NAME"] = name
+            if transport == "stdio":
+                if (getattr(args, "auth_token_file", None) or getattr(args, "public_url", None)
+                        or getattr(args, "host", "127.0.0.1") != "127.0.0.1"
+                        or getattr(args, "port", 8765) != 8765):
+                    raise AppError("invalid_transport_options", "HTTP 选项需要 --transport streamable-http。")
+                build_server().run(transport="stdio")
+            else:
+                from .hosting import HostRuntime
+                from .transports.http import HTTPSettings, load_bearer, run_http
+                settings = HTTPSettings(args.host, args.port, args.public_url)
+                settings.security()
+                load_bearer(args.auth_token_file)
+                host = HostRuntime(transport=transport)
+                try:
+                    run_http(build_server(host=host), settings, args.auth_token_file)
+                finally:
+                    host.close()
             return 0
+        if args.command == "server-init":
+            from .server_init import initialize_secrets
+            return emit(initialize_secrets(args.directory))
         if args.command == "clients":
             return emit({"ok": True, "clients": catalog()})
         if args.command == "skill-export":
@@ -186,7 +222,7 @@ def main(argv: list[str] | None = None) -> int:
             return emit(app.status())
         if args.command == "setup":
             from .setup_web import SetupServer
-            ui = SetupServer(app)
+            ui = SetupServer(app, port=args.port)
             opened = ui.start(open_browser=not args.no_browser)
             # This URL is printed only by an explicit local terminal command, never an MCP tool.
             print("设置页已在本机浏览器打开。按 Ctrl+C 结束。" if opened else "本机设置地址：" + ui.url, flush=True)
@@ -223,6 +259,9 @@ def main(argv: list[str] | None = None) -> int:
                 app.runtime.save_profile(fields)
             return emit({"ok": True, "profile": app.runtime.profile()})
     except AppError as exc:
+        if args.command in (None, "serve"):
+            print(exc.message, file=sys.stderr)
+            return 1
         return emit(exc.result())
     except KeyboardInterrupt:
         return 130

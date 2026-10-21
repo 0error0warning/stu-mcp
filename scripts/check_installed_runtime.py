@@ -204,6 +204,8 @@ def main() -> None:
                "STU_MCP_HOME": str(root / "runtime"), "STU_CHECKIN_HOME": str(root / "checkin")}
         env.pop("PYTHONPATH", None)
         env.pop("STU_CHECKIN_PYTHON", None)
+        env.pop("STU_MCP_KEY_FILE", None)
+        env.pop("STU_MCP_INSTANCE_NAME", None)
         # Validate the locked dependency set. A fresh CI cache may contain wheels
         # from uv sync but no package-index metadata, so allow bounded online resolution.
         constraints = root / "constraints.txt"
@@ -214,6 +216,15 @@ def main() -> None:
         entry = root / "bin" / ("stu-mcp.exe" if os.name == "nt" else "stu-mcp")
         assert run([str(entry), "--version"], env, root).strip() == __version__
         generic = json.loads(run([str(entry), "connect", "generic"], env, root))["mcpServers"]["stu-mcp"]
+        secrets = json.loads(run([generic["command"], "-m", "stu_mcp", "server-init",
+                                  str(root / "server-secrets")], env, root))
+        assert secrets["status"] == "server_secrets_created"
+        env["STU_MCP_KEY_FILE"] = secrets["master_key_file"]
+        # Use the exported interpreter verbatim: resolving a POSIX uv symlink
+        # would escape its installed wheel environment.
+        http_check = Path(__file__).with_name("check_http_runtime.py").resolve()
+        print(run([generic["command"], str(http_check), generic["command"], str(root),
+                   secrets["auth_token_file"]], env, root).strip(), flush=True)
         exported = json.loads(run([generic["command"], "-c", EXPORT, str(root)], env, root))
         timetable_cli = json.loads(run([str(entry), "skill-export", "--skill", "stu-timetable-export", "--apply"], env, root))
         assert timetable_cli["status"] == "skill_exported"
