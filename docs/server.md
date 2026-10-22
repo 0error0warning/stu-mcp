@@ -1,6 +1,6 @@
 # 个人服务器与远程接入
 
-本页对应 v0.6.0 学生预览版。桌面用户仍直接使用 stdio；服务器运行同一个包、同一套 38 项工具，通过标准 Streamable HTTP 接入。服务器无需安装 agent，也不调用模型。Hermes 私有 `school_hub` 不受本次改造影响。
+本页对应 v0.6.1 学生预览版。桌面用户仍直接使用 stdio；服务器运行同一个包、同一套工具，通过标准 Streamable HTTP 接入。服务器无需安装 agent，也不调用模型。Hermes 私有 `school_hub` 不受本次改造影响。
 
 ## 选择运行方式
 
@@ -14,7 +14,7 @@
 
 ## 最小启动
 
-先按[安装说明](install.md)安装 v0.6.0；下列命令在**宿主终端**执行，不把密钥内容交给 agent。以 Linux 单用户服务为例，先选服务专用账号，再始终用这个账号初始化和运行：
+先按[安装说明](install.md)安装 v0.6.1；下列命令在**宿主终端**执行，不把密钥内容交给 agent。以 Linux 单用户服务为例，先选服务专用账号，再始终用这个账号初始化和运行：
 
 ```sh
 export STU_MCP_HOME="$HOME/.local/share/stu-mcp"
@@ -81,6 +81,18 @@ WebVPN 长期自动重登可选，另行运行 `stu-mcp webvpn-auto configure`�
 默认设置页的登录按钮只返回宿主 CLI 指引，不让后台线程读取 TTY。需要旧浏览器兼容时，安装 `browser` extra 并明确选择 `login 来源 --browser`；该方式才受显示环境和 `STU_MCP_INTERACTION` 检查。项目不启动显示服务，HTTP 不自动回退浏览器。完整来源及存储契约见[认证说明](authentication.md)。
 
 [默认容器](server-container.md)没有浏览器或桌面。若本人需要签到网页，可运行 `stu-checkin --port 8767 --no-browser` 并独立私有转发其回环端口；原回调 CLI 不需要此步骤。
+
+## 更新服务器
+
+以安装和运行服务的同一账号执行 `stu-mcp update`，或明确让 agent 调用 `update_self`。
+这会更新 MCP **服务器**上的安装，客户端电脑不随之升级。先用 `stu-mcp update --check`
+或 `check_updates` 可只查版本；默认没有定时任务。
+
+升级前先停止同一安装的其他 MCP 实例和签到后台，处理当前报修流程。升级后，stdio 接入重新加载 MCP
+以启动新进程；Streamable HTTP 必须在宿主重启 MCP 服务，再连接客户端。HTTP 重连本身不会重启宿主进程。
+随后调用 `get_capabilities` 核对运行版本；签到后台按需重开，并核对其 `package_version`。
+不会自动终止服务、热替换独立签到后台或清理密钥/数据。源码、Docker 和未知安装方式返回各自操作指引；
+详见[更新说明](updates.md)和[容器更新](server-container.md#更新容器)。
 
 ## 网络与验证范围
 

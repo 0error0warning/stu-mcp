@@ -1,6 +1,6 @@
 # 架构与产品边界
 
-STU MCP 是面向汕头大学学生的校园工具。桌面默认使用 stdio，个人服务器可通过 Streamable HTTP 复用同一实例；CLI 提供安装、诊断和补充入口。分析、总结与模型调用由用户自己的 agent 完成。同一实现服务各客户端，不维护客户端或服务器专版。v0.6.0 已包含个人服务器接入，部署与验证边界见[服务器说明](server.md)。
+STU MCP 是面向汕头大学学生的校园工具。桌面默认使用 stdio，个人服务器可通过 Streamable HTTP 复用同一实例；CLI 提供安装、更新、诊断和补充入口。分析、总结与模型调用由用户自己的 agent 完成。同一实现服务各客户端，不维护客户端或服务器专版。部署与验证边界见[服务器说明](server.md)。
 
 本仓库是独立开源产品；Hermes 上的私有 `school_hub` 是另一个部署，不由本仓库运行或修改。仓库不包含原项目历史、运行数据库、个人画像、登录态、Hermes 运行目录或部署配置。
 
@@ -30,7 +30,7 @@ flowchart LR
 | 产品入口 | `server` 声明 MCP 工具；`cli` 声明命令；`app` 连接查询、刷新与存储。来源字段解析不放在工具层 |
 | 实例与接入 | `hosting.HostRuntime` 组装一个人的服务与生命周期；`transports/http` 只处理私有鉴权、入口约束与 SDK 的 HTTP 传输。HTTP 客户端共用一个实例，断开连接不关闭实例，不为每个请求重建 App |
 | 功能与服务目录 | `sources` 声明功能、目标地址和认证依赖；`services` 区分业务用途、校区与来源证据。用途核验、即时可用性、表单和提交验收分别记录 |
-| 来源功能包 | `features/repair`、`notices`、`mystu`、`jw`、`yuketang`、`charging`、`huyou` 分别拥有该领域的契约、纯解析、访问与业务编排 |
+| 来源功能包 | `features/repair`、`notices`、`mystu`、`jw`、`yuketang`、`charging`、`huyou`、`takeout` 分别拥有该领域的契约、纯解析、访问与业务编排 |
 | 课表文件生成 | `features/timetable/export.py` 是已核对输入到课次及 CSV/ICS 的唯一核心；技能脚本只选择并调用该核心，不请求学校或外部日历 |
 | 共用采集类型 | `parsing`、`collection`、`pagination` 提供纯函数、结果类型和保守完整性判定，不依赖来源功能包 |
 | 兼容入口 | `parsers`、`collectors`、旧 `repair*`、`charging`、`huyou` 等保留 Python 导入与原注入点，转发功能包；功能包不反向依赖这些门面 |
@@ -38,6 +38,7 @@ flowchart LR
 | 连接诊断 | `access_policy`、`connectivity` 按服务及认证依赖检查匿名响应头、DNS和显式代理对照；`network_audit` 检查固定登记的第一方入口。不改配置，不作为普通采集的全量前置条件 |
 | 宿主状态 | `runtime` 定义数据目录；`credentials` 选择系统密钥库或显式外置主密钥后端；`vault` 保护来源独立会话；`store` 保存缓存与来源范围。`charging_cache` / `charging_devices` 保持公开设备快照、租约与目录政策 |
 | 登录与安装 | `auth_http` 分离共享传输、CAS/平台协议和 Vault 保存编排；`terminal` 只接本人 TTY；`webvpn` 管可选凭据与按需重登，`checkin_login` 复用原回调。`auth` 保留显式浏览器兼容，`interaction` 只检查该后端的显示条件。`clients/skill_export` 管幂等接入与资源归档 |
+| 更新 | `updates` 统一官方发行查询、下载校验与升级结果；`update_install` 识别 uv 安装并调用安装器，`update_guard` 阻止并发升级和活动报修冲突。CLI 与 MCP 共用实现；不依赖学校认证、修改客户端配置或自动重启进程 |
 | 签到后台 | `checkin` 是本机控制客户端，`checkin_process` 负责独立启动；`stu_checkin` 随包分发后台、网页、监听、结果与加密状态。两页面共用回环 HTTP，绑定时不反向查 DNS |
 
 分层的依赖方向与学校改版维护步骤集中在[来源适配](source-adapters.md)。当前架构写在本文，历次迁移、兼容比对和测试证据保留在[验证记录](verification.md)，不在模块说明里累积批次历史。

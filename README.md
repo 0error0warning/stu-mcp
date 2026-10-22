@@ -55,15 +55,15 @@
 先装好 [uv](https://docs.astral.sh/uv/getting-started/installation/)，然后运行。这里以 Codex 为例：
 
 ```sh
-uv tool install --python 3.12 https://github.com/0error0warning/stu-mcp/releases/download/v0.6.0/stu_mcp-0.6.0-py3-none-any.whl
+uv tool install --python 3.12 https://github.com/0error0warning/stu-mcp/releases/download/v0.6.1/stu_mcp-0.6.1-py3-none-any.whl
 stu-mcp connect codex --apply
 ```
 
-第二行换成你用的客户端，比如 `claude-code` 或 `cursor`。其他客户端、豆包工作和 Skill 的接法放在[这里](docs/clients.md)。已经装过旧版的话，第一条加上 `--force`，再重新接入、重启或重新加载 MCP；保留原来的用户数据和配置。详细步骤见[升级说明](docs/install.md#从旧版升级)。
+第二行换成你用的客户端，比如 `claude-code` 或 `cursor`。其他客户端、豆包工作和 Skill 的接法放在[这里](docs/clients.md)。v0.6.1 起，运行 `stu-mcp update` 即可检查并升级；只想看有无新版用 `stu-mcp update --check`，也可以让 agent 调用对应更新工具。升级后，本机 stdio 重新加载 MCP；私有 HTTP 须重启宿主 MCP 服务。旧版首次升级见[安装说明](docs/install.md#从旧版升级)，支持范围见[更新说明](docs/updates.md)。
 
 MCP 接入和技能安装分别处理。随包的[课表导出技能](docs/timetable.md)组织校历核对和文件转换，完整学期课表仍需另行取得和核实。技能 ZIP 是可选资源包，生成后仍需按客户端支持的方式安装，不会自动让当前 agent 加载技能。
 
-v0.6.0 支持本机 stdio 与个人服务器私有 Streamable HTTP，共用一套工具。认证默认走 HTTP 和本人终端；雨课堂由本人手机确认官方二维码，对分易沿用原微信回调。默认安装和 Docker 模板不需要桌面或 Chromium，Playwright 仅作为显式浏览器兼容依赖。服务器不必安装 agent 或模型服务，详见[服务器说明](docs/server.md)和[认证流程](docs/authentication.md)。
+v0.6.1 支持本机 stdio 与个人服务器私有 Streamable HTTP，共用一套工具。认证默认走 HTTP 和本人终端；雨课堂由本人手机确认官方二维码，对分易沿用原微信回调。默认安装和 Docker 模板不需要桌面或 Chromium，Playwright 仅作为显式浏览器兼容依赖。服务器不必安装 agent 或模型服务，详见[服务器说明](docs/server.md)和[认证流程](docs/authentication.md)。
 
 在运行 MCP 的主机终端执行 `stu-mcp login mystu`、`stu-mcp login yuketang` 或 `stu-mcp login repair`；密码和动态码隐藏输入，不交给 agent。会话及个人缓存加密保存，WebVPN 可另行明确配置按需自动重登。设置页默认提供宿主 CLI 指引；需原浏览器时显式选择 `--browser`。客户端到 MCP 和 MCP 到学校是两段网络，连上服务器不代表服务器能访问校园网。[版本与登录说明](docs/install.md) · [存储与隐私](SECURITY.md)
 
@@ -83,7 +83,7 @@ stu-mcp huyou search 选课
 
 ## 还在慢慢补
 
-当前版本为 **[v0.6.0 学生预览版](https://github.com/0error0warning/stu-mcp/releases/tag/v0.6.0)**。本版把默认登录改为纯 HTTP CLI，加入个人服务器接入与轻量容器模板，保留 38 项工具的名称和输入输出接口。继续以 GitHub prerelease 发布，不把预览版称作稳定版。[发行说明](docs/releases/v0.6.0.md) · [最近更新](CHANGELOG.md)
+当前版本为 **[v0.6.1 学生预览版](https://github.com/0error0warning/stu-mcp/releases/tag/v0.6.1)**。本版增加命令行与 MCP 更新入口，并包含实验中的外卖查询。已有工具接口保留，继续以 GitHub prerelease 发布。[发行说明](docs/releases/v0.6.1.md) · [最近更新](CHANGELOG.md)
 
 正式 HTTP 适配器已实测教务、MySTU 的身份与课程、ELC/Campus 的部分业务、雨课堂课程活动，以及报修登录和完整预览。WebVPN 的密码、动态口令和资源目录通过；受保护 OA 正文及自然过期续登尚未通过本轮验收。发行 CI 包含跨平台测试和默认镜像离线检查，容器内学校业务、跨机接入、更多账号和真实新报修提交仍分别待验，详见[验证记录](docs/verification.md)。
 
