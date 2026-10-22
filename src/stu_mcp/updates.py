@@ -14,6 +14,7 @@ from email.parser import BytesParser
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
+from xml.etree import ElementTree
 
 import httpx
 from packaging.specifiers import InvalidSpecifier, SpecifierSet
@@ -27,6 +28,7 @@ from .update_install import install_wheel, probe_installation
 
 REPOSITORY = "0error0warning/stu-mcp"
 RELEASES = f"https://api.github.com/repos/{REPOSITORY}/releases?per_page=100"
+RELEASE_FEED = f"https://github.com/{REPOSITORY}/releases.atom"
 MAX_WHEEL = 20 * 1024 * 1024
 ASSET_HOSTS = {"github.com", "release-assets.githubusercontent.com", "objects.githubusercontent.com"}
 
@@ -70,6 +72,9 @@ def _fetch(client: httpx.Client, url: str, limit: int, *, asset: bool = False) -
             if response.is_redirect and asset:
                 url = str(response.url.join(response.headers.get("location", "")))
                 continue
+            if response.status_code == 429 or (response.status_code == 403
+                                               and response.headers.get("x-ratelimit-remaining") == "0"):
+                raise AppError("update_rate_limited", "GitHub 发行读取被限流，请稍后重试。")
             if response.status_code != 200:
                 raise AppError("update_network_error", "无法读取官方发行信息或文件，请检查网络后重试。")
             parts, size = [], 0
@@ -85,7 +90,13 @@ def _fetch(client: httpx.Client, url: str, limit: int, *, asset: bool = False) -
 def latest_release(client: httpx.Client) -> dict[str, Any]:
     """The project publishes student previews, so /releases/latest is insufficient."""
     try:
-        releases = json.loads(_fetch(client, RELEASES, 4 * 1024 * 1024))
+        raw = _fetch(client, RELEASES, 4 * 1024 * 1024)
+    except AppError as exc:
+        if exc.code == "update_rate_limited":
+            return _feed_release(client)
+        raise
+    try:
+        releases = json.loads(raw)
         if not isinstance(releases, list):
             raise ValueError
         candidates = []
@@ -114,19 +125,68 @@ def latest_release(client: httpx.Client) -> dict[str, Any]:
             selected[name] = url
         return {"version": str(version), "tag": tag, "wheel": wheel, "assets": selected,
                 "release_url": f"https://github.com/{REPOSITORY}/releases/tag/{tag}",
-                "prerelease": release.get("prerelease") is True}
+                "prerelease": release.get("prerelease") is True, "metadata_source": "github_api",
+                "asset_list_verified": True}
     except (ValueError, TypeError, KeyError, UnicodeError):
         raise AppError("update_release_invalid", "官方发行信息或 wheel/校验文件不完整，未执行安装。") from None
 
 
-def verified_wheel(client: httpx.Client, release: dict, directory: Path) -> Path:
-    name = release["wheel"]
-    checksum = _fetch(client, release["assets"]["SHA256SUMS.txt"], 64 * 1024, asset=True).decode("ascii")
+def _checksum(data: bytes, name: str) -> str:
+    try:
+        checksum = data.decode("ascii")
+    except UnicodeError:
+        checksum = ""
     hashes = re.findall(r"^([0-9a-fA-F]{64}) [ *]" + re.escape(name) + r"\r?$", checksum, re.MULTILINE)
     if len(hashes) != 1:
         raise AppError("update_checksum_invalid", "发行校验文件缺少唯一的 wheel 校验值，未执行安装。")
+    return hashes[0].lower()
+
+
+def _feed_release(client: httpx.Client) -> dict:
+    """Only an observed REST rate limit permits this credential-free official fallback."""
+    data = _fetch(client, RELEASE_FEED, 1024 * 1024)
+    try:
+        text = data.decode("utf-8")
+        if "<!DOCTYPE" in text.upper() or "<!ENTITY" in text.upper():
+            raise ValueError
+        feed = ElementTree.fromstring(text)
+        ns = "{http://www.w3.org/2005/Atom}"
+        if feed.tag != ns + "feed":
+            raise ValueError
+        prefix = f"https://github.com/{REPOSITORY}/releases/tag/"
+        candidates = []
+        for entry in feed.findall(ns + "entry"):
+            for link in entry.findall(ns + "link"):
+                href = link.get("href", "")
+                if link.get("rel") != "alternate" or not href.startswith(prefix):
+                    continue
+                tag = href[len(prefix):]
+                try:
+                    version = _version(tag)
+                except AppError:
+                    continue
+                if tag in {str(version), "v" + str(version)}:
+                    candidates.append((version, tag))
+        if not candidates:
+            raise ValueError
+        version, tag = max(candidates)
+        name = f"stu_mcp-{version}-py3-none-any.whl"
+        assets = {filename: f"https://github.com/{REPOSITORY}/releases/download/{tag}/{filename}"
+                  for filename in (name, "SHA256SUMS.txt")}
+        digest = _checksum(_fetch(client, assets["SHA256SUMS.txt"], 64 * 1024, asset=True), name)
+        return {"version": str(version), "tag": tag, "wheel": name, "assets": assets, "sha256": digest,
+                "release_url": prefix + tag, "prerelease": None, "metadata_source": "github_atom",
+                "asset_list_verified": False}
+    except (ValueError, ElementTree.ParseError):
+        raise AppError("update_release_invalid", "官方发行订阅源无法识别，未执行安装。") from None
+
+
+def verified_wheel(client: httpx.Client, release: dict, directory: Path) -> Path:
+    name = release["wheel"]
+    digest = release.get("sha256") or _checksum(
+        _fetch(client, release["assets"]["SHA256SUMS.txt"], 64 * 1024, asset=True), name)
     data = _fetch(client, release["assets"][name], MAX_WHEEL, asset=True)
-    if hashlib.sha256(data).hexdigest() != hashes[0].lower():
+    if hashlib.sha256(data).hexdigest() != digest:
         raise AppError("update_checksum_mismatch", "更新文件 SHA256 不匹配，未执行安装。")
     try:
         with zipfile.ZipFile(io.BytesIO(data)) as archive:
@@ -177,6 +237,8 @@ class UpdateService:
                           "running_version": __version__, "installed_version": detected,
                           "latest_version": release["version"], "update_available": available,
                           "release_url": release["release_url"], "prerelease": release["prerelease"],
+                          "metadata_source": release["metadata_source"],
+                          "asset_list_verified": release["asset_list_verified"],
                           "checked_at": time.time(), "scope": "mcp_host", "installation": installation.public(),
                           "restart_required": self.restart_required or _version(current) != _version(__version__)}
                 self.last_result = result

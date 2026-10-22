@@ -56,6 +56,7 @@ class AppError(Exception):
             "update_installation_unsupported": "update_with_original_installer",
             "update_network_error": "check_network",
             "update_state_changed": "check_updates",
+            "update_rate_limited": "retry_later",
         }
         result = {"ok": False, "status": self.code, "message": self.message, "source": self.source,
                   "retryable": self.code in {"rate_limited", "source_unavailable", "network_error",
