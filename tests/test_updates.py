@@ -239,3 +239,93 @@ def test_unreadable_installed_metadata_remains_unknown_on_error(monkeypatch):
     result = updater.run(check_only=True)
     assert result["status"] == "update_network_error" and result["installed_version"] is None
     assert "private-install-path" not in json.dumps(result)
+
+
+def feed(*links, extra=""):
+    links = links or (f"https://github.com/{updates.REPOSITORY}/releases/tag/v{VERSION}",)
+    return ('<feed xmlns="http://www.w3.org/2005/Atom">' + extra + ''.join(
+        f'<entry><link rel="alternate" href="{link}"/></entry>' for link in links) + '</feed>').encode()
+
+
+@pytest.mark.parametrize("status,headers", [(403, {"x-ratelimit-remaining": "0"}), (429, {})])
+def test_observed_rest_rate_limit_uses_official_feed_and_checks_manifest(monkeypatch, status, headers):
+    def limited(request):
+        if str(request.url) == updates.RELEASES:
+            return httpx.Response(status, headers=headers)
+        if str(request.url) == updates.RELEASE_FEED:
+            return httpx.Response(200, content=feed())
+        return None
+
+    updater, install, calls = service(monkeypatch, handler=limited)
+    result = updater.run(check_only=True)
+    assert result["status"] == "update_available" and result["metadata_source"] == "github_atom"
+    assert result["prerelease"] is None and result["asset_list_verified"] is False
+    assert [str(r.url) for r in calls] == [updates.RELEASES, updates.RELEASE_FEED, BASE + "SHA256SUMS.txt"]
+    install.assert_not_called()
+
+
+@pytest.mark.parametrize("status,headers", [(403, {}), (403, {"x-ratelimit-remaining": "7"}), (401, {}), (500, {})])
+def test_other_api_failures_do_not_trigger_fallback(monkeypatch, status, headers):
+    def forbidden(request):
+        return httpx.Response(status, headers=headers)
+
+    updater, install, calls = service(monkeypatch, handler=forbidden)
+    assert updater.run()["status"] == "update_network_error"
+    assert len(calls) == 1
+    install.assert_not_called()
+
+
+@pytest.mark.parametrize("data", [
+    b"not XML", b'<!DOCTYPE feed [<!ENTITY x "hello">]><feed/>',
+    '<!DOCTYPE feed><feed/>'.encode('utf-16'),
+    b'<feed xmlns="wrong"><entry/></feed>',
+    feed("https://attacker.invalid/releases/tag/v99.1.0"),
+    feed("https://github.com/another/repo/releases/tag/v99.1.0"),
+    feed(f"https://github.com/{updates.REPOSITORY}/releases/tag/v99.1.0?query=bad"),
+    feed(f"https://github.com/{updates.REPOSITORY}/releases/tag/v99.1.0/extra"),
+    ('<feed xmlns="http://www.w3.org/2005/Atom"><entry><content>'
+     f'&lt;a href="https://github.com/{updates.REPOSITORY}/releases/tag/v{VERSION}"&gt;'
+     '</content></entry></feed>').encode(),
+])
+def test_feed_cannot_supply_arbitrary_links_xml_entities_or_content_instructions(monkeypatch, data):
+    def limited(request):
+        if str(request.url) == updates.RELEASES:
+            return httpx.Response(403, headers={"x-ratelimit-remaining": "0"})
+        if str(request.url) == updates.RELEASE_FEED:
+            return httpx.Response(200, content=data)
+        return None
+
+    updater, install, calls = service(monkeypatch, handler=limited)
+    assert updater.run()["status"] == "update_release_invalid"
+    assert len(calls) == 2
+    install.assert_not_called()
+
+
+def test_feed_fallback_installs_only_after_unchanged_package_checks(monkeypatch):
+    def limited(request):
+        if str(request.url) == updates.RELEASES:
+            return httpx.Response(429)
+        if str(request.url) == updates.RELEASE_FEED:
+            return httpx.Response(200, content=feed())
+        return None
+
+    updater, install, calls = service(monkeypatch, handler=limited)
+    assert updater.run(guard=nullcontext)["status"] == "updated"
+    assert len(calls) == 4  # API, feed, manifest, exact wheel; no repeated REST polling
+    install.assert_called_once()
+    invalid, install, _ = service(monkeypatch, handler=limited, blob=wheel(name="wrong-package"))
+    assert invalid.run(guard=nullcontext)["status"] == "update_wheel_invalid"
+    install.assert_not_called()
+
+
+def test_feed_requires_a_valid_unique_official_manifest(monkeypatch):
+    def limited(request):
+        if str(request.url) == updates.RELEASES:
+            return httpx.Response(429)
+        if str(request.url) == updates.RELEASE_FEED:
+            return httpx.Response(200, content=feed())
+        return None
+
+    updater, install, _ = service(monkeypatch, handler=limited, checksum=b"missing")
+    assert updater.run(check_only=True)["status"] == "update_checksum_invalid"
+    install.assert_not_called()
