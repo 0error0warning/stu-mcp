@@ -25,6 +25,25 @@ class InactiveCheckin:
         return {"ok": True, "service_running": False}
 
 
+@pytest.mark.parametrize("verified", [True, False])
+def test_closing_repair_allows_only_a_verified_completed_submission(app, verified):
+    host = HostRuntime(app, checkin=InactiveCheckin())
+    identity = host.repairs.prepare(title="合成故障")["draft_id"]
+    raw = host.repairs.drafts[identity]
+    raw.update(status="submitted" if verified else "submission_unknown", request_sent=True,
+               submitted_by_mcp=verified, receipt={"order_id": "SYNTHETIC_ORDER"} if verified else None)
+    host.repairs.close(identity)
+    try:
+        if verified:
+            host._before_update()
+        else:
+            with pytest.raises(AppError) as error:
+                host._before_update()
+            assert error.value.code == "update_repair_active"
+    finally:
+        host.close()
+
+
 @pytest.fixture
 def updater(monkeypatch, tmp_path):
     monkeypatch.setattr("stu_mcp.update_guard.user_cache_path", lambda *a, **k: tmp_path / "cache")

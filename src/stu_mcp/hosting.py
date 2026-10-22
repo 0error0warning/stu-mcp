@@ -69,8 +69,12 @@ class HostRuntime:
             if self._setup is not None:
                 raise AppError("update_setup_active", "本进程设置页仍在运行，请先重启 MCP 关闭设置页，再升级。")
         with self.repairs.lock:
-            if any(draft["status"] != "closed" for draft in self.repairs.drafts.values()):
-                raise AppError("update_repair_active", "存在报修草稿或待核对的提交结果，请先完成或关闭该流程再升级。")
+            unfinished = any(draft["status"] not in {"closed", "submitted"} or (
+                draft["status"] == "submitted" and (not draft.get("submitted_by_mcp") or not draft.get("receipt")
+                                                      or draft.get("window_status") != "closed"))
+                for draft in self.repairs.drafts.values())
+            if unfinished or any(worker.is_alive() for worker in self.repairs.threads.values()):
+                raise AppError("update_repair_active", "存在未完成的报修流程；未发送草稿请关闭，已发送请求请先核实回执并关闭会话，再升级。")
         check_worker_before_update(self.checkin)
 
     def update_self(self) -> dict:
