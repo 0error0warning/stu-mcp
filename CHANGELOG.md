@@ -1,5 +1,15 @@
 # 更新记录
 
+## 0.6.2 — 2026-10-22（学生预览版）
+
+- 修复共享公网出口耗尽 GitHub 匿名 REST API 限额时无法检查更新的问题。
+  仅在 API 明确限流时回退同一官方仓库的 Atom 发行订阅，仍校验官方标签、发行校验文件与 wheel，
+  无需配置 GitHub token。返回元数据来源，Atom 无法证明预览标记时明确为未知。
+- `stu-mcp update [--check]`、两项 MCP 更新工具及既有工具接口不变；
+  继续保留下载校验、安装识别与运行版本检查。旧版手动安装步骤明确要求旧进程退出后才使用 `--force`。
+
+发行范围见 [v0.6.2](docs/releases/v0.6.2.md)。v0.6.1 标签与发行附件保持原样。
+
 ## 0.6.1 — 2026-10-22（学生预览版）
 
 - 新增 `stu-mcp update --check` / `stu-mcp update`，以及共用实现的 MCP `check_updates` / `update_self`。
