@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "stu-mcp"
-version = "0.6.0"
+version = "0.6.1"
 description = "面向 AI agents 的汕大校园工具，默认 HTTP/CLI，支持本地与个人服务器"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -13,7 +13,7 @@ dependencies = [
   "mcp>=2.3,<3", "httpx[socks]>=0.28,<1", "beautifulsoup4>=4.13,<5",
   "keyring>=25.6,<26", "cryptography>=45", "platformdirs>=4.3,<5",
   "tomlkit>=0.13,<1", "ruamel.yaml>=0.18,<0.20", "pypdf>=5,<7", "qrcode>=8,<9",
-  "pyotp>=2.9,<3",
+  "pyotp>=2.9,<3", "packaging>=24,<27",
   "dnspython>=2.9,<3",
   "pywin32>=311; sys_platform == 'win32'",
   "requests>=2.31,<3", "websocket-client>=1.7,<2",

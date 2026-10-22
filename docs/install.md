@@ -1,30 +1,30 @@
 # 给 agent 的安装操作说明
 
-本页对应 v0.6.0 学生预览版，默认纯 HTTP CLI 认证，本机 stdio 与个人服务器私有 HTTP 共用同一包。服务器接入见[服务器说明](server.md)，各来源的人工步骤和成功证明见[认证说明](authentication.md)。旧 v0.5.0 的浏览器默认行为保留在历史发行记录，不套用到新版。
+本页对应 v0.6.1 学生预览版，默认纯 HTTP CLI 认证，本机 stdio 与个人服务器私有 HTTP 共用同一包。服务器接入见[服务器说明](server.md)，各来源的人工步骤和成功证明见[认证说明](authentication.md)。旧 v0.5.0 的浏览器默认行为保留在历史发行记录，不套用到新版。
 
 用户复制安装 prompt 后，可以直接完成下列安装、诊断和接入步骤。只配置用户当前使用的客户端，不默认给所有已安装客户端写配置。
 
 ## 1. 环境与发行包
 
-使用 `https://github.com/0error0warning/stu-mcp` 的 `v0.6.0` 学生预览版。[发行页](https://github.com/0error0warning/stu-mcp/releases/tag/v0.6.0) 提供 wheel、源码包与 SHA256 校验文件。不要安装未知 PyPI 同名包；当前未发布到 PyPI。
+使用 `https://github.com/0error0warning/stu-mcp` 的 `v0.6.1` 学生预览版。[发行页](https://github.com/0error0warning/stu-mcp/releases/tag/v0.6.1) 提供 wheel、源码包与 SHA256 校验文件。不要安装未知 PyPI 同名包；当前未发布到 PyPI。
 
 检查 `uv`。缺少时参考 [uv 官方安装文档](https://docs.astral.sh/uv/getting-started/installation/)，使用官方安装器或系统已有的软件包管理器。优先用户目录安装；不需要管理员权限、不改全局 Python、不修改其他项目依赖。若终端还未刷新 PATH，使用安装好的 `uv` 绝对路径。
 
 ```sh
-uv tool install --python 3.12 https://github.com/0error0warning/stu-mcp/releases/download/v0.6.0/stu_mcp-0.6.0-py3-none-any.whl
+uv tool install --python 3.12 https://github.com/0error0warning/stu-mcp/releases/download/v0.6.1/stu_mcp-0.6.1-py3-none-any.whl
 ```
 
 Python 3.12 缺失时，uv 可以按自己的受管理 Python 流程准备。安装后找到 `stu-mcp` 的用户级可执行文件；如果 PATH 未刷新，使用绝对路径执行接下来的命令。不要为了“修复安装”删除用户已有工具或配置。
 
-已有 STU MCP 时先检查 `stu-mcp --version`。升级要使用同一仓库的明确版本，确认发行包与校验值，不默认使用不受控的分支代码。
+已有 STU MCP 时先检查 `stu-mcp --version`。v0.6.1 起可运行 `stu-mcp update`，完整行为见[更新说明](updates.md)。旧版还没有此命令，首次升级按下一节安装明确版本。
 
 ### 从旧版升级
 
-1. 关闭旧设置页。若对分易后台仍在运行，升级程序不会热替换该进程；需要加载新版后台时，先在网页暂停监听并退出服务。
-2. 在上面的安装命令加入 `--force`，安装明确的 `v0.6.0` wheel。不要删除 STU MCP 或对分易用户数据目录，也不要卸载其他工具、清空客户端配置或更换密钥库后端。
-3. 运行 `stu-mcp --version`，确认返回 `0.6.0`。重新执行当前客户端的 `stu-mcp connect CLIENT --apply`，更新安装环境的 Python 启动路径；随后重新加载 MCP 或重启客户端，并在当前 agent 调用 `get_capabilities` 核实已连接新版。
-4. 需要设置页时重新运行 `stu-mcp setup`。安装保留个人资料、待办、缓存、来源会话及客户端其他配置；旧数据可能按当前解析契约失效或重新刷新，会话也可能已过期，不能保证升级后所有来源立即可读。WebVPN 自动重登仍由本人主动配置。
-5. 使用通用 JSON 或技能接入时，重新导出并替换客户端中的旧副本；课表技能按需重新运行 `stu-mcp skill-export --skill stu-timetable-export --apply`。资源中的 `runtime.json` 是本机 Python 路径，换机器或重建安装环境后需重新生成。ZIP 不会自动安装技能或注册 MCP。对分易用户可重新打开网页，核对登录和已选课程，再按需要恢复监听。
+1. 先完成或取消尚未发送的报修草稿；提交结果未知时先只读查单。关闭旧设置页。对分易后台独立运行；需要加载新版后台时，先在网页暂停监听并退出服务，勿把安装完成当作后台已更新。
+2. 旧版在上面的安装命令加入 `--force`，安装明确的 `v0.6.1` wheel；v0.6.1 及以后使用 `stu-mcp update`。不要删除 STU MCP 或对分易用户数据目录，也不要清空客户端配置或更换密钥库后端。
+3. 运行 `stu-mcp --version` 确认已安装版本。stdio 接入重新加载 MCP，使客户端启动新进程；私有 HTTP 接入须在宿主重启 MCP 服务，仅重连客户端无效。随后调用 `get_capabilities` 核实当前连接的运行版本。手动重建安装环境或启动路径改变时，重新执行当前客户端的 `stu-mcp connect CLIENT --apply`。
+4. 需要设置页时重新运行 `stu-mcp setup`。升级保留用户数据；缓存仍遵守当前解析契约，会话可能已过期，不能保证所有来源立即可读。WebVPN 自动重登仍由本人主动配置。
+5. 使用通用 JSON 或技能接入时，按需重新导出并替换客户端中的旧副本；课表技能使用 `stu-mcp skill-export --skill stu-timetable-export --apply`。资源中的 `runtime.json` 是本机 Python 路径，换机器或重建安装环境后需重新生成。ZIP 不会自动安装技能或注册 MCP。对分易用户可重新打开网页，核对登录和已选课程，再按需要恢复监听。
 
 配置写入前会备份并保留其他设置；同名冲突按下一节处理。验证失败时保留现有用户数据，分别报告安装、客户端加载和来源读取结果，不通过删配置或清缓存掩盖问题。
 
@@ -32,7 +32,7 @@ Python 3.12 缺失时，uv 可以按自己的受管理 Python 流程准备。安
 
 ## 2. 连接当前客户端
 
-`v0.6.0` 保留充电查询、宿舍报修、网络诊断和批量检测、对分易后台与网页及可选课表技能，并提供默认 HTTP 认证和个人服务器接入。各项验证边界见[验证索引](verification.md)，对分易用法见[后台说明](checkin.md)。从源码构建时，在明确版本或 revision 的仓库根目录运行 `uv build`，再安装对应 wheel，不把分支名当作可复现版本。
+`v0.6.1` 保留已有来源、默认 HTTP 认证、个人服务器接入及可选课表技能，新增更新入口和实验外卖查询。各项验证边界见[验证索引](verification.md)，对分易用法见[后台说明](checkin.md)。从源码构建时，在明确版本或 revision 的仓库根目录运行 `uv build`，再安装对应 wheel，不把分支名当作可复现版本。
 
 先运行 `stu-mcp clients`，按当前客户端选择 `stu-mcp connect CLIENT --apply`。自动合并配置支持 `codex`、`claude-code`、`cursor`、`workbuddy`、`zcode`、`grok-build` 和 `deepseek-harness`。官方路径、特殊合并规则和验收状态见 [客户端适配说明](clients.md)。程序负责保留其他设置、备份和生成不含凭据的启动项，不输出完整已有配置。
 
@@ -60,7 +60,7 @@ stu-mcp refresh oa --limit 5
 
 ## 4. 由本人在宿主终端登录
 
-v0.6.0 默认认证不安装浏览器或桌面。在运行 MCP 的同一账号、数据目录和凭据后端中由本人执行；不要向 agent 提供密码、Cookie、票据或验证码，也不要导出浏览器资料：
+默认认证不安装浏览器或桌面。在运行 MCP 的同一账号、数据目录和凭据后端中由本人执行；不要向 agent 提供密码、Cookie、票据或验证码，也不要导出浏览器资料：
 
 ```sh
 stu-mcp login mystu
@@ -85,4 +85,4 @@ WebVPN 长期自动重登可选，由本人运行 `stu-mcp webvpn-auto configure
 
 ## 5. 汇报
 
-只报告版本、已配置的客户端、公开查询实际结果、需要用户完成的重新加载/按需登录。不要输出认证信息。没有必要配置模型 API key、Hermes、云服务器、后台 AI 或任何微信私聊/群聊功能。
+只报告版本、已配置的客户端、公开查询实际结果及按需登录步骤。升级后明确区分 stdio 重载 MCP 与 HTTP 重启宿主服务，并核对运行版本。不要输出认证信息。没有必要配置模型 API key、Hermes、云服务器、后台 AI 或任何微信私聊/群聊功能。

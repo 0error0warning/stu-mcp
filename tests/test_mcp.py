@@ -25,7 +25,7 @@ async def test_real_stdio_handshake_schema_and_feature_gating(tmp_path):
         tools = await client.list_tools()
         names = {t.name for t in tools.tools}
         assert {"get_capabilities", "refresh_source", "get_grades", "get_tasks", "open_setup"}.issubset(names)
-        assert len(names) == 45
+        assert len(names) == 47
         assert {"search_takeout_shops", "get_takeout_shop", "get_takeout_menu", "prepare_takeout_selection"} <= names
         assert "get_takeout_product" in names
         assert "get_takeout_delivery_slots" in names

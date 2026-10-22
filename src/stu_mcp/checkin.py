@@ -133,7 +133,8 @@ class CheckinClient:
                     raise ValueError
             view = {k: v for k, v in raw.items() if k in STATE_KEYS}
             view.update(ok=True, source="duifene", service_running=True, process_id=info["pid"],
-                        service_instance=info["instance_id"], message=raw["status_label"])
+                        service_instance=info["instance_id"], message=raw["status_label"],
+                        package_version=health.get("package_version"))
             view["courses"] = [{k: c[k] for k in ("id", "name")} for c in raw.get("courses", [])]
             view["course_statuses"] = {key: {k: value[k] for k in
                 ("last_read_at", "last_attempt_at", "activity_count", "retry_at", "error", "stale") if k in value}

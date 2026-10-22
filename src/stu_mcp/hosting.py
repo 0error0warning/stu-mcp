@@ -1,7 +1,9 @@
 """One personal instance owns services; transports never own user sessions."""
 from __future__ import annotations
 
+import os
 import threading
+from contextlib import contextmanager
 from typing import Any
 
 from .app import App
@@ -14,6 +16,8 @@ from .interaction import interaction_mode, open_local_page, require_interaction
 from .network_audit import NetworkAudit
 from .runtime import AppError
 from .setup_web import SetupServer
+from .update_guard import exclusive_update
+from .updates import UpdateService
 
 
 class HostRuntime:
@@ -38,8 +42,58 @@ class HostRuntime:
         self._setup: SetupServer | None = None
         self._lock = threading.Lock()
         self._closed = False
+        self.updates = UpdateService()
+        self._operations = threading.Lock()
+        self._active_operations = 0
+        self._updating = False
+
+    @contextmanager
+    def tool_operation(self, name: str):
+        with self._operations:
+            if self.updates.restart_required and name not in {"get_capabilities", "check_updates"}:
+                raise AppError("update_restart_required", "软件安装已变更；" + self._restart_message())
+            if self._updating or (name == "update_self" and self._active_operations):
+                raise AppError("update_busy", "当前有工具请求正在执行，请稍后再升级。")
+            self._active_operations += 1
+            self._updating = name == "update_self"
+        try:
+            yield
+        finally:
+            with self._operations:
+                self._active_operations -= 1
+                if name == "update_self":
+                    self._updating = False
+
+    def _before_update(self):
+        with self._lock:
+            if self._setup is not None:
+                raise AppError("update_setup_active", "本进程设置页仍在运行，请先重启 MCP 关闭设置页，再升级。")
+        with self.repairs.lock:
+            unfinished = any(draft["status"] not in {"closed", "submitted"} or (
+                draft["status"] == "submitted" and (not draft.get("submitted_by_mcp") or not draft.get("receipt")
+                                                      or draft.get("window_status") != "closed"))
+                for draft in self.repairs.drafts.values())
+            if unfinished or any(worker.is_alive() for worker in self.repairs.threads.values()):
+                raise AppError("update_repair_active", "存在未完成的报修流程；未发送草稿请关闭，已发送请求请先核实回执并关闭会话，再升级。")
+        check_worker_before_update(self.checkin)
+
+    def update_self(self) -> dict:
+        result = self.updates.run(before_install=self._before_update,
+                                  guard=lambda: exclusive_update(exclude_pid=os.getpid()))
+        if result.get("restart_required"):
+            result["next_action"] = "restart_host_service" if self.transport == "streamable-http" else "reload_mcp"
+            result["message"] = result.get("message", "") + " " + self._restart_message()
+        return result
+
+    def _restart_message(self) -> str:
+        if self.transport == "streamable-http":
+            return "请重启宿主上的 MCP 服务；仅重新连接 HTTP 客户端不会加载新版。"
+        return "请在客户端重新加载 MCP，以新进程使用已安装版本。"
 
     def capabilities(self) -> dict[str, Any]:
+        if self.updates.restart_required:
+            return {"ok": True, "version": self.updates.capabilities()["running_version"],
+                    "updates": self.updates.capabilities(), "message": self._restart_message()}
         try:
             mode = require_interaction()
             interaction = {"mode": mode, "scope": "manual_browser", "available": True, "health_verified": False}
@@ -47,6 +101,7 @@ class HostRuntime:
             interaction = {"mode": "invalid" if exc.code == "invalid_interaction_mode" else interaction_mode(),
                            "scope": "manual_browser", "available": False, "status": exc.code}
         return self.app.status() | {"checkin": self.checkin.status(), "execution": execution_context(),
+            "updates": self.updates.capabilities(),
             "hosting": {"transport": self.transport, "identity_scope": "single_user_instance",
                         "shared_between_clients": True, "multi_user": False, "workers": 1,
                         "authentication": "local_process" if self.transport == "stdio" else "private_bearer",
@@ -114,3 +169,10 @@ class HostRuntime:
         finally:
             if ui is not None:
                 ui.close()
+
+
+def check_worker_before_update(checkin: CheckinClient | None = None) -> None:
+    # Also recognize a previous-version worker that predates installation leases.
+    state = (checkin if checkin is not None else CheckinClient()).status()
+    if state.get("service_running") is not False:
+        raise AppError("update_worker_active", "签到后台正在运行或无法确认已停止；请先停止后台，再升级软件。")

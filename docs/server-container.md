@@ -1,6 +1,6 @@
 # 容器部署
 
-本页提供 v0.6.0 的可选本地构建模板，配套 CI 的镜像构建与离线启动检查。模板面向 Linux 服务器上的一个用户、一个 HTTP worker，
+本页提供 v0.6.1 的可选本地构建模板，配套 CI 的镜像构建与离线启动检查。模板面向 Linux 服务器上的一个用户、一个 HTTP worker，
 由 tini 直接启动 `stu-mcp`，不包含显示服务、远程桌面或额外管理网页进程。
 默认镜像不安装 Playwright、Chromium、Xvfb 或远程桌面；各来源默认通过 HTTP 和本人 CLI 认证。
 连接方式、授权边界和网络诊断见[服务器部署](server.md)。目前需本地构建镜像，没有已发布镜像地址。
@@ -89,6 +89,25 @@ docker compose exec -it stu-mcp stu-mcp login jw --allow-http-callback
 教务参数只允许本次官方 HTTP 票据回调。OA HTTP 8118 兼容需本人另行明确运行 `docker compose exec -it stu-mcp stu-mcp transport --oa-http on`，默认关闭；会话可能经明文 HTTP 传输，不能借用教务许可。两者均不允许密码/TOTP走 HTTP，不关闭证书校验。
 
 报修独立会话保存在加密 Vault，草稿和确认只在进程内存；默认 HTTP 填写，完整预览、本轮明确确认、单次正式 POST 和回执核对规则仍全部适用。用法见[报修](repair.md)，协议及失败范围见[认证说明](authentication.md)。人工挑战会停止，不自动安装浏览器或桌面。
+
+## 更新容器
+
+容器内的 `stu-mcp update --check` 或 MCP `check_updates` 可以查询新版。
+`stu-mcp update` / `update_self` 会提示在宿主重建，不在运行中的容器里安装覆盖代码。
+目前没有公开镜像地址，不能用 `docker pull` 代替本地构建。
+
+在宿主把模板源码更新到核对过的官方版本，沿用原 UID/GID、私密密钥目录、数据卷与端口设置，
+再执行：
+
+```sh
+docker compose build
+docker compose up -d
+docker compose exec stu-mcp stu-mcp --version
+```
+
+重建会终止容器内的 MCP 和签到进程，先处理活动报修，未知提交结果只能只读核查。
+容器启动后重新连接并调用 `get_capabilities` 核对运行版本；需要签到时再核实后台及已授权计划。
+不要重新运行 `server-init` 或删除数据卷、密钥来更新。
 
 ## 数据与验证边界
 

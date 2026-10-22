@@ -30,6 +30,8 @@ def parser() -> argparse.ArgumentParser:
     init = sub.add_parser("server-init", help="在新目录生成服务器主密钥和 HTTP 令牌，仅输出路径")
     init.add_argument("directory", type=Path)
     sub.add_parser("status", help="输出功能/登录/缓存状态")
+    update = sub.add_parser("update", help="立即检查并升级当前 stu-mcp，保留用户配置")
+    update.add_argument("--check", action="store_true", help="只检查官方新版本，不执行安装")
     sub.add_parser("clients", help="查看客户端接入方式与官方说明")
     skill = sub.add_parser("skill-export", help="预览或导出随包技能，不修改 agent 配置")
     skill.add_argument("--skill", choices=SKILL_NAMES, default="stu-campus")
@@ -178,6 +180,21 @@ def main(argv: list[str] | None = None) -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
     args = parser().parse_args(argv)
+    from .update_guard import UpdateBusy, register_instance
+    try:
+        if args.command == "update":
+            from .hosting import check_worker_before_update
+            from .updates import UpdateService
+            return emit(UpdateService().run(check_only=args.check, before_install=check_worker_before_update))
+        with register_instance("mcp"):
+            return _dispatch(args)
+    except UpdateBusy as exc:
+        return emit(AppError("update_busy", str(exc)).result())
+    except AppError as exc:
+        return emit(exc.result())
+
+
+def _dispatch(args) -> int:
     try:
         if args.command == "browser":
             from importlib.util import find_spec

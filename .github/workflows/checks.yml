@@ -39,6 +39,8 @@ jobs:
       - run: uv build
       - name: Verify isolated core wheel, MCP transports, clients and worker lifecycle
         run: uv run --locked --extra dev python scripts/check_installed_runtime.py
+      - name: Verify offline self-update through installed commands and aliases
+        run: uv run --locked --extra dev python scripts/check_update_runtime.py
   docker-core:
     runs-on: ubuntu-latest
     timeout-minutes: 15

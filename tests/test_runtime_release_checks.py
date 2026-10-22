@@ -33,7 +33,7 @@ def tools(payload):
 
 def test_committed_contract_has_all_45_unique_public_interfaces():
     baseline = contract()
-    assert len(baseline) == len({tool["name"] for tool in baseline}) == 45
+    assert len(baseline) == len({tool["name"] for tool in baseline}) == 47
     assert runtime.assert_tool_contract(tools(baseline)) == []
 
 
