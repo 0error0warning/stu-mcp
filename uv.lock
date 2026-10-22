@@ -1310,7 +1310,7 @@ wheels = [
 
 [[package]]
 name = "stu-mcp"
-version = "0.6.0"
+version = "0.6.1"
 source = { editable = "." }
 dependencies = [
     { name = "beautifulsoup4" },
@@ -1319,6 +1319,7 @@ dependencies = [
     { name = "httpx", extra = ["socks"] },
     { name = "keyring" },
     { name = "mcp" },
+    { name = "packaging" },
     { name = "platformdirs" },
     { name = "pyotp" },
     { name = "pypdf" },
@@ -1349,6 +1350,7 @@ requires-dist = [
     { name = "httpx", extras = ["socks"], specifier = ">=0.28,<1" },
     { name = "keyring", specifier = ">=25.6,<26" },
     { name = "mcp", specifier = ">=2.3,<3" },
+    { name = "packaging", specifier = ">=24,<27" },
     { name = "platformdirs", specifier = ">=4.3,<5" },
     { name = "playwright", marker = "extra == 'browser'", specifier = ">=1.55,<2" },
     { name = "playwright", marker = "extra == 'dev'", specifier = ">=1.55,<2" },

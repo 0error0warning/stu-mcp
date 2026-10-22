@@ -16,6 +16,8 @@ from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler
 from pathlib import Path
 
+from stu_mcp import __version__
+
 from .controller import Controller, OperationError
 from .http_server import LoopbackHTTPServer
 from .storage import StorageError, default_home
@@ -170,7 +172,8 @@ class LocalServer:
 
     def info(self):
         return {"url": self.url, "pid": os.getpid(), "service": "stu-checkin",
-                "instance_id": self.instance_id, "protocol_version": PROTOCOL_VERSION}
+                "instance_id": self.instance_id, "protocol_version": PROTOCOL_VERSION,
+                "package_version": __version__}
 
     def close(self):
         self.httpd.shutdown()
@@ -242,13 +245,15 @@ def existing_url(home, *, timeout=3):
 
 
 def main():
+    from stu_mcp.update_guard import UpdateBusy, register_instance
+
     parser = argparse.ArgumentParser(description="轻量本地课堂签到页")
     parser.add_argument("--no-browser", action="store_true")
     parser.add_argument("--port", type=int, default=0)
     args = parser.parse_args()
     home = default_home()
     try:
-        with InstanceLock(home):
+        with register_instance("checkin"), InstanceLock(home):
             # Only the lock owner may retire stale discovery data from a previous process.
             (home / "runtime.json").unlink(missing_ok=True)
             controller = Controller(home)
@@ -268,6 +273,9 @@ def main():
                 if server:
                     server.httpd.server_close()
                 (home / "runtime.json").unlink(missing_ok=True)
+    except UpdateBusy:
+        if sys.stderr:
+            print("软件正在更新，请稍后重新启动签到后台。", file=sys.stderr)
     except OperationError:
         if not args.no_browser and (url := existing_url(home)):
             webbrowser.open(url)
