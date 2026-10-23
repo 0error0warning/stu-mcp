@@ -1,6 +1,6 @@
 # 学生事务、宿舍、水电、校园卡与预约入口协议调查
 
-调查日期：2026-10-23，北京时间约 20:00 起；20:30 补查公开事项路由，20:38 后补查 root 授权认证所得页面的脚本。本轮在本机当前网络路径上使用直接 HTTP 客户端，`trust_env=False`、TLS 正常校验、单次连接 5 秒/请求 10 秒量级；未改代理、DNS 或证书。入口逐一请求，依据页面实际链接、脚本声明和学校指南跟进；连接配置名不能证明物理网络位置。
+调查日期：2026-10-23，北京时间约 20:00 起；20:30 补查公开事项路由，20:38 后补查 root 授权认证所得页面的脚本；xg 本轮最新核查为 **22:13:38（14:13:38 UTC）**。本轮在本机当前网络路径上使用直接 HTTP 客户端，`trust_env=False`、TLS 正常校验、单次连接 5 秒/请求 10 秒量级；未改代理、DNS 或证书。入口逐一请求，依据页面实际链接、脚本声明和学校指南跟进；连接配置名不能证明物理网络位置。
 
 本文件是协议调查记录，**未实现 MCP 功能**。初轮匿名调查不提交账号密码；后续 root 按用户重新明确授权，在独立研究客户端做了学校认证，业务会话仅留在该进程内存。本文作者只分析脱敏结果和学校脚本，未读取或导出已保存凭据、Cookie、CAS 票据，未预约、缴费、挂失、发验证码、变更资料或取消申请。没有用他人的标识查询个人记录。
 
@@ -292,6 +292,34 @@ userName=<URL编码的AES密文Base64>&password=<URL编码的AES密文Base64>&is
 
 学生处首页本轮可匿名读取，含 2026 年通知，但首页出现近期通知不意味着旧奖学金通知已更新成 2026 内容；没有把网页抓取日期、搜索引擎抓取时间、附件目录时间当发布日期。一次公开列表读取超时后未无限重试。仍缺少的是当前学年正式综测办理通知/操作手册中的明确入口或学校发布的迁移/退役依据，而非更多密码试探。
 
+### 第二轮只读深查：登录类型、迎新用途与正式中间入口
+
+本轮没有再发送用户密码。先核对公开脚本，再仅沿已声明的模板、字典及跳转路径做有界匿名 GET；root 仍单独管理中央 SSO 和各业务的内存会话。
+
+`turing_boot_v2.js` 实际按 `pageName + path + module_name + '.html?' + module_name` 加载视图。因此由当前 `TG_CONFIG` 严格解析得到的模板为 `GET https://xg.stu.edu.cn/xsfwnew/sys/emapfunauth/pages/funauth-login/funauth-login.html?funauth-login`，2026-10-23 **14:06:57 UTC（北京时间 22:06:57）** 返回 200、21761 字节，SHA256 `fc22eea1aa28b73a42c4a4eaaba6b51db0d9f11bfe138f041a515a103d2f2757`。模板与 Impl 合起来明确了：
+
+- `loginType=1` 显示账号密码表单，`loginType=2` 显示“游客服务”；仅在 `noLoginApps.length>0` 时显示这两个标签。它是界面区块切换，**不是学生/教师或本科/研究生身份选择**。
+- `handleSubmit` 没有把 `loginType/USERTYPE` 作为认证参数发送，输入仍是既有的 `userName/password/isWeekLogin` 及条件验证码。没有发现由这个切换触发的 CAS 前置/中间跳转，不能凭变量名补一个身份参数。
+- 公开 `pageMeta` 的 `User_validate_info` 模型虽声明 `USERTYPE/USERSTATE` 字段，但没有内嵌枚举。仅匿名 GET 它实际声明的 `/xsfwnew/code/91c0d3ea-7efc-4b5c-b021-f3d211f5291c/userType.do`、同目录 `userState.do`，**14:08:59 UTC** 均返回 200、零字节、非 JSON；未取得类型含义，未调用 `dlyz/query_user_match` 等账号模型。字段存在不证明当前账户属于某类型，更不授权账号枚举或身份值试探。
+
+`enterRefererPath()` 实际声明的 fallback `/xsfwnew/sys/emapfunauth/pages/emap-userinfo.do` 于 **14:08:04 UTC** 匿名 GET 仍返回 302 到 HTTPS SSO，service 是这个精确路径、没有其他查询参数；`funauth-login.do` 则仍 200。**公开登录页可读取不等于新 context 已认证，也未发现可据此替代综测 CAS 的桥接步骤。**模板和字典的脱敏证据留在忽略目录 `funauth-template-receipt.json`、`funauth-dictionaries-anonymous.json`、`xg-context-public-followup.json`。
+
+官方用途方面，[研究生院2025年新生报到指南](https://www.gs.stu.edu.cn/list/61/post/5bf0f08b-9380-444f-85a7-60fcf9d5c0a3)（发布日期 **2025-08-28**，本轮经网页读取）说明新生使用随录取通知书寄送的校园网账号密码登录新生预报到系统，并链接附件5操作手册；与前文 2024 手册给出的 funauth 入口形成**迎新用途证据**。本机尝试正常 TLS 读取这篇指南时遇到 `CERTIFICATE_VERIFY_FAILED: certificate has expired`，未绕过验证；2025 docx 附件未提取，不能声称其仍采用同一精确 URL。上述公开来源**不证明 funauth 专供新生，也不证明它是当前在校本科生综测的认证入口**；当前模板没有综测业务名称或导向该应用的配置。
+
+现有授权门户缓存还提供了可核实的正式中间链接，而非猜测新路径。**13:36:48 UTC** 的 `application_card_context` 把“迎新服务”关联到 `/xsfw/sys/emaphome/appShow.do?id=a35adda51bef472f9eeb9f5110a1fedc`，“学生请假”关联到 `id=cb53e8ad4b1d4b5fb2130998717806fc`，“第二课堂”关联到 `id=dd86fdaa3b434776be7c2cf610061fda`，这些是应用标识，不是人员标识；第二课堂标签不能当成综测替代品。root 随后在来源隔离的研究会话中得到以下只读结果，均未再提交密码：
+
+| 2026-10-23 UTC 时间 | 精确目标或动作 | 实测结果与边界 |
+| --- | --- | --- |
+| 14:09:56 | 旧 `/xsfw/sys/emaphome/portal/index.do` 续票 | 200 学生工作平台，仍为 19 个应用；没有因此证明新 context 已认证 |
+| 14:10:44 | GET 上述已发布“迎新服务” `appShow.do?id=a35adda51bef472f9eeb9f5110a1fedc` | 302 到 `https://xg.stu.edu.cn/xsfwnew/sys/yxapp/*default/index.do`，无 query。**正式存在旧门户到新迎新应用的链接**，但未证明交接后认证成功；响应 `_ht` cookie 元数据为 host `.xg.stu.edu.cn`、Path `/xsfw/sys/null`，仅记录名称和作用域，不记录值，不把 `null` 路径定为根因 |
+| 14:11:10 | 官方综测目标再次使用新 SSO 票据 GET 回调 | 仍 302 回同一 SSO service；没有重新发密码 |
+| 14:11:11 | 分别以实际初始化 302 的 service 为学生请假 `/xsfwnew/sys/xsqjapp/*default/index.do`、userinfo fallback 续票 | 两者均在新票据回调后 302 回各自相同 SSO service；详情见忽略目录 `followup/observations.jsonl` 的 `context_comparison` |
+| 14:13:37–38 | 同一个已登录旧 xg 客户端实际跟随“迎新服务” `appShow` 的官方 302，再为 `/xsfwnew/sys/yxapp/*default/index.do` 取得新 SSO 票据并 GET 回调 | 初始化使用不带票据的旧 portal Referer，回调 Referer 为 `https://sso.stu.edu.cn/`，仍 302 回 yxapp 对应的同一 SSO service。旧/新 context 的 `JSESSIONID` 按原 cookie 作用域自然保留；未复制中央 cookie、未强行搬用旧会话、未重发密码 |
+
+所以当前失败范围**至少涉及新 context 的综测、学生请假、userinfo 和迎新四个精确路径**，不能继续描述成“只有综测这一个应用不接受票据”；仍不能据此确认学校端根因、权限不足或新系统停用。最后一次实际跟随正式门户 appShow 的对照排除了“完全没跟正式中间入口”这个简单遗漏，不能由此宣称完整浏览器请求头等价或查明服务器根因。
+
+为核对 HTTP 请求是否遗漏官方点击步骤，复查两份实际门户脚本：`template2/index.js` 第 45–61 行的 `[data-url]` 点击只取 `data-url`，仅在以 `/sys/` 开头时前置 `contextPath`，再按 `data-target` 选择 `location.href` 或 `window.open(url)`；读取但未使用的 `data-apptype` 不参与 URL。该处理器**没有附加参数、认证 AJAX、cookie 写入或先走 HTTP**，`portal.js` 也未声明这些 appShow 导航步骤。因此对现有 `data-url` 做 GET 与该处理器的**目标和方法**一致；Referer 已做上述有限对照，浏览器其他请求头、原生事件和完整会话上下文是否相同仍未知，不能仅凭静态脚本宣称两者完全等价。未执行角色切换、猜测认证参数或改写 `_ht`。
+
 ## 2. dorm 与 power：同用学校 SSO，不是同一个业务
 
 初轮两个 HTTP 根入口均返回 302，业务 service 为各自 HTTP `default.aspx`。
@@ -304,7 +332,7 @@ HTTP 兼容权限，也没有借用宿舍报修 `repair` 或其他业务的会�
 
 [东海岸校区 2024-01-15 水电通知](https://stuecc.stu.edu.cn/info/1027/1395.htm)确认 `power` 可用校园网账号自助缴费，允许设置代理缴费，涉及欠费、扣款、恢复供电。历史通知的校区规则不能直接当作当前桑浦山规则。本次已取得读数、历史账单的实际数组结构，以及原 WebForms 表单的未缴费筛选和有效空结果；没有打开自助缴费页、设置代理或进行支付/退款。
 
-宿舍已读三个实际导航及表头，并在内存完成一份本人姓名关联核对；已观察 302 回 SSO 后续票恢复。水电也已验证正常查询、筛选与空数组，但实际历史数组 9 列与静态 reader 的 12 字段不一致，不能直接映射金额或余额。仍需补完整身份绑定、字段语义、单位/分摊、分页与完整范围，以及更全面的失效判据。只登记结构，不保存隐藏状态值、个人页面或账单。
+宿舍已读三个实际导航及表头，并在内存完成一份本人姓名关联核对；已观察 302 回 SSO 后续票恢复。水电已验证正常查询、筛选与空数组；14:06:06 UTC 新 GET 后的本地 AST 复核确认历史 25 行各有 12 个位置，2/3/4 为省略元素，14:09:55 未缴费新查询的 4 行亦如此。早先“9 列与 12 字段冲突”是临时调查器过滤稀疏空槽的误计，现已撤回；缺失位置不能补 0、当作显式 `null` 或使后续字段左移。14:12:40 公开脚本复读再次确认字段及列头，未更新本人账单时间；最终对应表与网络/本地时序见[补查报告](dorm-utilities-followup.md)。仍需补完整身份绑定、金额/单位/分摊语义、分页与完整范围，以及更全面的失效判据。只登记结构，不保存隐藏状态值、个人页面或账单。
 
 ## 3. smartcard：独立查询密码与图片验证码
 
