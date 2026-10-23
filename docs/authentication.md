@@ -24,6 +24,10 @@ Streamable HTTP 的 Bearer 授权客户端访问 MCP，学校账号授权 MCP �
 
 业务来源与登录名不是一一对应：受保护 `oa` 使用 `login webvpn`；`jw`、`mystu`、`yuketang`、`repair`、`duifene` 使用各自同名登录命令。MySTU 下的 ELC / Campus 使用学校账号，分别核实业务会话，不要求另外准备两套账号。公开 OA 不必先登录 WebVPN。
 
+OA 引导先说明[能读的内容与访问条件](verification/2026-10-22-oa-entry-boundaries.md)：原站和目标内容可匿名访问时，列表、正文及支持格式的附件不需要登录；原站列表读取失败时，当前实现才尝试 WebVPN 路径。WebVPN 需要可达、有效会话和实际可用的 OA 路由，单独登录门户不证明正文/附件可读。正文与附件按缓存的来源路径读取，未实现每篇直读失败后自动换路径。
+
+协议备注：`/login/Login.jsp` 的路径名不表示必须登录；`login webvpn` 认证的是访问通道。页面另有员工 CAS，回调 `office.stu.edu.cn`，这条办公业务未适配，不改变公告工具的可读范围。原站地址不能证明 Chrome 是否经过 Clash/TUN；本轮匿名样本也不能推广为所有通知/附件免登录。
+
 同属学校 SSO 的入口仍有独立业务和会话。综合报修 `r`、一网通办、套餐管理等入口的认证证据及尚未接入范围见[校园入口映射](campus-services.md)；不能把目录里的每个站点当成已有 MCP 登录适配器。
 
 | 来源 | 默认认证与成功证明 | 状态和人工步骤 |

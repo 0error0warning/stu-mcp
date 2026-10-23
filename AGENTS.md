@@ -53,6 +53,11 @@ The source baseline is School Hub commit `13f1b216ac35269d9840b6854ccff64c1e25e5
   session, especially the explicitly allowed JW HTTP callback. Repair alone retains an encrypted nested
   SSO jar for bounded fixed-page GET ticket renewal; never forward its central cookies to the business
   host, follow authentication from a final POST, or share it with another source. Preserve Moodle's fixed redirects.
+- OA bulletin reading, its network access channel and employee identity are separate. The original
+  `/login/Login.jsp` bulletin route can be anonymous; a login-looking path is not authentication proof.
+  OA uses the `webvpn` session only on the WebVPN access path. Employee `/login/cas.jsp` points to
+  school SSO with an `office.stu.edu.cn` callback; employee office business is not adapted. Do not
+  conflate WebVPN login with employee login or infer all notices/attachments are anonymous from samples.
 - Campus service entries must keep their exact business and campus identity. Consult the maintained
   [service catalog](docs/campus-services.md) for dated purpose/form evidence and the
   [network verification archive](docs/verification/2026-10-18-to-19-network.md) for observed availability.

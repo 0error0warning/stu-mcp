@@ -64,7 +64,7 @@
 
 认证还存在这些独立路径，不能归并为“一个学校登录”：
 
-- 受保护 OA 的访问依赖 WebVPN；源码为 `source=oa`、`session=webvpn`。WebVPN 的密码/必要 TOTP 与 CAS 分开实现。
+- OA 公告优先原站匿名读取；经 WebVPN 路径读取时使用 `webvpn` 会话，源码 `source=oa`、`session=webvpn` 不表示公告强制登录。员工办公另走 CAS，回调 `office.stu.edu.cn`，尚未适配；详见后续[OA 入口补充核查](2026-10-22-oa-entry-boundaries.md)。补充没有改写本页原批次的时间或 254 项探测统计。
 - 雨课堂由本人手机确认官方二维码；对分易沿用原微信回调。二者都是独立平台，不共享学校 SSO 会话。
 - [图书馆 FAQ](https://www.lib.stu.edu.cn/faq-page)列出读者账户/一卡通与 MySTU 登录方式；[校外访问说明](https://www.lib.stu.edu.cn/zy/xwfw)另列 CARSI 和 WebVPN。[CNKI 馆方说明](https://www.lib.stu.edu.cn/database/275)给出 `fsso.cnki.net` / `idp-lib.stu.edu.cn` 路由。本轮仅核实文档，没有验证这些认证链。
 - 官网邮箱直接指向微软入口；账号可能与校园账号相同，协议及会话仍须独立验证。上网认证、校园卡查询密码、第三方外卖配置也各有边界。
