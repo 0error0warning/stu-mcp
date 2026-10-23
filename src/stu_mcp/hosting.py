@@ -115,22 +115,28 @@ class HostRuntime:
                         "default_authentication": "http", "browser_backend": "optional_explicit",
                         "credential_backend": backend_name(), "credential_backend_verified": False,
                         "setup_on": "mcp_host", "setup_url_returned_to_agent": False,
+                        "setup_authentication": {"backend": "http", "interfaces": ["cli", "private_setup_page"],
+                                                 "server_browser_required": False, "secrets_through_mcp": False},
                         "login_flows": {
                             "school": {"method": "isolated_cas_http", "input": "host_tty_once",
                                        "services": ["jw", "mystu", "repair"], "sessions_shared": False,
-                                       "credentials_persisted": False, "requires_display": False},
+                                       "credentials_persisted": False, "requires_display": False,
+                                       "input_options": ["host_tty_once", "private_setup_page"]},
                             "duifene": {"method": "wechat_callback", "input": "host_tty_or_loopback_page",
                                         "requires_display": False, "new_monitoring_plan": False,
                                         "existing_authorized_plan_may_resume": True},
                             "webvpn": {"manual_login": "http_cli", "configure": "host_tty_or_loopback_page",
+                                       "input_options": ["host_tty", "private_setup_page"],
                                        "automatic_renewal": "http_totp", "human_challenges": "pause",
                                        "real_account_renewal_verified": False},
                             **{source: {"method": "http_qr" if source == "yuketang" else "cas_http",
                                         "new_login_requires_display": False, "input": "host_tty",
+                                        "input_options": ["host_tty", "private_setup_page"],
                                         "saved_session_reads_require_display": False}
                                for source in ("jw", "mystu", "yuketang")},
                             "repair": {"method": "isolated_cas_http", "requires_display": False,
                                        "persistent_session": True, "draft_storage": "process_memory",
+                                       "input_options": ["host_tty", "private_setup_page"],
                                        "input": "host_tty"}},
                         "repair_state": "process_memory", "repair_survives_restart": False,
                         "downloads_on": "mcp_host"}}
@@ -138,16 +144,14 @@ class HostRuntime:
     def open_setup(self) -> dict[str, Any]:
         if self.transport != "stdio":
             return {"ok": False, "status": "host_setup_required", "execution": execution_context(),
-                    "message": "对分易请由本人在 MCP 宿主终端运行 stu-mcp login duifene，使用原微信回调。"
-                    "WebVPN 自动重登可在终端用 stu-mcp webvpn-auto configure 配置；不把凭据发给 agent。"
-                    "学校账号可运行 stu-mcp login school，一次输入后分别建立教务、MySTU和报修会话；"
-                    "雨课堂仍用独立登录。默认使用 HTTP，无需显示环境。"
-                    "可选设置页仍仅在宿主回环提供，私密地址不会通过 MCP 返回。"}
+                    "message": "请本人在 MCP 宿主选择 CLI 配置，或运行 stu-mcp setup --no-browser 查看私密设置链接。"
+                    "网页可直接输入账号、扫码或完成回调，CLI 也提供完整认证；两者共用 HTTP 核心和独立业务会话。"
+                    "设置页仅监听宿主回环，不需要服务端浏览器；认证信息和私密链接不通过 MCP 返回。"}
         with self._lock:
             if self._closed:
                 raise AppError("host_closed", "此 MCP 实例已关闭，请重新连接。")
             if self._setup is None:
-                ui = SetupServer(self.app)
+                ui = SetupServer(self.app, checkin=self.checkin)
                 try:
                     opened = ui.start()
                 except BaseException:
@@ -157,8 +161,10 @@ class HostRuntime:
             else:
                 opened = open_local_page(self._setup.url)
         return {"ok": opened, "status": "settings_opened" if opened else "local_browser_required",
-                "message": "学校账号在 MCP 宿主终端运行 stu-mcp login school；设置页展示对应功能、"
-                "各业务会话及尚未接入的学校服务，也保留单来源登录。"}
+                "message": "已在你的浏览器打开设置页，可直接输入账号、扫码或完成授权，也可选择 CLI。"
+                "配置后返回 Agent 即可使用，各业务会话独立保存。" if opened else
+                "设置页已启动，但未能自动打开浏览器。请本人运行 stu-mcp setup --no-browser 查看私密链接，"
+                "或选择完整 CLI 认证；无需向 Agent 提供凭据。"}
 
     def checkin_result(self, result: dict[str, Any]) -> dict[str, Any]:
         if self.transport != "stdio" and (result.get("needs_login") or result.get("next_action") == "open_local_browser"):

@@ -192,6 +192,8 @@ async def _handshake(url: str, token: str, child: OwnedHTTPProcess) -> None:
         assert flows["school"]["input"] == "host_tty_once"
         assert flows["school"]["services"] == ["jw", "mystu", "repair"]
         assert flows["school"]["sessions_shared"] is False
+        assert "private_setup_page" in flows["school"]["input_options"]
+        assert capabilities["hosting"]["setup_authentication"]["server_browser_required"] is False
         catalog = capabilities["capability_catalog"]
         assert catalog["catalog_version"] == 1
         school = next(item for item in catalog["profiles"] if item["configuration_id"] == "school")

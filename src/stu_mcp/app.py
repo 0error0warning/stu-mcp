@@ -92,7 +92,7 @@ class App:
                 auth = self.vault.status(SOURCES[source].session)
                 if auth["status"] != "session_saved":
                     command = "stu-mcp login yuketang" if source == "yuketang" else "stu-mcp login school"
-                    raise AppError(auth["status"], f"请本人在 MCP 宿主终端运行 {command}；公开功能可直接使用。", source)
+                    raise AppError(auth["status"], f"请本人在设置页登录，或在 MCP 宿主终端运行 {command}；公开功能可直接使用。", source)
             if source == "public":
                 result = collectors.public(limit)
             elif source == "oa":

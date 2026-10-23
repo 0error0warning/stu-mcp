@@ -330,6 +330,8 @@ def build_capability_catalog(source_statuses: Iterable[Mapping] | Mapping = (), 
             state.update(status="not_required", message="无需学校登录，实际可读范围须分别核实。")
         profiles.append({"configuration_id": profile_id, "label": label, "auth_family": auth_family,
                          "setup_command": command, "setup_on": "mcp_host", "note": note,
+                         "setup_ui": {"available": profile_id in {"school", "webvpn", "yuketang", "duifene"},
+                                      "tool": "open_setup", "backend": "http"},
                          "service_ids": [item["service_id"] for item in supported],
                          "not_integrated_service_ids": [item["service_id"] for item in gaps],
                          "features": features, "state": state,

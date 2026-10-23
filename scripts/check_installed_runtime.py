@@ -249,6 +249,8 @@ def main() -> None:
                                   str(root / "server-secrets")], env, root))
         assert secrets["status"] == "server_secrets_created"
         env["STU_MCP_KEY_FILE"] = secrets["master_key_file"]
+        setup_check = Path(__file__).with_name("check_setup_runtime.py").resolve()
+        print(run([generic["command"], str(setup_check), str(root)], env, root).strip(), flush=True)
         # Use the exported interpreter verbatim: resolving a POSIX uv symlink
         # would escape its installed wheel environment.
         http_check = Path(__file__).with_name("check_http_runtime.py").resolve()
