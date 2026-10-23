@@ -52,13 +52,13 @@ def test_page_credentials_only_enter_memory_then_existing_http_core(app, monkeyp
     monkeypatch.setattr("stu_mcp.auth_http.login_http", core)
     jobs = SetupAuthJobs(app.vault)
     try:
-        started = jobs.start("mystu")
+        started = jobs.start("yuketang")
         prompt = challenge(jobs, "credentials")
         assert prompt["id"] == started["id"]
         assert PRIVATE not in json.dumps(jobs.snapshot())
         assert answer(jobs, prompt, username="synthetic-student", password=PRIVATE)["ok"]
         result = finished(jobs)
-        assert observed == [("mystu", "synthetic-student", PRIVATE)]
+        assert observed == [("yuketang", "synthetic-student", PRIVATE)]
         assert result["result"]["status"] == "session_saved"
         assert "challenge" not in result and PRIVATE not in json.dumps(result)
         assert "challenge" not in json.dumps(app.status())
@@ -70,10 +70,10 @@ def test_page_credentials_only_enter_memory_then_existing_http_core(app, monkeyp
 def test_secure_storage_failure_precedes_prompt_and_school_requests(app, monkeypatch):
     monkeypatch.setattr(app.vault, "_key", Mock(side_effect=AppError("secure_storage_unavailable", PRIVATE)))
     protocol = Mock(side_effect=AssertionError("no network before secure storage"))
-    monkeypatch.setattr("stu_mcp.auth_http.cas.acquire_state", protocol)
+    monkeypatch.setattr("stu_mcp.auth_http.yuketang.acquire_state", protocol)
     jobs = SetupAuthJobs(app.vault)
     try:
-        jobs.start("mystu")
+        jobs.start("yuketang")
         view = finished(jobs)
         assert view["result"]["status"] == "secure_storage_unavailable"
         assert "challenge" not in view and PRIVATE not in json.dumps(view)
@@ -93,13 +93,13 @@ def test_cancel_during_protocol_prevents_actual_vault_save(app, monkeypatch, ses
     monkeypatch.setattr("stu_mcp.auth_http.cas.acquire_state", protocol)
     jobs = SetupAuthJobs(app.vault)
     try:
-        jobs.start("mystu")
+        jobs.start("school")
         prompt = challenge(jobs, "credentials")
         answer(jobs, prompt, username="synthetic-student", password=PRIVATE)
         assert entered.wait(3)
         jobs.cancel(prompt["id"])
         with pytest.raises(AppError, match="已有认证"):
-            jobs.start("repair")
+            jobs.start("school")
         assert "challenge" not in jobs.snapshot()[0]
         release.set()
         assert finished(jobs)["result"]["status"] == "operation_cancelled"
@@ -119,7 +119,7 @@ def test_close_is_bounded_and_cancels_inflight_save(app, monkeypatch, session):
 
     monkeypatch.setattr("stu_mcp.auth_http.cas.acquire_state", protocol)
     jobs = SetupAuthJobs(app.vault)
-    jobs.start("mystu")
+    jobs.start("school")
     prompt = challenge(jobs, "credentials")
     answer(jobs, prompt, username="synthetic-student", password=PRIVATE)
     assert entered.wait(3)
@@ -127,7 +127,7 @@ def test_close_is_bounded_and_cancels_inflight_save(app, monkeypatch, session):
     jobs.close()
     assert time.monotonic() - before < .5
     with pytest.raises(AppError) as error:
-        jobs.start("repair")
+        jobs.start("school")
     assert error.value.code == "setup_closed"
     release.set()
     assert finished(jobs)["result"]["status"] == "operation_cancelled"
@@ -149,14 +149,13 @@ def test_school_page_uses_one_challenge_and_independent_real_core_saves(app, mon
     monkeypatch.setattr("stu_mcp.auth_http.cas.acquire_state", protocol)
     jobs = SetupAuthJobs(app.vault)
     try:
-        jobs.start("school", services=["mystu", "repair"])
+        jobs.start("school")
         answer(jobs, challenge(jobs, "credentials"), username="synthetic-student", password=PRIVATE)
         view = finished(jobs)
         assert view["result"]["status"] == "school_login_complete"
-        assert [item[0] for item in calls] == ["mystu", "repair"]
-        assert len(view["results"]) == 2
-        assert app.vault.fingerprint("jw") is None
-        for source in ("mystu", "repair"):
+        assert [item[0] for item in calls] == ["jw", "mystu", "repair"]
+        assert len(view["results"]) == 3
+        for source in ("jw", "mystu", "repair"):
             assert app.vault.status(source)["status"] == "session_saved"
         assert PRIVATE not in json.dumps(view)
     finally:
@@ -165,7 +164,7 @@ def test_school_page_uses_one_challenge_and_independent_real_core_saves(app, mon
 
 def test_old_or_duplicate_challenges_cannot_be_consumed(app, monkeypatch):
     def core(_vault, _service, *, interaction, **_):
-        interaction.credentials()
+        assert _.get("credentials").password == PRIVATE
         assert interaction.code() == "123456"
         return {"ok": True, "status": "session_saved"}
 
@@ -173,14 +172,14 @@ def test_old_or_duplicate_challenges_cannot_be_consumed(app, monkeypatch):
     jobs = SetupAuthJobs(app.vault)
     try:
         jobs.start("webvpn")
-        first = challenge(jobs, "credentials")
+        first = challenge(jobs, "webvpn_credentials")
         with pytest.raises(AppError) as wrong_kind:
             answer(jobs, first, code="123456")
         assert wrong_kind.value.code == "invalid_request"
-        answer(jobs, first, username="synthetic-student", password=PRIVATE)
+        answer(jobs, first, username="synthetic-student", password=PRIVATE, totp="")
         second = challenge(jobs, "code")
         with pytest.raises(AppError) as duplicate:
-            answer(jobs, first, username="synthetic-student", password=PRIVATE)
+            answer(jobs, first, username="synthetic-student", password=PRIVATE, totp="")
         assert duplicate.value.code == "invalid_challenge"
         with pytest.raises(AppError):
             answer(jobs, second, code="not-a-code")
@@ -223,7 +222,7 @@ def test_timeout_clears_pending_input_and_qr_then_keeps_bounded_history(app, mon
     monkeypatch.setattr("stu_mcp.auth_http.login_http", lambda _v, _s, *, interaction, **_: interaction.credentials())
     jobs = SetupAuthJobs(app.vault, clock=lambda: clock[0], ttl=1)
     try:
-        jobs.start("mystu")
+        jobs.start("yuketang")
         prompt = challenge(jobs, "credentials")
         clock[0] = 2
         assert "challenge" not in jobs.snapshot()[0]
@@ -338,46 +337,20 @@ def test_invalid_callback_does_not_start_worker_or_repeat(app):
         jobs.close()
 
 
-@pytest.mark.parametrize("service,options", [("mystu", {"services": ["mystu"]}),
-    ("school", {"services": ["jw", "jw"]}), ("school", {"services": ["campus_repair"]}),
-    ("school", {"services": ["mystu"], "allow_http_callback": True}),
-    ("repair", {"backend": "browser"}), ("school", {"backend": "browser"}),
-    ("mystu", {"reauthenticate": True}), ("webvpn", {"allow_http_callback": True}),
-    ("mystu", {"backend": {}}), ("mystu", {"reauthenticate": "true"})])
-def test_invalid_options_cannot_start_authentication(app, monkeypatch, service, options):
+@pytest.mark.parametrize("service,options", [("mystu", {}), ("jw", {}), ("repair", {}), ("oa", {}),
+    ("school", {"services": ["jw"]}), ("school", {"allow_http_callback": True}),
+    ("webvpn", {"backend": "browser"}), ("yuketang", {"reauthenticate": True}),
+    ("school", {"reauthenticate": "true"})])
+def test_private_setup_exposes_only_profile_http_flows(app, monkeypatch, service, options):
     protocol = Mock(side_effect=AssertionError("invalid options must not authenticate"))
     monkeypatch.setattr("stu_mcp.auth_http.login_http", protocol)
     jobs = SetupAuthJobs(app.vault)
     try:
-        with pytest.raises(AppError):
+        with pytest.raises((AppError, TypeError)):
             jobs.start(service, **options)
         assert jobs.snapshot() == []
         protocol.assert_not_called()
     finally:
-        jobs.close()
-
-
-def test_explicit_browser_compatibility_keeps_shared_busy_guard(app, monkeypatch):
-    entered, release = Event(), Event()
-
-    def browser(_vault, _service, **_kwargs):
-        entered.set()
-        assert release.wait(3)
-        return {"ok": True, "status": "session_saved", "message": PRIVATE}
-
-    monkeypatch.setattr("stu_mcp.auth.interactive_login", browser)
-    jobs = SetupAuthJobs(app.vault)
-    try:
-        jobs.start("webvpn", backend="browser")
-        assert entered.wait(3)
-        with pytest.raises(AppError) as error:
-            jobs.start("school")
-        assert error.value.code == "login_running"
-        release.set()
-        assert finished(jobs)["result"]["status"] == "session_saved"
-        assert PRIVATE not in json.dumps(jobs.snapshot())
-    finally:
-        release.set()
         jobs.close()
 
 
@@ -386,9 +359,193 @@ def test_finished_history_is_bounded_and_opaque_exception_is_sanitized(app, monk
     jobs = SetupAuthJobs(app.vault)
     try:
         for _ in range(4):
-            task = jobs.start("mystu")
+            task = jobs.start("yuketang")
             wait_for(jobs, lambda row, task_id=task["id"]: row["id"] == task_id and row["status"] == "finished")
         assert len(jobs.snapshot()) == 2
         assert PRIVATE not in json.dumps(jobs.snapshot())
+    finally:
+        jobs.close()
+
+
+VPN_SEED = base64.b32encode(b"12345678901234567890").decode()  # RFC 6238 synthetic vector.
+
+
+def test_webvpn_primary_form_saves_token_and_logs_in_without_manual_code(app, monkeypatch, session, keys):
+    from stu_mcp.webvpn import KEYRING_SERVICE, WebVPNConfig
+    monkeypatch.setattr("time.time", lambda: 1700000000.0)  # Keep this fixture away from the rotation boundary.
+    session["cookies"][0]["domain"] = "webvpn.stu.edu.cn"
+    calls = []
+
+    def protocol(*, username, password, totp_code, check, **_):
+        check()
+        assert username == "synthetic-student" and password == PRIVATE
+        code = totp_code()
+        assert len(code) == 6 and code.isdigit()
+        calls.append(code)
+        return session, {"authentication_verified": True}
+
+    monkeypatch.setattr("stu_mcp.auth_http.webvpn.acquire_state", protocol)
+    jobs = SetupAuthJobs(app.vault)
+    try:
+        jobs.start("webvpn")
+        prompt = challenge(jobs, "webvpn_credentials")
+        answer(jobs, prompt, username="synthetic-student", password=PRIVATE, totp=VPN_SEED)
+        view = finished(jobs)
+        assert view["result"]["status"] == "session_saved" and len(calls) == 1
+        assert WebVPNConfig(app.vault).status()["enabled"]
+        assert app.vault.status("webvpn")["status"] == "session_saved"
+        assert (KEYRING_SERVICE, app.vault.account) in keys.values
+        public = json.dumps([view, app.status()])
+        files = b"".join(path.read_bytes() for path in app.runtime.home.rglob("*") if path.is_file())
+        for secret in (PRIVATE, VPN_SEED, "synthetic-student"):
+            assert secret not in public and secret.encode() not in files
+        jobs.start("webvpn")
+        wait_for(jobs, lambda item: item["id"] != prompt["id"] and item["status"] == "finished")
+        assert len(calls) == 2  # Explicit retry uses saved credentials, without new input.
+        assert all("challenge" not in item for item in jobs.snapshot())
+    finally:
+        jobs.close()
+
+
+@pytest.mark.parametrize("previous_auto_config", [False, True])
+def test_webvpn_blank_token_retains_manual_code_and_does_not_save_password(
+        app, monkeypatch, session, keys, previous_auto_config):
+    from stu_mcp.webvpn import KEYRING_SERVICE, WebVPNConfig
+    session["cookies"][0]["domain"] = "webvpn.stu.edu.cn"
+    if previous_auto_config:
+        WebVPNConfig(app.vault).configure({"enabled": True, "username": "previous",
+                                          "password": "PREVIOUS_SYNTHETIC_PASSWORD", "totp": VPN_SEED})
+
+    def protocol(*, totp_code, **_):
+        assert totp_code() == "123456"
+        return session, {"authentication_verified": True}
+
+    monkeypatch.setattr("stu_mcp.auth_http.webvpn.acquire_state", protocol)
+    jobs = SetupAuthJobs(app.vault)
+    try:
+        jobs.start("webvpn", reauthenticate=previous_auto_config)
+        answer(jobs, challenge(jobs, "webvpn_credentials"), username="synthetic", password=PRIVATE, totp="")
+        answer(jobs, challenge(jobs, "code"), code="123456")
+        assert finished(jobs)["result"]["ok"]
+        assert not WebVPNConfig(app.vault).status()["configured"]
+        assert (KEYRING_SERVICE, app.vault.account) not in keys.values
+    finally:
+        jobs.close()
+
+
+def test_webvpn_reconfiguration_prompts_and_invalid_token_is_not_consumed(app, monkeypatch):
+    from stu_mcp.webvpn import WebVPNConfig
+    config = WebVPNConfig(app.vault)
+    config.configure({"enabled": True, "username": "previous", "password": PRIVATE, "totp": VPN_SEED})
+    previous = config.marker()["id"]
+    protocol = Mock(side_effect=AssertionError("no authentication before valid input"))
+    monkeypatch.setattr("stu_mcp.auth_http.webvpn.acquire_state", protocol)
+    jobs = SetupAuthJobs(app.vault)
+    try:
+        jobs.start("webvpn", reauthenticate=True)
+        prompt = challenge(jobs, "webvpn_credentials")
+        with pytest.raises(AppError) as invalid:
+            answer(jobs, prompt, username="synthetic", password=PRIVATE, totp="123456")
+        assert invalid.value.code == "invalid_totp"
+        assert jobs.snapshot()[0]["challenge"]["id"] == prompt["challenge"]["id"]
+        jobs.cancel(prompt["id"])
+        assert finished(jobs)["result"]["status"] == "operation_cancelled"
+        assert config.marker()["id"] == previous
+        protocol.assert_not_called()
+    finally:
+        jobs.close()
+
+
+@pytest.mark.parametrize("failure", [None, "auto_login_failed"])
+def test_webvpn_disabled_or_paused_configuration_prompts_without_reading_saved_secrets(app, monkeypatch, failure):
+    from stu_mcp.webvpn import WebVPNConfig
+    config = WebVPNConfig(app.vault)
+    config.configure({"enabled": True, "username": "synthetic", "password": PRIVATE, "totp": VPN_SEED})
+    config._write({**config.marker(), "enabled": False, "failure": failure})
+    saved = Mock(side_effect=AssertionError("disabled credential record must not be loaded"))
+    protocol = Mock(side_effect=AssertionError("disabled config requires fresh human input"))
+    monkeypatch.setattr(WebVPNConfig, "credentials", saved)
+    monkeypatch.setattr("stu_mcp.auth_http.webvpn.acquire_state", protocol)
+    jobs = SetupAuthJobs(app.vault)
+    try:
+        jobs.start("webvpn")
+        prompt = challenge(jobs, "webvpn_credentials")
+        assert "username" not in prompt["challenge"] and "totp" not in prompt["challenge"]
+        jobs.cancel(prompt["id"])
+        assert finished(jobs)["result"]["status"] == "operation_cancelled"
+        saved.assert_not_called()
+        protocol.assert_not_called()
+    finally:
+        jobs.close()
+
+
+def test_webvpn_logout_during_prompt_prevents_configuration_resurrection(app, monkeypatch, keys):
+    from stu_mcp.webvpn import KEYRING_SERVICE, WebVPNConfig
+    protocol = Mock(side_effect=AssertionError("logout fences new credentials"))
+    monkeypatch.setattr("stu_mcp.auth_http.webvpn.acquire_state", protocol)
+    jobs = SetupAuthJobs(app.vault)
+    try:
+        jobs.start("webvpn")
+        prompt = challenge(jobs, "webvpn_credentials")
+        app.logout("webvpn")
+        answer(jobs, prompt, username="synthetic", password=PRIVATE, totp=VPN_SEED)
+        assert finished(jobs)["result"]["status"] == "session_changed"
+        assert not WebVPNConfig(app.vault).status()["configured"]
+        assert (KEYRING_SERVICE, app.vault.account) not in keys.values
+        protocol.assert_not_called()
+    finally:
+        jobs.close()
+
+
+@pytest.mark.parametrize("mutation", ["cancel", "logout", "replace", "remove"])
+def test_webvpn_inflight_changes_fence_session_save(app, monkeypatch, session, mutation):
+    from stu_mcp.webvpn import WebVPNConfig
+    entered, release = Event(), Event()
+    session["cookies"][0]["domain"] = "webvpn.stu.edu.cn"
+
+    def protocol(**_):
+        entered.set()
+        assert release.wait(3)
+        return session, {"authentication_verified": True}
+
+    monkeypatch.setattr("stu_mcp.auth_http.webvpn.acquire_state", protocol)
+    jobs = SetupAuthJobs(app.vault)
+    try:
+        jobs.start("webvpn")
+        prompt = challenge(jobs, "webvpn_credentials")
+        answer(jobs, prompt, username="synthetic", password=PRIVATE, totp=VPN_SEED)
+        assert entered.wait(3)
+        if mutation == "cancel":
+            jobs.cancel(prompt["id"])
+        elif mutation == "logout":
+            app.logout("webvpn")
+        elif mutation == "remove":
+            WebVPNConfig(app.vault).remove()
+        else:
+            WebVPNConfig(app.vault).configure({"enabled": True, "username": "changed",
+                                              "password": PRIVATE, "totp": VPN_SEED})
+        release.set()
+        expected = "operation_cancelled" if mutation == "cancel" else "session_changed"
+        assert finished(jobs)["result"]["status"] == expected
+        assert app.vault.fingerprint("webvpn") is None
+    finally:
+        release.set()
+        jobs.close()
+
+
+@pytest.mark.parametrize("code", ["auto_login_failed", "auto_login_interaction_required",
+                                 "authentication_outcome_unknown"])
+def test_webvpn_rejected_or_unknown_outcome_pauses_future_automatic_attempts(app, monkeypatch, code):
+    from stu_mcp.webvpn import WebVPNConfig
+    monkeypatch.setattr("stu_mcp.auth_http.webvpn.acquire_state", Mock(
+        side_effect=AppError(code, PRIVATE, "oa")))
+    jobs = SetupAuthJobs(app.vault)
+    try:
+        jobs.start("webvpn")
+        answer(jobs, challenge(jobs, "webvpn_credentials"), username="synthetic", password=PRIVATE, totp=VPN_SEED)
+        result = finished(jobs)["result"]
+        assert result["status"] == code and PRIVATE not in json.dumps(result)
+        assert WebVPNConfig(app.vault).status()["status"] == "paused"
+        assert app.vault.fingerprint("webvpn") is None
     finally:
         jobs.close()

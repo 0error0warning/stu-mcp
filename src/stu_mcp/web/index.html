@@ -17,27 +17,27 @@
 
   <section aria-labelledby="accounts-title">
     <h2 id="accounts-title">账号与授权</h2>
-    <p class="hint">在这个页面完成登录，或选择终端配置。凭据不经过 Agent。</p>
+    <p class="hint">选择账号，配置后即可让 Agent 使用对应功能。</p>
     <div class="card list" id="configuration-profiles">
       <div class="row" data-profile="school">
         <span class="ico jw" aria-hidden="true">校</span>
-        <div class="info"><strong>学校统一账号</strong><span class="desc">教务成绩与考试 · MySTU 课程作业 · 桑浦山宿舍报修</span><span class="meta" id="school-state">正在读取…</span></div>
-        <button class="act" type="button" data-login="school">配置</button>
+        <div class="info"><strong>学校统一账号</strong><span class="desc" id="school-features"></span><span class="meta" id="school-state">正在读取…</span></div>
+        <div class="row-actions"><button class="act" type="button" data-login="school">配置</button><button class="ghost danger" type="button" data-logout="school" hidden>退出账号</button></div>
       </div>
       <div class="row" data-profile="yuketang">
         <span class="ico ykt" aria-hidden="true">雨</span>
-        <div class="info"><strong>雨课堂</strong><span class="desc">课程、作业、活动与公告</span><span class="meta" id="yuketang-state">正在读取…</span></div>
-        <button class="act" type="button" data-login="yuketang">扫码登录</button>
+        <div class="info"><strong>雨课堂</strong><span class="desc" id="yuketang-features"></span><span class="meta" id="yuketang-state">正在读取…</span></div>
+        <div class="row-actions"><button class="act" type="button" data-login="yuketang">扫码登录</button><button class="ghost danger" type="button" data-logout="yuketang" hidden>退出账号</button></div>
       </div>
       <div class="row" data-profile="duifene">
         <span class="ico mystu" aria-hidden="true">对</span>
-        <div class="info"><strong>对分易</strong><span class="desc">课程、签到监听与结果</span><span class="meta" id="duifene-state">正在读取…</span></div>
+        <div class="info"><strong>对分易</strong><span class="desc" id="duifene-features"></span><span class="meta" id="duifene-state">正在读取…</span></div>
         <button class="act" type="button" data-login="duifene">授权</button>
       </div>
       <div class="row" data-profile="webvpn">
         <span class="ico vpn" aria-hidden="true">网</span>
-        <div class="info"><strong>WebVPN</strong><span class="desc">OA 需要另一条访问通道时使用</span><span class="meta" id="webvpn-state">正在读取…</span></div>
-        <button class="act" type="button" data-login="webvpn">登录</button>
+        <div class="info"><strong>WebVPN</strong><span class="desc" id="webvpn-features"></span><span class="meta" id="webvpn-state">正在读取…</span></div>
+        <div class="row-actions"><button class="act" type="button" data-login="webvpn">配置</button><button class="ghost danger" type="button" data-logout="webvpn" hidden>退出账号</button></div>
       </div>
     </div>
     <p class="note">公开通知、校园入口、网络诊断、充电及狐友公开讨论可按条件免登录使用。</p>
@@ -46,20 +46,14 @@
   <section id="login-panel" class="auth-panel" hidden aria-labelledby="login-title">
     <div class="panel-heading"><h2 id="login-title"></h2><button id="login-cancel" class="ghost" type="button">取消</button></div>
     <p id="login-status" role="status" aria-live="polite"></p>
-    <form id="school-options" hidden>
-      <fieldset><legend>连接哪些业务</legend><div class="choices">
-        <label><input type="checkbox" name="services" value="jw" checked>教务</label>
-        <label><input type="checkbox" name="services" value="mystu" checked>MySTU</label>
-        <label><input type="checkbox" name="services" value="repair" checked>宿舍报修</label>
-      </div></fieldset>
-      <label class="checkline" id="school-http-choice"><input id="school-http" type="checkbox">允许教务官方 HTTP 票据回调（仅本次）</label>
-      <p class="note" id="school-http-note">教务当前需要此回调；可能经 HTTP 传输教务票据和会话，密码仍只发送 HTTPS。</p>
-      <div class="actions"><button class="primary" type="submit">继续</button></div>
-    </form>
     <form id="credentials-form" hidden autocomplete="off">
       <label>学校账号<input id="login-user" autocomplete="username" maxlength="128" required></label>
       <label>密码<input id="login-pass" type="password" autocomplete="current-password" maxlength="1024" required></label>
-      <div class="actions"><button class="primary" type="submit">登录</button></div>
+      <div id="token-field" hidden>
+        <label>令牌密钥（可选）<input id="login-token" type="password" autocomplete="off" maxlength="2048" placeholder="密钥或令牌导出链接"></label>
+        <p class="note">填写后加密保存账号与密钥，自动生成动态码并登录；留空则手动输入动态码。</p>
+      </div>
+      <div class="actions"><button id="login-submit" class="primary" type="submit">登录</button></div>
     </form>
     <form id="code-form" hidden autocomplete="off">
       <label>当前动态口令<input id="login-code" inputmode="numeric" autocomplete="one-time-code" maxlength="16" required></label>
@@ -72,35 +66,14 @@
       <label>授权后的返回链接<input id="login-callback" type="password" autocomplete="off" maxlength="8192" required></label>
       <div class="actions"><button class="primary" type="submit">完成授权</button></div>
     </form>
+    <p id="login-features"></p>
     <ul id="login-results" class="result-list" aria-live="polite"></ul>
     <p id="login-error" class="error" role="alert" hidden></p>
   </section>
 
-  <details id="advanced-login">
-    <summary>单独管理与更多设置</summary>
-    <div id="school-sessions" class="session-list"></div>
-    <div class="actions"><button class="ghost" type="button" id="vpn-auto-open">WebVPN 自动重登</button><button class="ghost" type="button" id="cli-open">使用 CLI 配置</button></div>
-    <div id="panel-oa" class="optional-panel" hidden>
-      <p id="vpn-status"></p>
-      <form id="vpn-form" autocomplete="off">
-        <label>学号<input id="vpn-user" autocomplete="off" maxlength="128" required></label>
-        <label>密码<input id="vpn-pass" type="password" autocomplete="off" maxlength="1024" required></label>
-        <label>动态口令密钥<input id="vpn-totp" type="password" autocomplete="off" maxlength="2048" required placeholder="密钥或 otpauth:// 链接"></label>
-        <p class="note">此项单独保存凭据，用于会话过期后自动登录。填令牌密钥，不是当前验证码。</p>
-        <div class="actions"><button class="primary" id="vpn-save" type="submit">保存自动重登</button><button class="ghost" id="vpn-cancel" type="button">取消</button><button class="ghost danger" id="vpn-logout" type="button">断开 WebVPN</button></div>
-      </form>
-    </div>
-    <div id="cli-panel" class="optional-panel" hidden>
-      <p>在运行 MCP 的主机终端执行：</p><pre>stu-mcp login school
-stu-mcp login yuketang
-stu-mcp login duifene
-stu-mcp login webvpn</pre>
-      <p class="note">终端与网页使用同一套认证和会话。教务 HTTP 回调仍需明确选择。</p>
-    </div>
-  </details>
-
-  <details id="integration-gaps"><summary>功能范围与尚未接入的服务</summary><div id="capability-details"></div><ul id="unintegrated-services"></ul></details>
-  <footer>各业务会话独立加密保存，普通学校密码不保存。会话已保存不代表网站当前可读。<span id="version"></span></footer>
+  <details id="integration-gaps"><summary>查看全部功能与未接入服务</summary><div id="capability-details"></div><ul id="unintegrated-services"></ul></details>
+  <details id="cli-panel"><summary>使用命令行配置</summary><pre id="cli-commands"></pre></details>
+  <footer>账号密码与令牌不经过 Agent。<span id="version"></span></footer>
 </main>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 </body>

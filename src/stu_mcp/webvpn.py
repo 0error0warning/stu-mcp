@@ -149,7 +149,8 @@ class WebVPNConfig:
         except Exception:
             raise AppError("secure_storage_unavailable", "无法访问安全凭据存储；未使用明文保存凭据。", "oa") from None
 
-    def configure(self, fields: dict) -> dict:
+    def configure(self, fields: dict, *, guard: Callable[[], None] | None = None,
+                  commit_receipt: dict | None = None) -> dict:
         if (set(fields) - {"enabled", "username", "password", "totp", "encoding"}
                 or fields.get("enabled") is not True):
             raise AppError("invalid_credentials", "请在本机明确勾选允许自动重新登录。", "oa")
@@ -164,6 +165,8 @@ class WebVPNConfig:
                   "totp": {"secret": otp.secret, "digits": otp.digits, "period": otp.interval,
                            "algorithm": otp.digest().name.upper()}}
         with key_lock(self.vault.runtime.home, "webvpn"):
+            if guard is not None:
+                guard()
             # Record a disabled pending configuration first. An interrupted keyring write remains removable.
             self._write({**marker, "enabled": False})
             self.vault.logout("webvpn")
@@ -171,6 +174,8 @@ class WebVPNConfig:
             self._keyring(lambda store: store.set_password(KEYRING_SERVICE, self.vault.account,
                                                           json.dumps(record, ensure_ascii=False)))
             self._write(marker)
+            if commit_receipt is not None:
+                commit_receipt.update(revision=self.vault.login_revision("webvpn"), generation=marker["id"])
         return {"ok": True, "status": "auto_login_configured",
                 "message": "凭据已保存到安全凭据存储。需要受保护 OA 信息时，会在会话失效后自动重新登录。"}
 

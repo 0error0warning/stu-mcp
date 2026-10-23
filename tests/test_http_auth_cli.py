@@ -6,7 +6,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from stu_mcp import auth, auth_http, cli, terminal
+from stu_mcp import auth_http, cli, terminal
 from stu_mcp.runtime import AppError
 
 
@@ -41,16 +41,6 @@ def test_browser_login_is_an_explicit_compatibility_choice(app, monkeypatch, cap
     assert cli.main(["login", "mystu", "--browser"]) == 0
     assert json.loads(capsys.readouterr().out)["status"] == "session_saved"
     browser.assert_called_once_with(app.vault, "mystu")
-
-
-def test_default_setup_job_guides_host_cli_without_thread_or_browser(app, monkeypatch):
-    monkeypatch.setattr(auth, "interactive_login", Mock(side_effect=AssertionError("no background TTY prompt")))
-    result = auth.LoginJobs(app.vault).start("mystu")
-    assert result["status"] == "host_cli_required"
-    assert result["command"] == "stu-mcp login mystu"
-    assert auth.LoginJobs(app.vault).snapshot() == []
-    with pytest.raises(AppError):
-        auth.LoginJobs(app.vault).start("mystu", backend="unknown")
 
 
 def test_transport_preferences_are_local_explicit_and_separate(app, monkeypatch, capsys):

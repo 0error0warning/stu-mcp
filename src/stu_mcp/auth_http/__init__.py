@@ -140,6 +140,10 @@ def login_http(vault: Vault, service: str, *, credentials: Credentials | None = 
             or not isinstance(candidate.state, dict) or not isinstance(candidate.state.get("cookies"), list)):
         raise AppError("authentication_unconfirmed", "来源没有提供明确认证证明；本次会话未保存。", source)
     state = dict(candidate.state) if source == "repair" else scoped_state(candidate.state, source)
+    if source == "jw" and legacy and candidate.proof.get("http_callback_used") is True:
+        # Keep the verified official route with this encrypted JW session. It
+        # neither changes global transport preferences nor applies to SSO.
+        state["jw_http_compat"] = True
     if account_fingerprint is not None:
         # Account association is encrypted metadata, never a cookie or result.
         state["school_account_fingerprint"] = account_fingerprint

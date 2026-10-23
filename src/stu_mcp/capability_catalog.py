@@ -68,7 +68,7 @@ _SERVICES = (
              features=(_feature("grades", "成绩与加权统计", "refresh_source", "get_grades", "academic_summary"),
                        _feature("exams", "考试安排", "refresh_source", "get_exams")),
              limits=("完整学期课表、选课、评教尚未接入。",
-                     "当前教务 HTTP 票据回调需本人明确选择 --allow-http-callback。"),
+                     "设置页使用已验证的学校官方登录路线；CLI 可用 --allow-http-callback 兼容旧入口。"),
              evidence_level="authenticated_http_read", evidence_on="2026-10-21",
              evidence_document=_HTTP_VERIFICATION),
     _service("mystu_learning", "MySTU 课程与待办", "school", "school_cas", source_id="mystu", login_id="mystu",
@@ -205,7 +205,7 @@ _PROFILES = (
      "公开查询仍取决于宿主网络、目标内容权限和实际读取结果。"),
     ("school", "学校统一账号", "school_cas", "stu-mcp login school",
      "一次输入学校账号，为已接入业务分别认证并保存独立会话，不保存密码。"
-     "教务 HTTP 票据回调默认关闭，需本人明确选择 --allow-http-callback 或使用既有兼容设置。"),
+     "设置页自动连接已接入业务；CLI 保留业务筛选及官方旧入口的兼容参数。"),
     ("webvpn", "WebVPN 登录", "webvpn", "stu-mcp login webvpn",
      "只为已适配的 OA 读取提供另一条访问通道；不是新增学校业务授权。"),
     ("yuketang", "雨课堂授权", "official_phone_qr", "stu-mcp login yuketang",

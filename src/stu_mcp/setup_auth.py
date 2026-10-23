@@ -15,11 +15,12 @@ import uuid
 from collections.abc import Callable
 from copy import deepcopy
 
-from .auth import LoginJobs
 from .auth_http import Credentials
-from .runtime import AppError, reject_symlinks
+from .auth_http.school import SCHOOL_SERVICES
+from .runtime import AppError, key_lock, reject_symlinks
 
-_SERVICES = frozenset({"school", "jw", "mystu", "repair", "yuketang", "webvpn", "oa", "duifene"})
+_PROFILES = frozenset({"school", "yuketang", "webvpn", "duifene"})
+_SERVICES = _PROFILES | frozenset(SCHOOL_SERVICES) | {"oa"}
 _MESSAGES = {
     "session_saved": "登录会话已加密保存；实际功能按业务分别读取核验。",
     "school_login_complete": "所选业务已分别处理；本地保留的会话尚未在线核验。",
@@ -28,27 +29,31 @@ _MESSAGES = {
     "needs_login": "此业务尚未登录。", "login_expired": "此业务会话已过期。",
     "session_invalid": "此业务保存的会话无效。", "session_changed": "登录期间业务已退出或切换，结果未沿用。",
     "secure_storage_unavailable": "安全存储不可用，未接收认证信息。",
-    "insecure_transport": "教务 HTTP 回调需要本人明确选择，此业务尚未完成。",
-    "login_rejected": "学校没有确认认证，已停止后续密码尝试。",
-    "interaction_required": "学校要求额外验证，已停止自动认证。",
+    "insecure_transport": "学校登录通道暂不支持。",
+    "login_rejected": "账号或密码未通过验证，请检查后重新登录。",
+    "interaction_required": "学校要求额外验证，请先到学校网站完成验证。",
     "authentication_identity_mismatch": "学校返回身份不一致，未保存会话。",
     "authentication_unconfirmed": "未取得此业务的明确认证证明。",
-    "authentication_network_error": "认证网络不可达，未更改代理、DNS 或证书校验。",
-    "authentication_outcome_unknown": "认证发送结果未知，未重发；请先核对状态。",
-    "authentication_schema_changed": "学校认证结构发生变化，未猜测字段。",
-    "authentication_budget": "本次认证达到等待或请求上限，未重发密码。",
+    "authentication_network_error": "暂时无法连接学校登录页面，请检查网络后重试。",
+    "authentication_outcome_unknown": "暂时无法核实登录结果，请先查看配置状态。",
+    "authentication_schema_changed": "学校登录方式有变化，当前版本暂不支持。",
+    "authentication_budget": "登录等待超时，请查看配置状态后重试。",
     "authentication_response_limit": "认证响应超过大小或时间上限。",
     "schema_changed": "来源结构发生变化，未保存未经证明的会话。",
     "unsafe_cookie_scope": "认证会话范围异常，已停止。",
     "insecure_authentication_route": "认证跳转超出已核验范围，已停止。",
     "account_not_bound": "雨课堂尚未绑定学校；本工具未进行绑定。",
     "operation_cancelled": "本次登录已取消。", "login_timeout": "登录等待已结束，请重新开始。",
-    "not_attempted": "前一业务需要先处理，本次未继续发送共享密码。",
+    "not_attempted": "请先解决上面的登录问题，再继续配置。",
     "invalid_callback": "回调链接无效，请重新完成原微信授权。",
     "invalid_authentication_input": "认证输入格式无效。", "local_state_busy": "本地状态正在变更，请稍后再试。",
     "unsafe_path": "本地安全路径检查失败，已停止。",
-    "browser_unavailable": "浏览器兼容后端无法启动，请使用 HTTP 登录或检查可选依赖。",
-    "operation_failed": "登录未完成，未输出认证信息。",
+    "invalid_totp": "令牌密钥无效，请填写已绑定令牌的密钥，不是当前六位动态口令。",
+    "auto_login_config_invalid": "自动登录配置无法读取，请重新配置。",
+    "auto_login_failed": "WebVPN 未接受账号或动态口令，请检查配置。",
+    "auto_login_interaction_required": "WebVPN 要求额外验证，本次登录已停止。",
+    "source_unavailable": "WebVPN 暂时无法访问，请稍后重试。",
+    "operation_failed": "登录未完成，请查看当前配置后再试。",
     "paused": "微信连接状态已读取；没有创建新的监听计划。",
     "monitoring": "已有授权监听计划的状态已读取。",
     "not_logged_in": "对分易尚未登录。", "query_error": "无法核实对分易当前状态，请先只读检查。",
@@ -77,7 +82,7 @@ def _safe_result(raw: dict, *, nested: bool = False) -> dict:
         result.update(ok=False, message="已有监听正在运行，请先暂停后再切换微信连接；未新建计划。")
     if not nested:
         if isinstance(raw.get("results"), list):
-            result["results"] = [_safe_result(item, nested=True) for item in raw["results"][:3]
+            result["results"] = [_safe_result(item, nested=True) for item in raw["results"][:len(SCHOOL_SERVICES)]
                                  if isinstance(item, dict)]
         if isinstance(raw.get("group_error"), dict):
             result["group_error"] = _safe_result(raw["group_error"], nested=True)
@@ -148,7 +153,7 @@ class _LoginTask:
                     self.results[index] = safe
                     break
             else:
-                if len(self.results) < 3:
+                if len(self.results) < len(SCHOOL_SERVICES):
                     self.results.append(safe)
 
     def ask(self, kind: str, **public) -> dict:
@@ -185,13 +190,20 @@ class _LoginTask:
                     or self.input is not None):
                 raise AppError("invalid_challenge", "该输入请求已失效或已使用。")
             kind = self.challenge["kind"]
-            expected = {"credentials": {"username", "password"}, "code": {"code"}, "callback": {"callback"}}
+            expected = {"credentials": {"username", "password"}, "code": {"code"}, "callback": {"callback"},
+                        "webvpn_credentials": {"username", "password", "totp"}}
             if kind not in expected or set(values) != expected[kind]:
                 raise AppError("invalid_request", "输入字段与当前验证步骤不匹配。")
-            if kind == "credentials":
+            if kind in {"credentials", "webvpn_credentials"}:
                 if (not isinstance(values["username"], str) or not 1 <= len(values["username"].strip()) <= 128
                         or not isinstance(values["password"], str) or not 1 <= len(values["password"]) <= 1024):
                     raise AppError("invalid_authentication_input", _MESSAGES["invalid_authentication_input"])
+                if kind == "webvpn_credentials":
+                    from .webvpn import parse_totp
+                    if not isinstance(values["totp"], str) or len(values["totp"]) > 2048:
+                        raise AppError("invalid_totp", _MESSAGES["invalid_totp"])
+                    if values["totp"].strip():
+                        parse_totp(values["totp"])
             elif kind == "code":
                 if not isinstance(values["code"], str) or re.fullmatch(r"[0-9]{6}", values["code"]) is None:
                     raise AppError("invalid_authentication_input", "动态码须为六位数字。")
@@ -261,7 +273,7 @@ class _WebInteraction:
 
 
 class SetupAuthJobs:
-    """One HTTP or explicitly selected legacy browser job per private setup page."""
+    """One bounded HTTP authentication job per private setup page."""
 
     def __init__(self, vault, *, clock=time.monotonic, ttl: float = 300, history: int = 2,
                  checkin_factory=None, checkin_preflight=None):
@@ -269,7 +281,6 @@ class SetupAuthJobs:
                 or not 0 < ttl <= 600 or type(history) is not int or not 1 <= history <= 3):
             raise ValueError("invalid setup authentication limits")
         self.vault, self.clock, self.ttl, self.history = vault, clock, ttl, history
-        self.browser = LoginJobs(vault)
         self.lock = threading.Lock()
         self.tasks: list[_LoginTask] = []
         self.closed = False
@@ -280,38 +291,25 @@ class SetupAuthJobs:
         self.tasks = [task for task in self.tasks if task.finished_at is None
                       or self.clock() - task.finished_at < self.ttl][-self.history:]
 
-    def start(self, service: str, *, backend: str = "http", services: list[str] | None = None,
-              allow_http_callback: bool = False, reauthenticate: bool = False) -> dict:
-        if not isinstance(service, str) or service not in _SERVICES:
+    def start(self, service: str, *, reauthenticate: bool = False) -> dict:
+        if not isinstance(service, str) or service not in _PROFILES:
             raise AppError("unknown_service", "请选择已适配的登录配置。")
-        if (not isinstance(backend, str) or backend not in {"http", "browser"}
-                or type(allow_http_callback) is not bool or type(reauthenticate) is not bool):
+        if (type(reauthenticate) is not bool
+                or reauthenticate and service not in {"school", "webvpn"}):
             raise AppError("invalid_login_options", "登录选项无效。")
-        if services is not None and (service != "school" or not isinstance(services, list) or not services
-                                     or any(not isinstance(item, str) or item not in {"jw", "mystu", "repair"}
-                                            for item in services) or len(services) != len(set(services))):
-            raise AppError("invalid_login_options", "业务选择仅用于学校账号，且不能重复。")
-        if (reauthenticate and service != "school" or allow_http_callback and service not in {"school", "jw"}
-                or allow_http_callback and services is not None and "jw" not in services
-                or backend == "browser" and (service in {"school", "repair", "duifene"}
-                                               or allow_http_callback or reauthenticate or services is not None)):
-            raise AppError("invalid_login_options", "所选登录方式不支持这些选项。")
         with self.lock:
             self._prune_locked()
             if self.closed:
                 raise AppError("setup_closed", "设置页已关闭，请重新打开。")
-            if any(task.status == "running" for task in self.tasks) or any(
-                    job["status"] == "running" for job in self.browser.snapshot()):
+            if any(task.status == "running" for task in self.tasks):
                 raise AppError("login_running", "已有认证正在进行，请先完成或取消。")
-            if backend == "browser":
-                return self.browser.start(service, backend="browser")
             task = _LoginTask(service, self.clock, self.ttl)
             self.tasks.append(task)
             self.tasks = self.tasks[-self.history:]
 
             def run():
                 try:
-                    result = self._run(task, services, allow_http_callback, reauthenticate)
+                    result = self._run(task, reauthenticate)
                 except AppError as error:
                     result = error.result()
                 except Exception:
@@ -326,14 +324,18 @@ class SetupAuthJobs:
                 raise
             return {"ok": True, "id": task.id, "service": service, "status": "running"}
 
-    def _run(self, task: _LoginTask, services, allow_http_callback, reauthenticate):
+    def _run(self, task: _LoginTask, reauthenticate):
         from .auth_http import login_http, login_school
         task.check()
         interaction = _WebInteraction(task)
         if task.service == "school":
-            return login_school(self.vault, services=services, interaction=interaction,
-                                allow_http_callback=allow_http_callback, reauthenticate=reauthenticate,
+            # JW's verified official route is an adapter detail, not a page option.
+            # login_school scopes this permission to JW's fixed callback paths only.
+            return login_school(self.vault, interaction=interaction, reauthenticate=reauthenticate,
+                                allow_http_callback=True,
                                 check_cancelled=task.check, on_result=task.add_result)
+        if task.service == "webvpn":
+            return self._webvpn(task, interaction, reauthenticate)
         if task.service == "duifene":
             from stu_checkin.auth import AUTH_URL, callback_code
 
@@ -358,8 +360,48 @@ class SetupAuthJobs:
             finally:
                 link = ""
         return login_http(self.vault, task.service, interaction=interaction, on_phase=task.set_phase,
-                          allow_http_callback=allow_http_callback, check_cancelled=task.check,
-                          use_saved_credentials=False)
+                          check_cancelled=task.check, use_saved_credentials=False)
+
+    def _webvpn(self, task, interaction, reauthenticate):
+        from .auth_http import login_http
+        from .webvpn import PAUSE_ERRORS, WebVPNConfig
+        config = WebVPNConfig(self.vault)
+        self.vault._key(create=True)
+        with key_lock(self.vault.runtime.home, "webvpn"):
+            marker = config.marker()
+            baseline = {"revision": self.vault.login_revision("webvpn"), "generation": marker["id"]}
+            saved = marker["configured"] and marker["enabled"] and not reauthenticate
+
+        def check():
+            task.check()
+            if (self.vault.login_revision("webvpn") != baseline["revision"]
+                    or config.marker()["id"] != baseline["generation"]):
+                raise AppError("session_changed", _MESSAGES["session_changed"], "webvpn")
+
+        credentials = None
+        if not saved:
+            values = task.ask("webvpn_credentials")
+            try:
+                if values["totp"].strip():
+                    # This explicit save uses the existing credential backend. The receipt
+                    # fences both the following login and concurrent logout/config changes.
+                    config.configure({**values, "enabled": True}, guard=check, commit_receipt=baseline)
+                    saved = True
+                else:
+                    credentials = Credentials(values["username"].strip(), values["password"])
+            finally:
+                values.clear()
+        try:
+            return login_http(self.vault, "webvpn", credentials=credentials, interaction=interaction,
+                              on_phase=task.set_phase, expected_revision=baseline["revision"],
+                              check_cancelled=check, use_saved_credentials=saved)
+        except AppError as error:
+            pause = error.code if error.code in PAUSE_ERRORS else "auto_login_failed" if error.code in {
+                "authentication_outcome_unknown", "authentication_response_limit", "authentication_budget",
+                "schema_changed"} else None
+            if saved and pause:
+                config.pause(baseline["generation"], pause)
+            raise
 
     def _task(self, task_id: str) -> _LoginTask:
         if not isinstance(task_id, str) or re.fullmatch(r"[a-f0-9]{32}", task_id) is None:
@@ -383,13 +425,7 @@ class SetupAuthJobs:
     def snapshot(self) -> list[dict]:
         with self.lock:
             self._prune_locked()
-            current = [task.snapshot() for task in self.tasks]
-            for job in self.browser.snapshot()[-self.history:]:
-                view = {key: job[key] for key in ("id", "service", "status", "phase") if key in job}
-                if isinstance(job.get("result"), dict):
-                    view["result"] = _safe_result(job["result"])
-                current.append(view)
-            return current
+            return [task.snapshot() for task in self.tasks]
 
     def close(self):
         with self.lock:

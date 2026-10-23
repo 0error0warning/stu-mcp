@@ -38,8 +38,7 @@ def main() -> None:
         with httpx.Client(base_url=ui.origin, trust_env=False) as browser:
             headers = {"X-STU-Setup": ui.secret, "Origin": ui.origin}
             assert browser.get("/").status_code == 200
-            job = browser.post("/api/login", headers=headers, json={
-                "service": "school", "services": ["mystu", "repair"]}).json()
+            job = browser.post("/api/login", headers=headers, json={"service": "school"}).json()
             deadline = time.monotonic() + 20
             answered = False
             while time.monotonic() < deadline:
@@ -58,7 +57,8 @@ def main() -> None:
                 time.sleep(.02)
             else:
                 raise AssertionError("installed private setup did not finish within its budget")
-            assert calls == ["mystu", "repair"]
+            assert calls == ["jw", "mystu", "repair"]
+            assert app.vault.status("jw")["status"] == "session_saved"
             assert app.vault.status("mystu")["status"] == "session_saved"
             assert app.vault.status("repair")["status"] == "session_saved"
             assert "challenge" not in app.status()
@@ -67,7 +67,7 @@ def main() -> None:
                 capabilities = host.capabilities()
                 school = next(profile for profile in capabilities["capability_catalog"]["profiles"]
                               if profile["configuration_id"] == "school")
-                assert school["state"]["saved_session_count"] == 2
+                assert school["state"]["saved_session_count"] == 3
                 assert "challenge" not in capabilities and "SYNTHETIC_PRIVATE_PASSWORD" not in json.dumps(capabilities)
             finally:
                 host.close()

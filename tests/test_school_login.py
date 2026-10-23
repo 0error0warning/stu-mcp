@@ -42,7 +42,8 @@ def successful_protocol(monkeypatch, *, before=None, fail=None):
         candidate.pop("school_account_fingerprint")
         if source == "repair":
             candidate["repair_sso_state"] = {"cookies": [], "origins": []}
-        return Candidate(candidate, {"authenticated": True, "synthetic_proof": source})
+        return Candidate(candidate, {"authenticated": True, "synthetic_proof": source,
+                                     "http_callback_used": source == "jw" and kwargs["legacy_jw"]})
 
     monkeypatch.setattr(cas, "acquire_state", acquire)
     return calls
@@ -96,6 +97,19 @@ def test_server_expired_session_can_be_explicitly_reauthenticated(app, human, mo
     assert result["ok"] and len(calls) == 1
     assert result["results"][0]["verified_live"] is True
     assert app.vault.fingerprint("mystu") != previous
+
+
+def test_old_school_session_gets_jw_read_route_once_without_reauthenticating_other_services(app, human, monkeypatch):
+    for source in school.SCHOOL_SERVICES:
+        app.vault.save(source, state(source))
+    calls = successful_protocol(monkeypatch)
+    first = auth_http.login_school(app.vault, interaction=human, allow_http_callback=True)
+    assert first["ok"] and [call[0] for call in calls] == ["jw"]
+    assert app.vault.load("jw")["jw_http_compat"] is True
+    assert not app.runtime.preferences()["jw_http_compat"]
+    second = auth_http.login_school(app.vault, interaction=human, allow_http_callback=True)
+    assert second["ok"] and all(item["skipped"] for item in second["results"])
+    assert len(calls) == 1
 
 
 def test_legacy_unknown_account_session_is_reauthenticated_without_forced_logout(app, human, monkeypatch):

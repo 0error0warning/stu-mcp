@@ -15,8 +15,9 @@ from .schema import (
 
 class JwAdapter:
     def __init__(self, vault: Vault, *, http_factory=CampusHTTP):
-        legacy = vault.runtime.preferences()["jw_http_compat"]
-        self._manager = http_factory("jw", vault.load("jw"), allow_legacy_http=legacy)
+        state = vault.load("jw")
+        legacy = state.get("jw_http_compat") is True or vault.runtime.preferences()["jw_http_compat"]
+        self._manager = http_factory("jw", state, allow_legacy_http=legacy)
         self._http = None
 
     def __enter__(self):

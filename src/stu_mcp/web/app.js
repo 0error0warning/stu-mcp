@@ -2,10 +2,8 @@
 (() => {
   const token = location.hash.slice(1);
   const $ = id => document.getElementById(id);
-  const NAMES = {school: "学校统一账号", jw: "教务", mystu: "MySTU", repair: "宿舍报修",
-                 yuketang: "雨课堂", webvpn: "WebVPN", oa: "WebVPN", duifene: "对分易"};
-  const SECRET_FIELDS = ["login-user", "login-pass", "login-code", "login-callback", "vpn-user", "vpn-pass", "vpn-totp"];
-  const FORMS = ["school-options", "credentials-form", "code-form", "qr-panel", "callback-form"];
+  const SECRET_FIELDS = ["login-user", "login-pass", "login-token", "login-code", "login-callback"];
+  const FORMS = ["credentials-form", "code-form", "qr-panel", "callback-form"];
   let state = null;
   let activeJobId = null;
   let activeService = null;
@@ -16,6 +14,8 @@
   let toastTimer = null;
   let lastFinishedId = null;
   let starting = false;
+  let disconnecting = false;
+  let pendingStart = null;
 
   const el = (tag, text, className) => {
     const node = document.createElement(tag);
@@ -24,10 +24,20 @@
     return node;
   };
   const runningJob = () => state?.jobs.find(job => job.status === "running");
-  const sourceState = id => id === "repair" ? state?.repair?.auth?.status
-    : state?.sources.find(source => source.source === (id === "webvpn" ? "oa" : id))?.auth?.status;
-  const statusText = status => ({session_saved: "会话已保存", needs_login: "尚未登录", login_expired: "需要重新登录",
-    session_invalid: "会话不可用", secure_storage_unavailable: "安全存储不可用"})[status] || "尚未核验";
+  const profiles = () => state?.capability_catalog?.profiles || [];
+  const profile = id => profiles().find(item => item.configuration_id === id);
+  const services = id => (state?.capability_catalog?.services || []).filter(item =>
+    profile(id)?.service_ids.includes(item.service_id));
+  const configured = id => ["session_saved", "sessions_saved"].includes(profile(id)?.state.status);
+  const hasLogin = id => Object.values(profile(id)?.state.services || {}).some(item =>
+    ["session_saved", "login_expired", "session_invalid"].includes(item.status))
+    || id === "webvpn" && state?.webvpn_auto_login?.configured;
+  const editVPN = () => ["paused", "disabled"].includes(state?.webvpn_auto_login?.status);
+  const featureText = id => id === "school" ? services(id).map(item => item.label).join(" · ")
+    : (profile(id)?.features || []).map(item => item.label).join(" · ");
+  const statusText = status => ({session_saved: "已配置", sessions_saved: "已配置", needs_login: "未配置",
+    partially_configured: "部分功能需要登录", login_expired: "需要重新登录", session_invalid: "需要重新登录",
+    secure_storage_unavailable: "无法保存登录信息"})[status] || "暂时无法读取配置";
 
   async function api(path, data, options = {}) {
     const response = await fetch(path, {
@@ -61,6 +71,7 @@
     clearCredentials();
     $("login-qr").removeAttribute("src");
     $("callback-link").removeAttribute("href");
+    $("token-field").hidden = true;
     challenge = null;
     renderedChallenge = null;
   }
@@ -70,41 +81,41 @@
   }
   function panel(service) {
     activeService = service;
-    $("login-title").textContent = NAMES[service] || "登录";
+    $("login-title").textContent = profile(service)?.label || "登录";
     $("login-panel").hidden = false;
     $("login-panel").scrollIntoView({block: "nearest", behavior: "smooth"});
   }
 
   function renderAccounts() {
-    for (const button of document.querySelectorAll("[data-login]")) button.disabled = starting || Boolean(runningJob());
-    const school = ["jw", "mystu", "repair"].map(id => `${NAMES[id]}：${statusText(sourceState(id))}`);
-    $("school-state").textContent = school.join(" · ");
-    $("yuketang-state").textContent = statusText(sourceState("yuketang"));
-    $("webvpn-state").textContent = statusText(sourceState("webvpn"));
-    const checkin = state.checkin;
-    $("duifene-state").textContent = checkin?.logged_in ? "会话已保存" :
-      checkin?.status === "service_not_started" ? "服务尚未启动" : checkin?.status === "not_logged_in" ? "尚未登录" : "按需授权";
-    const sessions = $("school-sessions");
-    sessions.replaceChildren();
-    for (const id of ["jw", "mystu", "repair", "yuketang", "webvpn"]) {
-      const row = el("div", undefined, "session-row");
-      row.append(el("span", `${NAMES[id]} · ${statusText(sourceState(id))}`));
-      const login = el("button", "重新登录", "ghost");
-      login.type = "button";
-      login.disabled = starting || Boolean(runningJob());
-      login.addEventListener("click", () => choose(id, true));
-      row.append(login);
-      if (sourceState(id) === "session_saved") {
-        const out = el("button", "退出", "ghost danger");
-        out.type = "button";
-        out.addEventListener("click", async () => {
-          out.disabled = true;
-          try { await api("/api/logout", {service: id === "webvpn" ? "oa" : id}); await load(); }
-          catch (error) { toast(error.message, true); out.disabled = false; }
-        });
-        row.append(out);
+    const busy = starting || disconnecting || Boolean(pendingStart) || Boolean(runningJob());
+    for (const button of document.querySelectorAll("[data-login]")) {
+      const id = button.dataset.login;
+      const current = profile(id);
+      button.disabled = busy || !current;
+      $(id + "-features").textContent = featureText(id);
+      let status = statusText(current?.state.status);
+      let action = configured(id) ? "重新登录" : "配置";
+      if (id === "school" && current?.state.status === "partially_configured") action = "继续配置";
+      if (id === "yuketang") action = configured(id) ? "重新扫码" : "扫码登录";
+      if (id === "duifene") {
+        status = state.checkin?.logged_in === true ? "已配置" : state.checkin?.logged_in === false ? "未授权"
+          : state.checkin?.status === "service_not_started" ? "尚未连接" : "暂时无法读取配置";
+        action = state.checkin?.logged_in ? "重新授权" : "授权";
       }
-      sessions.append(row);
+      if (id === "webvpn") {
+        const auto = state.webvpn_auto_login;
+        if (auto?.configured) {
+          status = editVPN() ? "自动登录未开启，请更新配置"
+            : configured(id) ? "已配置 · 自动登录已开启" : "已保存令牌，可自动登录";
+          action = configured(id) || editVPN() ? "更新配置" : "连接";
+        }
+      }
+      $(id + "-state").textContent = status;
+      button.textContent = action;
+    }
+    for (const button of document.querySelectorAll("[data-logout]")) {
+      button.hidden = !hasLogin(button.dataset.logout);
+      button.disabled = busy;
     }
   }
 
@@ -124,15 +135,17 @@
       item.dataset.serviceId = service.service_id;
       gaps.append(item);
     }
+    $("cli-commands").textContent = profiles().filter(item => item.setup_ui.available)
+      .map(item => item.setup_command).join("\n");
   }
 
   function renderResults(results) {
     $("login-results").replaceChildren();
-    for (const item of results || []) {
-      const label = item.ok ? item.skipped ? "保留已有会话" : "会话已保存"
-        : item.status === "not_attempted" ? "本次未继续" : "未完成";
-      const row = el("li", `${NAMES[item.service] || item.service || "登录"}：${label}`, item.ok ? "ok" : "warn");
-      if (!item.ok && item.message) row.append(el("span", item.message, "result-message"));
+    for (const item of (results || []).filter(item => !item.ok)) {
+      const service = services(activeService).find(entry => entry.login_id === item.service);
+      const label = service?.label || profile(activeService)?.label || "登录";
+      const row = el("li", `${label}：${item.status === "not_attempted" ? "暂未连接" : "未完成"}`, "warn");
+      if (item.message) row.append(el("span", item.message, "result-message"));
       $("login-results").append(row);
     }
   }
@@ -146,10 +159,15 @@
       activeJobId = null;
       clearChallenge();
       const result = job.result || {};
-      renderResults(result.results || job.results || (result.ok ? [{...result, service: job.service}] : []));
+      const results = result.results || job.results || [];
+      renderResults(results);
       $("login-status").textContent = result.ok ? "配置完成，可以返回 Agent 使用。"
-        : result.status === "school_login_partial" ? "部分业务未完成，请查看各项结果。"
-        : result.status === "operation_cancelled" ? "已停止后续认证，已完成的会话保留。" : "本次配置未完成。";
+        : result.status === "school_login_partial" ? "部分功能已配置，以下项目暂未完成。"
+        : result.status === "operation_cancelled" ? "已取消，已完成的配置保留。" : "本次配置未完成。";
+      const successful = services(job.service).filter(service => results.some(item =>
+        item.ok && item.service === service.login_id));
+      $("login-features").textContent = result.ok ? "已配置功能：" + featureText(job.service)
+        : successful.length ? "已配置功能：" + successful.map(item => item.label).join(" · ") : "";
       errorMessage(result.ok || result.status === "operation_cancelled" ? null : result.message || result.group_error?.message);
       $("login-cancel").textContent = "关闭";
       if (lastFinishedId !== job.id) {
@@ -163,7 +181,7 @@
     const next = job.challenge;
     if (!next) {
       clearChallenge();
-      $("login-status").textContent = job.phase === "cancelling" ? "正在停止后续认证，已完成的会话保留。"
+      $("login-status").textContent = job.phase === "cancelling" ? "正在取消…"
         : job.phase === "callback_submitted" ? "正在核对授权结果，请勿重复提交。" : "正在认证，请稍候…";
       return;
     }
@@ -172,8 +190,10 @@
     renderedChallenge = next.id;
     challenge = next;
     errorMessage(null);
-    if (next.kind === "credentials") {
-      $("login-status").textContent = "输入账号和密码";
+    if (next.kind === "credentials" || next.kind === "webvpn_credentials") {
+      $("login-status").textContent = job.service === "school" ? "一次登录，连接已接入的学校服务。" : "";
+      $("token-field").hidden = next.kind !== "webvpn_credentials";
+      $("login-submit").textContent = "登录";
       $("credentials-form").hidden = false;
       $("login-user").focus();
     } else if (next.kind === "code") {
@@ -198,70 +218,45 @@
   }
 
   async function begin(service, options = {}) {
-    if (starting || runningJob()) return;
+    if (starting || disconnecting || pendingStart || runningJob()) return;
     starting = true;
+    clearTimeout(toastTimer);
+    $("toast").className = "toast";
+    pendingStart = {service, previousIds: new Set(state.jobs.map(job => job.id))};
     clearChallenge();
     errorMessage(null);
     renderResults([]);
+    $("login-features").textContent = "";
     panel(service);
     $("login-status").textContent = "正在准备登录…";
     renderAccounts();
     try {
-      const result = await api("/api/login", {service, backend: "http", ...options});
+      const result = await api("/api/login", {service, ...options});
       activeJobId = result.id;
+      pendingStart = null;
       pollFailures = 0;
       await load();
     } catch (error) {
+      if (error.httpStatus && error.httpStatus < 500) pendingStart = null;
       errorMessage(error.message);
       if (error.httpStatus !== 403) {
         // The task may exist even if its start response was lost. Read, never repost.
         try { await load(); } catch (_) { /* keep the original error visible */ }
       }
+      if (pendingStart) errorMessage("暂时无法核实登录是否启动，请重新打开页面查看，先不要重复登录。");
     }
     finally { starting = false; if (state) renderAccounts(); }
   }
 
-  function choose(service, reauthenticate = false) {
-    if (runningJob() || starting) return;
-    clearChallenge();
-    clearCredentials();
-    $("panel-oa").hidden = true;
-    errorMessage(null);
-    renderResults([]);
-    if (service === "school" || service === "jw") {
-      panel(service);
-      $("login-status").textContent = "选择本次要连接的业务";
-      $("school-options").hidden = false;
-      $("school-options").dataset.reauthenticate = String(reauthenticate);
-      for (const input of document.querySelectorAll('input[name="services"]')) {
-        input.checked = service === "school" || input.value === "jw";
-        input.disabled = service !== "school";
-      }
-      $("school-http").checked = false;
-      const existing = Boolean(state.transport.jw_http_compat);
-      $("school-http-choice").hidden = existing;
-      $("school-http-note").hidden = existing;
-    } else begin(service);
-  }
   for (const button of document.querySelectorAll("[data-login]")) {
     button.disabled = true;
-    button.addEventListener("click", () => choose(button.dataset.login));
+    button.addEventListener("click", () => {
+      const service = button.dataset.login;
+      const reauthenticate = ["school", "webvpn"].includes(service) &&
+        (configured(service) || service === "webvpn" && editVPN());
+      begin(service, reauthenticate ? {reauthenticate: true} : {});
+    });
   }
-  $("school-options").addEventListener("submit", event => {
-    event.preventDefault();
-    const services = [...document.querySelectorAll('input[name="services"]:checked')].map(input => input.value);
-    if (!services.length) return errorMessage("请至少选择一项业务。");
-    if (services.includes("jw") && !state.transport.jw_http_compat && !$("school-http").checked) {
-      return errorMessage("连接教务需允许本次官方 HTTP 回调；也可以取消勾选教务。");
-    }
-    const options = {};
-    if (activeService === "school") {
-      options.services = services;
-      options.reauthenticate = $("school-options").dataset.reauthenticate === "true";
-    }
-    if (services.includes("jw") && $("school-http").checked) options.allow_http_callback = true;
-    begin(activeService, options);
-  });
 
   async function submitInput(fields, form) {
     if (!activeJobId || !challenge) return;
@@ -288,7 +283,12 @@
   }
   $("credentials-form").addEventListener("submit", event => {
     event.preventDefault();
-    submitInput({username: $("login-user").value, password: $("login-pass").value}, event.currentTarget);
+    const fields = {username: $("login-user").value, password: $("login-pass").value};
+    if (challenge?.kind === "webvpn_credentials") fields.totp = $("login-token").value;
+    submitInput(fields, event.currentTarget);
+  });
+  $("login-token").addEventListener("input", () => {
+    $("login-submit").textContent = $("login-token").value.trim() ? "保存并登录" : "登录";
   });
   $("code-form").addEventListener("submit", event => {
     event.preventDefault(); submitInput({code: $("login-code").value}, event.currentTarget);
@@ -304,30 +304,26 @@
     } else { $("login-panel").hidden = true; activeService = null; }
   });
 
-  $("vpn-auto-open").addEventListener("click", () => {
-    const open = $("panel-oa").hidden;
-    clearCredentials();
-    $("panel-oa").hidden = !open;
-    const mode = state.webvpn_auto_login.status;
-    $("vpn-status").textContent = mode === "enabled" ? "自动重登已启用" : mode === "paused" ? "自动重登已暂停" : "按需开启自动重登";
-  });
-  $("vpn-cancel").addEventListener("click", () => { clearCredentials(); $("panel-oa").hidden = true; });
-  $("cli-open").addEventListener("click", () => { $("cli-panel").hidden = !$("cli-panel").hidden; });
-  $("vpn-form").addEventListener("submit", async event => {
-    event.preventDefault();
-    const data = {enabled: true, username: $("vpn-user").value, password: $("vpn-pass").value,
-                  totp: $("vpn-totp").value, encoding: "auto"};
-    $("vpn-save").disabled = true;
-    clearCredentials();
-    try { await api("/api/webvpn-auto", data); $("panel-oa").hidden = true; toast("自动重登配置已保存"); await load(); }
-    catch (error) { toast(error.message, true); }
-    finally { data.username = data.password = data.totp = ""; $("vpn-save").disabled = false; }
-  });
-  $("vpn-logout").addEventListener("click", async () => {
-    clearCredentials();
-    try { await api("/api/logout", {service: "oa"}); $("panel-oa").hidden = true; await load(); toast("已断开 WebVPN"); }
-    catch (error) { toast(error.message, true); }
-  });
+  for (const button of document.querySelectorAll("[data-logout]")) {
+    button.addEventListener("click", async () => {
+      if (starting || disconnecting || pendingStart || runningJob()) return;
+      disconnecting = true;
+      clearChallenge();
+      renderAccounts();
+      try {
+        await api("/api/logout", {service: button.dataset.logout});
+        $("login-panel").hidden = true;
+        await load();
+        toast("已退出账号");
+      } catch (error) {
+        toast(error.message, true);
+        if (error.httpStatus !== 403) {
+          try { await load(); } catch (_) { /* never repeat a possibly completed logout */ }
+        }
+      }
+      finally { disconnecting = false; if (state) renderAccounts(); }
+    });
+  }
 
   function schedulePoll() {
     if (pollTimer || document.hidden) return;
@@ -345,6 +341,9 @@
     state = await api("/api/status");
     pollFailures = 0;
     $("version").textContent = state.version;
+    const recovered = pendingStart && state.jobs.find(item => item.service === pendingStart.service
+      && !pendingStart.previousIds.has(item.id));
+    if (recovered) { activeJobId = recovered.id; pendingStart = null; }
     renderAccounts();
     renderCatalog();
     const job = runningJob() || state.jobs.find(item => item.id === activeJobId);

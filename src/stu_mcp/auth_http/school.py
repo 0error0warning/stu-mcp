@@ -107,7 +107,8 @@ def login_school(vault: Vault, *, services: Sequence[str] | None = None, interac
                             raise
                         saved = None  # A legacy/unreadable session still needs fresh proof.
                     locally_saved = vault.status(source)["status"] == "session_saved" if saved else False
-                if not reauthenticate and locally_saved and saved.get("school_account_fingerprint") == fingerprint:
+                route_ready = source != "jw" or not allow_http_callback or saved and saved.get("jw_http_compat") is True
+                if not reauthenticate and locally_saved and route_ready and saved.get("school_account_fingerprint") == fingerprint:
                     record({"ok": True, "service": source, "status": "session_saved",
                                     "method": "http", "skipped": True, "verified_live": False,
                                     "next_step": "已保留同账号的本地加密会话，尚未在线核验；读取提示失效时可运行 "
