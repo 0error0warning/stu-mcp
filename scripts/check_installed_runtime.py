@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import zipfile
 from pathlib import Path
 
@@ -148,16 +149,31 @@ def run(command: list[str], env: dict, cwd: Path) -> str:
 
 async def handshake(config: dict, env: dict, cwd: Path) -> None:
     params = StdioServerParameters(command=config["command"], args=config["args"], env=env, cwd=str(cwd))
-    with open(os.devnull, "w", encoding="utf-8") as errors:
-        async with stdio_client(params, errlog=errors) as (read, write), ClientSession(
-                read, write, read_timeout_seconds=12) as session:
-            await check_stdio_session(session)
+    started = time.monotonic()
+    # This process owns a credential-free synthetic installation. Keep bounded
+    # startup diagnostics instead of silently discarding the cause of a timeout.
+    with tempfile.TemporaryFile(mode="w+", encoding="utf-8") as errors:
+        try:
+            async with stdio_client(params, errlog=errors) as (read, write), ClientSession(
+                    read, write, read_timeout_seconds=30) as session:
+                await check_stdio_session(session)
+        except Exception as error:
+            errors.seek(0)
+            diagnostic = errors.read(4000)
+            raise RuntimeError(f"Synthetic stdio failed after {time.monotonic() - started:.1f}s; "
+                               f"startup stderr:\n{diagnostic}") from error
 
 
 async def check_stdio_session(session) -> None:
+    # On Windows, a cold SDK import can exceed 12s (confirmed with child
+    # traceback sampling). Startup gets 30s; already-running tools share 12s.
     initialized = await session.initialize()
     assert initialized.server_info.name == "stu-mcp"
     assert initialized.server_info.version == __version__
+    await asyncio.wait_for(check_stdio_tools(session), timeout=12)
+
+
+async def check_stdio_tools(session) -> None:
     installed_tools = (await session.list_tools()).tools
     assert_tool_contract(installed_tools)
     capabilities = (await session.call_tool("get_capabilities", {})).model_dump(by_alias=True)["structuredContent"]
@@ -293,6 +309,7 @@ def main() -> None:
         asyncio.run(asyncio.wait_for(check_checkin(generic, env, root), timeout=90))
         for name, config in exported["configs"].items():
             assert config["command"] == generic["command"]
+            print(f"{name}: checking exported stdio command", flush=True)
             asyncio.run(asyncio.wait_for(handshake(config, env, root), timeout=45))
             print(f"{name}: exported stdio command started and discovered tools", flush=True)
         for name, config in exported["skills"].items():
