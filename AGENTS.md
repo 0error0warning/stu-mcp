@@ -27,7 +27,9 @@ The source baseline is School Hub commit `13f1b216ac35269d9840b6854ccff64c1e25e5
   personal server: an external private master-key file protects per-application encrypted credential mappings.
   Never generate/rotate a key at service startup, accept it through MCP, or store it in either data directory.
 - Never silently fall back to plaintext credential storage.
-- Default authentication to the source-specific HTTP adapters in auth_http and human-only CLI input.
+- Default authentication to the source-specific HTTP adapters in auth_http. Human input may come from
+  the real TTY or the private loopback setup page in the person's own browser; both call the same
+  authentication core. HTTP-first does not mean CLI-only. Never simulate a TTY for a web interaction.
   Playwright is an optional explicit browser compatibility backend, never an automatic fallback or a
   Docker/runtime prerequisite. Preserve tool interfaces, source isolation, positive proof and Vault
   logout/account-generation fences when replacing an adapter. Keep historical acceptance distinct from
@@ -42,6 +44,14 @@ The source baseline is School Hub commit `13f1b216ac35269d9840b6854ccff64c1e25e5
   plaintext stdin, command-line arguments, environment values or MCP parameters. CLI reuses existing proof,
   secure storage and the single check-in worker; it must not create a new monitoring plan. Previously authorized
   continuous plans keep their existing restoration rules and are reported explicitly.
+- The unreleased setup page may privately receive school credentials, display the official QR challenge,
+  and accept the original WeChat callback. Keep this API separate from MCP: strict loopback Host/Origin,
+  per-page capability header, no CORS, no-store, no request-body logs or secret reflection. Do not persist
+  ordinary school passwords, QR challenges or callback inputs. Check cancellation at protocol checkpoints
+  and the final save guard; clear pending input and private challenges on explicit cancellation or setup-server close.
+  Browser pagehide only attempts cancellation; retain task expiry as the fallback if that request is not delivered.
+  Preserve completed sessions and already-authorized worker plans. Open the local page in the person's
+  browser by default; do not return its capability URL through MCP. Remote/headless CLI remains complete.
 - Optional WebVPN auto-login is explicitly enabled by the user in local setup or human terminal. Store its account/password/TOTP seed
   through the approved credential backend; never as plaintext in a file, command-line argument, MCP tool,
   or client configuration. The optional file backend encrypts them with the external master key.
@@ -88,7 +98,7 @@ The source baseline is School Hub commit `13f1b216ac35269d9840b6854ccff64c1e25e5
   startup. Saved-session, historical-read and local-worker facts are not current business availability.
   Navigation-only and unintegrated entries never enroll SOURCES, auth allowlists or network probe
   targets. Keep v0.6.2 release instructions distinct: its published wheel lacks this catalog and the
-  new school-group CLI arguments until a later release explicitly ships them.
+  new school-group CLI arguments and shared HTTP web interaction until a later release explicitly ships them.
 - Network diagnosis keeps each service and its SSO dependency separate. Use only a user-supplied campus/off-campus
   hint, otherwise unknown; private/fake IP and proxy configuration do not prove physical location or traffic path.
   Probe fixed anonymous endpoints directly and optionally compare credential-free loopback HTTP(S)/SOCKS proxies.
@@ -144,7 +154,8 @@ The source baseline is School Hub commit `13f1b216ac35269d9840b6854ccff64c1e25e5
   TLS, human review or the one-send submission guard. Consult docs/authentication.md before changing login routes.
 - JW HTTP ticket callback and authenticated OA HTTP compatibility are separate, explicit local choices,
   both off by default. Only the currently verified fixed school route may receive its own session;
-  passwords and TOTP always stay on HTTPS. Never disable TLS, invent a resource type, or treat a remote
+  school-bound passwords and TOTP always stay on HTTPS; human setup input is restricted to the protected
+  private loopback API. Never disable TLS, invent a resource type, or treat a remote
   MCP connection as evidence of campus network access. Default Docker contains no browser or desktop.
 - Do not modify the original School Hub checkout or production services for this project.
 

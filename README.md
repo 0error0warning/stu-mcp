@@ -38,7 +38,7 @@
 
 选择登录配置时，可先看[配置哪些登录，当前能用哪些功能](docs/campus-services.md#配置哪些登录当前能用哪些功能)：学校统一账号对应已适配的教务、MySTU 和宿舍报修；雨课堂、对分易、WebVPN 及第三方配置各有自己的功能范围，公开内容按条件免登录。同目录另列学校服务的入口和未接入项，不将“学校有这个系统”算成“MCP 已能使用”。
 
-**未发布源码**已将这份对应关系接入设置页、`stu-mcp status` 和 MCP `get_capabilities`。在源码环境运行 `uv run stu-mcp login school`，学校账号只输入一次，各业务分别认证并保存独立会话；可用 `--services` 选择业务，或用 `--reauthenticate` 重新认证本地已保存的会话。教务 HTTP 回调仍需明确选择。已发布 v0.6.2 保留下面的单业务登录方式，尚不包含此统一命令。新实现的[验证范围](docs/verification/2026-10-23-configuration-catalog.md)另列。
+**未发布源码**已将这份对应关系接入设置页、`stu-mcp status` 和 MCP `get_capabilities`。本机可让 agent 打开设置页，在自己的浏览器中配置学校统一账号、雨课堂、对分易或 WebVPN；网页与 CLI 共用 HTTP 认证核心，密码、扫码和回调不经过 MCP。也可运行 `uv run stu-mcp login school`，学校账号只输入一次，各业务分别认证并保存独立会话；`--services` 选择业务，`--reauthenticate` 重新认证。教务 HTTP 回调仍需明确选择。已发布 v0.6.2 尚不包含统一命令及新版网页交互。新实现的[验证范围](docs/verification/2026-10-23-private-setup.md)另列。
 
 也可以记一下本地待办，或者告诉 agent 你的学院、专业和兴趣。它们都不是必填项，本地勾选“完成”也不会替你向学校提交作业。
 
@@ -63,7 +63,7 @@ MCP 接入和技能安装分别处理。随包的[课表导出技能](docs/timet
 
 v0.6.2 支持本机 stdio 与个人服务器私有 Streamable HTTP，共用一套工具。认证默认走 HTTP 和本人终端；雨课堂由本人手机确认官方二维码，对分易沿用原微信回调。默认安装和 Docker 模板不需要桌面或 Chromium，Playwright 仅作为显式浏览器兼容依赖。服务器不必安装 agent 或模型服务，详见[服务器说明](docs/server.md)和[认证流程](docs/authentication.md)。
 
-在运行 MCP 的主机终端执行 `stu-mcp login mystu`、`stu-mcp login yuketang` 或 `stu-mcp login repair`；密码和动态码隐藏输入，不交给 agent。会话及个人缓存加密保存，WebVPN 可另行明确配置按需自动重登。设置页默认提供宿主 CLI 指引；需原浏览器时显式选择 `--browser`。客户端到 MCP 和 MCP 到学校是两段网络，连上服务器不代表服务器能访问校园网。[版本与登录说明](docs/install.md) · [存储与隐私](SECURITY.md)
+v0.6.2 在宿主终端执行 `stu-mcp login mystu`、`stu-mcp login yuketang` 或 `stu-mcp login repair`，设置页提供 CLI 指引。当前未发布源码另支持本人在私密设置页直接输入或授权，无需先敲命令；它使用已有 HTTP 适配器，不启动 Playwright。CLI 仍可完整完成认证。会话及个人缓存加密保存，普通学校密码只用于本次认证；WebVPN 按需自动重登须另行启用。客户端到 MCP 和 MCP 到学校是两段网络，连上服务器不代表服务器能访问校园网。[版本与登录说明](docs/install.md) · [存储与隐私](SECURITY.md)
 
 本版包含对分易后台和轻量本地网页：选课、启停监听、查询签到结果，微信回调可在宿主终端或本地网页完成。MCP 退出后后台继续运行，状态明确区分未启动、未登录、已暂停、监听中和查询异常。支持持续监听；电脑需保持运行和联网。新的课堂自动提交仍待实测。[安装与用法](docs/checkin.md)
 
