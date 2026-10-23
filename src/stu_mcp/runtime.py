@@ -116,9 +116,6 @@ def key_lock(home: Path, name: str = "key"):
     home.mkdir(parents=True, exist_ok=True, mode=0o700)
     with path.open("a+b") as stream:
         os.chmod(path, 0o600)
-        if not path.stat().st_size:
-            stream.write(b"0")
-            stream.flush()
         deadline = time.monotonic() + 5
         while True:
             try:
@@ -135,6 +132,11 @@ def key_lock(home: Path, name: str = "key"):
                     raise AppError("local_state_busy", "本地安全状态正在变更，请稍后重试。") from None
                 time.sleep(0.05)
         try:
+            # Windows permits locking past EOF. Initialize only while holding
+            # byte zero, so another holder cannot reject a pre-lock flush.
+            if not os.fstat(stream.fileno()).st_size:
+                stream.write(b"0")
+                stream.flush()
             yield
         finally:
             stream.seek(0)
