@@ -48,6 +48,8 @@ def test_partial_bootstrap_keeps_guarded_encrypted_api_session(app, session, mon
     assert result["ok"] is True
     assert result["status"] == "session_saved"
     assert result["proof"] == proof
-    assert app.vault.load("mystu") == session
+    saved = app.vault.load("mystu")
+    assert saved.pop("school_account_fingerprint")
+    assert saved == session
     assert "ELC（authentication_network_error）" in result["next_step"]
     assert b"SYNTHETIC_SESSION_NEVER_REAL" not in app.runtime.session_file("mystu").read_bytes()

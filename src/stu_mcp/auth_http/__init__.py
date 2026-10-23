@@ -9,6 +9,7 @@ from ..runtime import AppError, key_lock
 from ..store import Store
 from ..terminal import require_terminal, secret_input
 from ..vault import Vault
+from .school import login_school
 from .types import Candidate, Credentials
 
 
@@ -60,7 +61,8 @@ def _next_step(source: str, proof: dict) -> str:
 def login_http(vault: Vault, service: str, *, credentials: Credentials | None = None,
                interaction=None, on_phase: Callable[[str], None] | None = None,
                expected_revision: bytes | None = None, allow_http_callback: bool = False,
-               transport=None) -> dict:
+               transport=None, check_group: Callable[[], None] | None = None,
+               commit_receipt: dict | None = None) -> dict:
     source = "oa" if service in {"oa", "webvpn"} else service
     session = "webvpn" if source == "oa" else source
     if source not in {"jw", "mystu", "repair", "yuketang", "oa"}:
@@ -84,6 +86,8 @@ def login_http(vault: Vault, service: str, *, credentials: Credentials | None = 
             config.check(snapshot)
 
     def check():
+        if check_group is not None:
+            check_group()
         with key_lock(vault.runtime.home, session):
             check_locked()
 
@@ -118,6 +122,10 @@ def login_http(vault: Vault, service: str, *, credentials: Credentials | None = 
         legacy = bool(allow_http_callback or vault.runtime.preferences()["jw_http_compat"])
         candidate = acquire_state(source, credentials.username, credentials.password, check=check,
                                   transport=transport, legacy_jw=legacy)
+    account_fingerprint = None
+    if source in {"jw", "mystu", "repair"}:
+        from .school import school_account_fingerprint
+        account_fingerprint = school_account_fingerprint(credentials.username)
     credentials = None
     check()
     if (not isinstance(candidate, Candidate) or not isinstance(candidate.proof, dict)
@@ -125,17 +133,23 @@ def login_http(vault: Vault, service: str, *, credentials: Credentials | None = 
                     or candidate.proof.get("authentication_verified") is True)
             or not isinstance(candidate.state, dict) or not isinstance(candidate.state.get("cookies"), list)):
         raise AppError("authentication_unconfirmed", "来源没有提供明确认证证明；本次会话未保存。", source)
-    state = candidate.state if source == "repair" else scoped_state(candidate.state, source)
+    state = dict(candidate.state) if source == "repair" else scoped_state(candidate.state, source)
+    if account_fingerprint is not None:
+        # Account association is encrypted metadata, never a cookie or result.
+        state["school_account_fingerprint"] = account_fingerprint
 
     def forget_previous():
         Store(vault.runtime, vault).forget(source)
         if config is not None and not used_configured_credentials:
             config.remove_locked()
 
-    vault.save(session, state, on_relogin=forget_previous, guard=check_locked)
+    saved_fingerprint = vault.save(session, state, on_relogin=forget_previous, guard=check_locked)
+    if commit_receipt is not None:
+        # Internal receipt for group fencing; never included in CLI/MCP results.
+        commit_receipt["fingerprint"] = saved_fingerprint
     return {"ok": True, "service": session, "status": "session_saved", "method": "http",
             "verified_live": True, "proof": candidate.proof,
             "next_step": _next_step(source, candidate.proof)}
 
 
-__all__ = ["Candidate", "Credentials", "TerminalInteraction", "login_http"]
+__all__ = ["Candidate", "Credentials", "TerminalInteraction", "login_http", "login_school"]
