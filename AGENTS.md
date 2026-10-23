@@ -44,7 +44,7 @@ The source baseline is School Hub commit `13f1b216ac35269d9840b6854ccff64c1e25e5
   plaintext stdin, command-line arguments, environment values or MCP parameters. CLI reuses existing proof,
   secure storage and the single check-in worker; it must not create a new monitoring plan. Previously authorized
   continuous plans keep their existing restoration rules and are reported explicitly.
-- The unreleased setup page may privately receive school credentials, display the official QR challenge,
+- The v0.7.0 setup page may privately receive school credentials, display the official QR challenge,
   and accept the original WeChat callback. Keep this API separate from MCP: strict loopback Host/Origin,
   per-page capability header, no CORS, no-store, no request-body logs or secret reflection. Do not persist
   ordinary school passwords, QR challenges or callback inputs. Check cancellation at protocol checkpoints
@@ -67,7 +67,7 @@ The source baseline is School Hub commit `13f1b216ac35269d9840b6854ccff64c1e25e5
 - Renew WebVPN on explicit login or during a protected OA read, with bounded attempts and a cooldown. Pause on rejected credentials
   or human challenges. Never automate CAPTCHA or token binding. Logout removes saved auto-login credentials.
 - Missing credentials or expired sessions affect only the dependent source.
-- Current unreleased source provides `login school` for one human credential entry across the selected
+- v0.7.0 provides `login school` for one human credential entry across the selected
   `jw`, `mystu` and `repair` adapters. `--services` limits the selection; `--reauthenticate` refreshes
   selected sessions. Keep each source's independent CAS proof, cookie jars, encryption and logout
   generation fences. Never persist the ordinary shared password or borrow another source's session.
@@ -108,12 +108,12 @@ The source baseline is School Hub commit `13f1b216ac35269d9840b6854ccff64c1e25e5
   already configures every service. Classify by business/path, not host alone; course access must not
   imply booking access, and public library search must not inherit personal-reader login requirements.
 - `capability_catalog` is the shared pure metadata/status projection for App.status, HostRuntime and
-  setup guidance in current unreleased source. Preserve old fields and all 47 tool interfaces. It must
+  setup guidance in v0.7.0. Preserve old fields and all 47 tool interfaces. It must
   use already-read local status only: no authentication, network probe, credential values or worker
   startup. Saved-session, historical-read and local-worker facts are not current business availability.
   Navigation-only and unintegrated entries never enroll SOURCES, auth allowlists or network probe
-  targets. Keep v0.6.2 release instructions distinct: its published wheel lacks this catalog and the
-  new school-group CLI arguments and shared HTTP web interaction until a later release explicitly ships them.
+  targets. v0.7.0 ships this catalog, the school-group CLI arguments and shared HTTP web interaction.
+  Keep older release artifacts and their historical verification records unchanged.
 - Network diagnosis keeps each service and its SSO dependency separate. Use only a user-supplied campus/off-campus
   hint, otherwise unknown; private/fake IP and proxy configuration do not prove physical location or traffic path.
   Probe fixed anonymous endpoints directly and optionally compare credential-free loopback HTTP(S)/SOCKS proxies.

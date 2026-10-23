@@ -1,8 +1,8 @@
 # 个人服务器与远程接入
 
-本页对应 v0.6.2 学生预览版。桌面用户仍直接使用 stdio；服务器运行同一个包、同一套工具，通过标准 Streamable HTTP 接入。服务器无需安装 agent，也不调用模型。Hermes 私有 `school_hub` 不受本次改造影响。
+本页对应 v0.7.0 学生预览版。桌面用户仍直接使用 stdio；服务器运行同一个包、同一套工具，通过标准 Streamable HTTP 接入。服务器无需安装 agent，也不调用模型。Hermes 私有 `school_hub` 不受本次改造影响。
 
-当前源码新增的统一账号 `login school`、配置分组能力目录与私密网页 HTTP 交互尚未发布；v0.6.2 wheel 不含这些增量。本文保留发行包的启动与单业务命令，源码用法另行标明，不需要改远程接入架构。
+统一账号 `login school`、配置分组能力目录和私密网页配置使用同一 HTTP 核心；完整 CLI 始终可用于无桌面服务器，不需要改远程接入架构。
 
 ## 选择运行方式
 
@@ -16,7 +16,7 @@
 
 ## 最小启动
 
-先按[安装说明](install.md)安装 v0.6.2；下列命令在**宿主终端**执行，不把密钥内容交给 agent。以 Linux 单用户服务为例，先选服务专用账号，再始终用这个账号初始化和运行：
+先按[安装说明](install.md)安装 v0.7.0；下列命令在**宿主终端**执行，不把密钥内容交给 agent。以 Linux 单用户服务为例，先选服务专用账号，再始终用这个账号初始化和运行：
 
 ```sh
 export STU_MCP_HOME="$HOME/.local/share/stu-mcp"
@@ -70,15 +70,15 @@ stu-mcp login duifene
 stu-mcp login jw --allow-http-callback
 ```
 
-使用当前未发布源码时，也可在仓库根目录一次输入学校账号，为所选业务分别建立会话：
+也可一次输入学校账号，为所选业务分别建立会话：
 
 ```sh
-uv run stu-mcp login school --services mystu repair
-uv run stu-mcp login school --services jw --allow-http-callback
-uv run stu-mcp login school --services mystu --reauthenticate
+stu-mcp login school --services mystu repair
+stu-mcp login school --services jw --allow-http-callback
+stu-mcp login school --services mystu --reauthenticate
 ```
 
-省略 `--services` 默认选择教务、MySTU、宿舍报修；不保存普通密码，各业务仍独立认证和加密存储。已保存的同账号会话仅按本地状态跳过，不能证明学校当前接受；`--reauthenticate` 强制重登所选业务。教务 HTTP 许可默认关闭，本次未选择且没有既有明确兼容设置时，该业务未完成而其他业务可继续。雨课堂、对分易、WebVPN 仍独立登录；`r` 综合报修等未接入服务不会因此启用。v0.6.2 用户继续用上面的单业务命令。
+省略 `--services` 默认选择教务、MySTU、宿舍报修；不保存普通密码，各业务仍独立认证和加密存储。已保存的同账号会话仅按本地状态跳过，不能证明学校当前接受；`--reauthenticate` 强制重登所选业务。教务 HTTP 许可默认关闭，本次未选择且没有既有明确兼容设置时，该业务未完成而其他业务可继续。雨课堂、对分易、WebVPN 仍独立登录；`r` 综合报修等未接入服务不会因此启用。原单业务命令继续兼容。
 
 账号、密码、动态码和回调均不放在参数、环境变量、stdin 管道或聊天中。雨课堂在终端显示官方二维码，由本人手机确认；对分易提供原微信授权地址，由本人完成授权并隐藏粘贴返回链接，复用原 worker，不改成官网 QR/SignalR 方案。
 
@@ -90,9 +90,9 @@ WebVPN 长期自动重登可选，另行运行 `stu-mcp webvpn-auto configure`�
 
 报修 `login repair` 建立独立加密会话，MCP 默认通过 HTTP 填写并展示实际完整表单，只有本轮用户明确确认后提交一次。本人终端也可使用 `repair drill`；具体字段、预览及回执规则统一见[报修流程](repair.md)。
 
-v0.6.2 设置页的登录按钮仍返回原宿主 CLI 指引。当前未发布源码另支持在本人浏览器中的私密页面直接输入或授权，网页与 CLI 共用 HTTP 核心，不让后台线程读取 TTY，也不模拟终端。需要旧 Playwright 兼容时，安装 `browser` extra 并明确选择 `login 来源 --browser`；该方式才需要服务端显示环境。项目不启动显示服务，HTTP 不自动回退浏览器。完整来源及存储契约见[认证说明](authentication.md)。
+本人也可在私密设置页直接输入或授权，网页与 CLI 共用 HTTP 核心，不让后台线程读取 TTY，也不模拟终端。需要旧 Playwright 兼容时，安装 `browser` extra 并明确选择 `login 来源 --browser`；该方式才需要服务端显示环境。项目不启动显示服务，HTTP 不自动回退浏览器。完整来源及存储契约见[认证说明](authentication.md)。
 
-未发布源码的设置页按学校统一账号、雨课堂、对分易和 WebVPN 四类展示功能与汇总配置状态；学校账号一次连接全部已接入业务，已验证的教务回调由内部处理，不再显示业务选择或技术许可框。WebVPN 主表单可接收已有令牌密钥，保存后生成动态码验证登录；CLI 原有参数和命令保持兼容。普通学校密码只用于本次内存，认证输入和二维码不进入远程 MCP。`get_capabilities`、CLI `status` 与页面共用 `capability_catalog`，旧字段和 47 项工具保持兼容。本地配置、历史刷新与后台状态不是在线业务 proof；查看目录不登录或启动 worker。
+设置页按学校统一账号、雨课堂、对分易和 WebVPN 四类展示功能与汇总配置状态；学校账号一次连接全部已接入业务，已验证的教务回调由内部处理，不再显示业务选择或技术许可框。WebVPN 主表单可接收已有令牌密钥，保存后生成动态码验证登录；CLI 原有参数和命令保持兼容。普通学校密码只用于本次内存，认证输入和二维码不进入远程 MCP。`get_capabilities`、CLI `status` 与页面共用 `capability_catalog`，旧字段和 47 项工具保持兼容。本地配置、历史刷新与后台状态不是在线业务 proof；查看目录不登录或启动 worker。
 
 本机 stdio 的 `open_setup` 默认自动打开本人的系统浏览器，私密地址不经 MCP 返回。无桌面服务器继续完整使用 CLI；本人需要私密链接时可用 `setup --no-browser`，网络转发另行选择，不在本次改造范围。设置页保持回环绑定及精确 Host/Origin 校验，页面令牌不进入聊天或 MCP 配置。取消只清理未完成的认证交互，不撤销已完成登录或停止既有已授权监听计划。
 

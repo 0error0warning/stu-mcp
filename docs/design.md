@@ -2,7 +2,7 @@
 
 ## 定位
 
-STU MCP 给用户自己的 agent 提供本机 stdio 或个人服务器私有 HTTP 接入。本机安装和接入由 agent 按安装 prompt 执行 `stu-mcp connect`。当前未发布源码让本人选择完整 CLI 或自己的浏览器完成配置；两者直接调用同一 HTTP 认证核心。v0.6.2 发行包仍是原 CLI 指引页，区别及验证见[认证说明](authentication.md)和[本轮记录](verification/2026-10-23-private-setup.md)。
+STU MCP 给用户自己的 agent 提供本机 stdio 或个人服务器私有 HTTP 接入。本机安装和接入由 agent 按安装 prompt 执行 `stu-mcp connect`。v0.7.0 让本人选择完整 CLI 或自己的浏览器完成配置；两者直接调用同一 HTTP 认证核心。行为与验证见[认证说明](authentication.md)和[本轮记录](verification/2026-10-23-private-setup.md)。
 
 其余都不放在页面上：
 

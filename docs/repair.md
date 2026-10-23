@@ -6,7 +6,7 @@ v0.6.0 默认以直连 HTTP 适配桑浦山学生社区 `repair.stu.edu.cn`：�
 
 ## 登录与信息
 
-v0.6.2 由本人在 MCP 宿主终端运行 `stu-mcp login repair`，账号密码隐藏输入。当前未发布源码也可选择 `open_setup` 在本人浏览器直接登录，或用 `login school` 配置学校账号组；均共用相同 HTTP 核心，不需要服务端浏览器，详见[配置与认证](authentication.md)。程序新建来源独立的 CAS/业务 Cookie jar，验证本人未筛选列表及明确空态/表格契约后，将 `repair` 会话加密保存到 Vault。它不读取用户浏览器资料，不借用其他来源会话。
+本人可选择 `open_setup` 在自己的浏览器配置学校统一账号，或在 MCP 宿主终端运行 `stu-mcp login school --allow-http-callback`；只需报修时仍可用 `stu-mcp login repair`。CLI 账号密码隐藏输入。两种入口共用 HTTP 核心，不需要服务端浏览器，详见[配置与认证](authentication.md)。程序新建来源独立的 CAS/业务 Cookie jar，验证本人未筛选列表及明确空态/表格契约后，将 `repair` 会话加密保存到 Vault。它不读取用户浏览器资料，不借用其他来源会话。
 
 学校站点需要按页面申请 CAS 票据。报修会话内部加密保留独立 SSO jar，只对本次固定列表、表单或已核对详情的 GET 续票；中央 Cookie 不发给业务域，也不导入其他来源。学校 SSO 已失效时由本人重新认证，不会在后台重复提交密码。正式 POST 始终单发、不跟随认证跳转。
 

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "stu-mcp"
-version = "0.6.2"
+version = "0.7.0"
 description = "面向 AI agents 的汕大校园工具，默认 HTTP/CLI，支持本地与个人服务器"
 readme = "README.md"
 requires-python = ">=3.11"

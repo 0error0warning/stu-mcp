@@ -38,7 +38,7 @@
 
 选择登录配置时，可先看[配置哪些登录，当前能用哪些功能](docs/campus-services.md#配置哪些登录当前能用哪些功能)：学校统一账号对应已适配的教务、MySTU 和宿舍报修；雨课堂、对分易、WebVPN 及第三方配置各有自己的功能范围，公开内容按条件免登录。同目录另列学校服务的入口和未接入项，不将“学校有这个系统”算成“MCP 已能使用”。
 
-**未发布源码**已将这份对应关系接入设置页、`stu-mcp status` 和 MCP `get_capabilities`。本机可让 agent 打开设置页，在自己的浏览器中配置学校统一账号、雨课堂、对分易或 WebVPN；学校账号输入一次，连接全部已接入业务。页面展示配置结果与对应功能，仅未完成项目显示原因；WebVPN 可直接填写已有令牌密钥，让程序生成动态码并自动登录。网页与 CLI 共用 HTTP 核心，凭据不经过 MCP。喜欢终端可用 `uv run stu-mcp login school`，原有参数保持兼容，详见[认证说明](docs/authentication.md)。已发布 v0.6.2 尚不包含统一命令及新版网页交互。[验证范围](docs/verification/2026-10-23-private-setup.md)另列。
+设置页、`stu-mcp status` 和 MCP `get_capabilities` 使用同一份功能目录，告诉你配置后能做什么、哪些服务还没接入。学校统一账号输入一次，分别连接已接入的教务、MySTU 和宿舍报修；各业务仍独立保存会话，某项未完成会单独说明。
 
 也可以记一下本地待办，或者告诉 agent 你的学院、专业和兴趣。它们都不是必填项，本地勾选“完成”也不会替你向学校提交作业。
 
@@ -53,7 +53,7 @@
 先装好 [uv](https://docs.astral.sh/uv/getting-started/installation/)，然后运行。这里以 Codex 为例：
 
 ```sh
-uv tool install --python 3.12 https://github.com/0error0warning/stu-mcp/releases/download/v0.6.2/stu_mcp-0.6.2-py3-none-any.whl
+uv tool install --python 3.12 https://github.com/0error0warning/stu-mcp/releases/download/v0.7.0/stu_mcp-0.7.0-py3-none-any.whl
 stu-mcp connect codex --apply
 ```
 
@@ -61,15 +61,13 @@ stu-mcp connect codex --apply
 
 MCP 接入和技能安装分别处理。随包的[课表导出技能](docs/timetable.md)组织校历核对和文件转换，完整学期课表仍需另行取得和核实。技能 ZIP 是可选资源包，生成后仍需按客户端支持的方式安装，不会自动让当前 agent 加载技能。
 
-v0.6.2 支持本机 stdio 与个人服务器私有 Streamable HTTP，共用一套工具。认证默认走 HTTP 和本人终端；雨课堂由本人手机确认官方二维码，对分易沿用原微信回调。默认安装和 Docker 模板不需要桌面或 Chromium，Playwright 仅作为显式浏览器兼容依赖。服务器不必安装 agent 或模型服务，详见[服务器说明](docs/server.md)和[认证流程](docs/authentication.md)。
+需要登录时，让 agent 打开设置页，或自己运行 `stu-mcp setup`。在自己的浏览器里配置学校统一账号、雨课堂、对分易或 WebVPN，认证信息不经过 agent。WebVPN 可填写已有令牌密钥，由程序生成动态码并自动登录；不配置密钥也能手动输入当前动态码。喜欢终端可用 `stu-mcp login school` 等命令，完整用法见[认证说明](docs/authentication.md)。
 
-v0.6.2 在宿主终端执行 `stu-mcp login mystu`、`stu-mcp login yuketang` 或 `stu-mcp login repair`，设置页提供 CLI 指引。当前未发布源码另支持本人在私密设置页直接输入或授权，无需先敲命令；它使用已有 HTTP 适配器，不启动 Playwright。CLI 仍可完整完成认证。会话及个人缓存加密保存，普通学校密码只用于本次认证；WebVPN 按需自动重登须另行启用。客户端到 MCP 和 MCP 到学校是两段网络，连上服务器不代表服务器能访问校园网。[版本与登录说明](docs/install.md) · [存储与隐私](SECURITY.md)
+本机 stdio 与个人服务器私有 Streamable HTTP 共用一套工具。CLI 与设置页共用 HTTP 认证核心，默认安装和 Docker 模板不需要桌面或 Chromium；无桌面服务器可以完整使用 CLI。会话及个人缓存加密保存，普通学校密码只用于本次认证。客户端到 MCP 和 MCP 到学校是两段网络，连上服务器不代表服务器能访问校园网。[服务器说明](docs/server.md) · [存储与隐私](SECURITY.md)
 
 本版包含对分易后台和轻量本地网页：选课、启停监听、查询签到结果，微信回调可在宿主终端或本地网页完成。MCP 退出后后台继续运行，状态明确区分未启动、未登录、已暂停、监听中和查询异常。支持持续监听；电脑需保持运行和联网。新的课堂自动提交仍待实测。[安装与用法](docs/checkin.md)
 
 宿舍报修使用独立 HTTP 会话填表，完整展示实际表单，等你明确确认后只提交一次。随后核对新增单据及详情，返回单号、处理状态和核对时间；结果未知时只读查单。草稿留在进程内存，登录会话独立加密保存。当前适配桑浦山学生社区；新版真实登录和填表预览已核验，正式提交仍由合成与回环测试覆盖，没有为验收额外建单。校园网报修是另一套入口。[使用与验证范围](docs/repair.md)
-
-教务当前可用 `stu-mcp login jw --allow-http-callback` 明确允许本次官方票据回调，密码始终发至 HTTPS SSO。OA 的 HTTP 8118 兼容是另一项默认关闭的本地选择，不能默默开启或借用教务许可；详见[认证说明](docs/authentication.md)。从 0.4.1 之前升级需重新登录并刷新教务。
 
 喜欢用终端的话，也可以直接查：
 
@@ -81,7 +79,7 @@ stu-mcp huyou search 选课
 
 ## 还在慢慢补
 
-当前版本为 **[v0.6.2 学生预览版](https://github.com/0error0warning/stu-mcp/releases/tag/v0.6.2)**。本版修复 GitHub 匿名 API 限流时无法检查更新的问题，已有工具接口保留，继续以 GitHub prerelease 发布。[发行说明](docs/releases/v0.6.2.md) · [最近更新](CHANGELOG.md)
+当前版本为 **[v0.7.0 学生预览版](https://github.com/0error0warning/stu-mcp/releases/tag/v0.7.0)**。本版整理功能与登录入口，加入一次配置学校账号的命令和可直接配置账号的设置页，47 项 MCP 工具接口保持兼容，继续以 GitHub prerelease 发布。[发行说明](docs/releases/v0.7.0.md) · [最近更新](CHANGELOG.md)
 
 正式 HTTP 适配器已实测教务、MySTU 的身份与课程、ELC/Campus 的部分业务、雨课堂课程活动，以及报修登录和完整预览。WebVPN 的密码、动态口令和资源目录通过；受保护 OA 正文及自然过期续登尚未通过本轮验收。发行 CI 包含跨平台测试和默认镜像离线检查，容器内学校业务、跨机接入、更多账号和真实新报修提交仍分别待验，详见[验证记录](docs/verification.md)。
 
