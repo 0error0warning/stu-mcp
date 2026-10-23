@@ -10,6 +10,7 @@ v0.6.0 默认 HTTP CLI 的实现边界见[认证说明](authentication.md)。下
 
 | 范围 | 归档 |
 | --- | --- |
+| 2026-10-23 配置引导与统一账号组合登录（未发布） | [能力目录、独立会话、兼容与隔离安装验证](verification/2026-10-23-configuration-catalog.md) |
 | 2026-10-22 OA 可读范围与访问条件 | [列表、正文、附件能力及匿名实读](verification/2026-10-22-oa-entry-boundaries.md) |
 | 2026-10-22 校园入口与功能分类 | [公开导航、官方补充、认证关系与匿名探测清单](verification/2026-10-22-campus-entries.md) |
 | v0.6.2 匿名限流回退 | [真实限流、官方订阅与独立安装回读](verification/2026-10-22-v0.6.2.md) |

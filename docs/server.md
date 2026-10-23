@@ -2,6 +2,8 @@
 
 本页对应 v0.6.2 学生预览版。桌面用户仍直接使用 stdio；服务器运行同一个包、同一套工具，通过标准 Streamable HTTP 接入。服务器无需安装 agent，也不调用模型。Hermes 私有 `school_hub` 不受本次改造影响。
 
+当前源码新增的统一账号 `login school`、配置分组能力目录与新版设置页尚未发布；v0.6.2 wheel 不含这些增量。本文保留发行包的启动与单业务命令，源码用法另行标明，不需要改远程接入架构。
+
 ## 选择运行方式
 
 | 使用方式 | 运行位置 | 接入 |
@@ -68,6 +70,16 @@ stu-mcp login duifene
 stu-mcp login jw --allow-http-callback
 ```
 
+使用当前未发布源码时，也可在仓库根目录一次输入学校账号，为所选业务分别建立会话：
+
+```sh
+uv run stu-mcp login school --services mystu repair
+uv run stu-mcp login school --services jw --allow-http-callback
+uv run stu-mcp login school --services mystu --reauthenticate
+```
+
+省略 `--services` 默认选择教务、MySTU、宿舍报修；不保存普通密码，各业务仍独立认证和加密存储。已保存的同账号会话仅按本地状态跳过，不能证明学校当前接受；`--reauthenticate` 强制重登所选业务。教务 HTTP 许可默认关闭，本次未选择且没有既有明确兼容设置时，该业务未完成而其他业务可继续。雨课堂、对分易、WebVPN 仍独立登录；`r` 综合报修等未接入服务不会因此启用。v0.6.2 用户继续用上面的单业务命令。
+
 账号、密码、动态码和回调均不放在参数、环境变量、stdin 管道或聊天中。雨课堂在终端显示官方二维码，由本人手机确认；对分易提供原微信授权地址，由本人完成授权并隐藏粘贴返回链接，复用原 worker，不改成官网 QR/SignalR 方案。
 
 教务 `--allow-http-callback` 仅允许本次已知官方票据回调，不改变设置。需要持久兼容时，用 `stu-mcp transport --jw-http on`。OA 的 `stu-mcp transport --oa-http on` 是另一项独立选择，默认关闭；只允许已核验目录指定的官方 HTTP 8118 路由。HTTP 可能暴露该来源会话及内容，不能由 agent 自动开启。密码和 TOTP 始终只发 HTTPS 认证源。
@@ -79,6 +91,8 @@ WebVPN 长期自动重登可选，另行运行 `stu-mcp webvpn-auto configure`�
 报修 `login repair` 建立独立加密会话，MCP 默认通过 HTTP 填写并展示实际完整表单，只有本轮用户明确确认后提交一次。本人终端也可使用 `repair drill`；具体字段、预览及回执规则统一见[报修流程](repair.md)。
 
 默认设置页的登录按钮只返回宿主 CLI 指引，不让后台线程读取 TTY。需要旧浏览器兼容时，安装 `browser` extra 并明确选择 `login 来源 --browser`；该方式才受显示环境和 `STU_MCP_INTERACTION` 检查。项目不启动显示服务，HTTP 不自动回退浏览器。完整来源及存储契约见[认证说明](authentication.md)。
+
+未发布源码的设置页按配置组展示可用功能、独立业务会话和未接入学校服务；学校组只给 `login school` 的宿主终端指引，不在网页或远程 MCP 收取学校账号密码。MCP `get_capabilities` 与 CLI `status` 共用新增 `capability_catalog`，旧字段和 47 项工具保持兼容。目录中的已保存会话、历史刷新与后台状态不是在线业务 proof，也不会因查看目录而发起认证或启动 worker。
 
 [默认容器](server-container.md)没有浏览器或桌面。若本人需要签到网页，可运行 `stu-checkin --port 8767 --no-browser` 并独立私有转发其回环端口；原回调 CLI 不需要此步骤。
 

@@ -2,6 +2,8 @@
 
 本文描述当前 v0.6.2 学生预览版沿用的认证：默认认证为 **HTTP + 本人终端**，不启动服务端浏览器，不需要桌面或 Chromium。旧 v0.5.0 wheel 仍采用原登录方式，升级后须让宿主进程加载新版；stdio 重载 MCP，私有 HTTP 重启宿主服务。Hermes 私有 `school_hub` 与本仓库分开维护。
 
+统一账号 `login school`、`--services`、`--reauthenticate` 及配置分组能力目录是当前源码的未发布增量，现有 v0.6.2 wheel 不包含它们。下面保留发行包已有的单业务命令，并单列源码编排；既有真人验证记录不自动变成新编排的线上验收。
+
 “HTTP”包括学校表单、HTML 解析、二维码等待和回调交换，不限于 JSON API。雨课堂仍需本人手机确认，对分易仍需本人完成原微信授权；无浏览器部署不免除人工授权或 MFA。源码实现、合成测试、真人认证、业务读取和目标部署是不同的验收层级。
 
 ## 入口与职责
@@ -11,9 +13,11 @@
 | 本人终端 | `terminal` 要求 stdin/stderr 均为 TTY，隐藏接收账号、密码、动态码或回调；不接受认证参数、环境变量、管道或 MCP 转发 |
 | HTTP 认证 | `auth_http/transport` 负责直连、TLS、主机范围、请求/响应/时间预算及私密日志；`cas/yuketang/webvpn` 各自拥有平台协议与正向 proof |
 | 会话编排 | `auth_http.login_http` 核对来源版本、调用适配器、收窄状态，最后经 `Vault` 加密保存并清理该来源旧缓存 |
+| 源码统一账号引导 | `auth_http.school.login_school` 一次接收本次凭据，仅对所选 `jw/mystu/repair` 调用独立认证；核对账号关联、各业务退出代次和本次保存回执，不共享 Cookie 或持久保存普通密码 |
 | 浏览器兼容 | `auth.interactive_login` 由 `login --browser` 或设置页明确选择；Playwright 是可选依赖，不自动回退，不是默认部署前提 |
 | 设置页 | 默认登录操作返回宿主 CLI 指引，不在后台线程索取终端密码；仍提供传输配置、可选 WebVPN 自动重登和显式浏览器兼容 |
 | MCP | 所有工具共用相同服务，不接收认证凭据，不因 stdio/HTTP 改变来源范围 |
+| 源码配置与能力视图 | `capability_catalog` 把静态服务映射和已读取的本地状态投影到 CLI、MCP、设置页；不据目录内容授予网络、认证或业务权限 |
 | 对分易 | CLI、网页和 MCP 复用唯一 `stu_checkin` worker，不各建一套 Controller、会话或监听状态 |
 
 Streamable HTTP 的 Bearer 授权客户端访问 MCP，学校账号授权 MCP 宿主访问学校，两者不互换。远程连接不会给宿主自动增加校园 DNS 或网络路径，见[服务器部署](server.md)。
@@ -22,7 +26,7 @@ Streamable HTTP 的 Bearer 授权客户端访问 MCP，学校账号授权 MCP �
 
 以下描述实现能力，不代表所有账号和业务已实测通过。
 
-用户选择配置时先看[登录配置→当前功能、学校服务→接入缺口总表](campus-services.md)。本页仅解释背后的认证、会话和兼容条件；同属学校账号组的业务当前仍分别登录，未接入的服务不会因账号配置而自动出现。
+用户选择配置时先看[登录配置→当前功能、学校服务→接入缺口总表](campus-services.md)。本页仅解释背后的认证、会话和兼容条件；v0.6.2 使用单业务命令，未发布源码也可一次输入后分别建立业务会话，未接入的服务不会因账号配置而自动出现。
 
 业务来源与登录名不是一一对应：受保护 `oa` 使用 `login webvpn`；`jw`、`mystu`、`yuketang`、`repair`、`duifene` 使用各自同名登录命令。MySTU 下的 ELC / Campus 使用学校账号，分别核实业务会话，不要求另外准备两套账号。公开 OA 不必先登录 WebVPN。
 
@@ -56,6 +60,28 @@ stu-mcp login jw --allow-http-callback
 ```
 
 普通来源的本次认证输入只在内存使用，会话加密保存。雨课堂手机授权不赋予读取微信消息的能力。对分易未获得可信后台回执时只读检查，不重发，也不拿旧登录态冒充本轮成功。
+
+## 源码中的统一账号引导（尚未发布）
+
+在仓库根目录运行当前源码，或安装由明确 revision 构建的未发布 wheel 后使用 `stu-mcp login school`。只输入一次普通学校账号密码，默认分别处理 `jw`、`mystu`、`repair`；不是持久保存一个密码供所有学校系统自动重登。雨课堂、对分易、WebVPN 与第三方外卖仍各自配置。
+
+```sh
+uv run stu-mcp login school --services mystu repair
+uv run stu-mcp login school --services jw --allow-http-callback
+uv run stu-mcp login school --services mystu --reauthenticate
+```
+
+`--services` 接受不重复的 `jw mystu repair` 子集，未选业务保持原状；省略则选择全部三个。`--reauthenticate` 仅用于 `login school`，强制所选业务重新认证，适合服务器已让本地会话失效的情况。原有 `login mystu` 等单业务命令和退出入口继续保留；学校组不接受 `--browser`，需要兼容时按单业务明确选择。
+
+每个业务以新的独立 CAS 与业务 Cookie jar 取 proof，成功后分别写入加密会话。普通密码仅在本次内存中使用。加密会话另存本地账号关联，只有账号关联一致、会话可解密且本地检查未过期时才跳过，结果带 `skipped=true, verified_live=false`；这不是当前网络或学校身份在线验证。旧会话没有关联或属于不同账号时重新认证，不从其他来源导入 Cookie；该业务新 proof 通过并进入受保护保存阶段后，才替换会话并清理其旧缓存。认证未通过时保留的旧会话不证明属于本次账号。
+
+教务 HTTP 票据回调许可仍默认关闭：本次 `--allow-http-callback` 或本人先前明确开启的 `jw_http_compat` 才允许该路径。不具备许可时教务返回未完成，其他业务可继续；不会为整个学校组或 OA 开启 HTTP。普通网络、页面契约或业务 proof 失败按业务报告；密码被拒绝、人工挑战、认证发送结果未知、退出／账号代次改变等会停止后续共享密码认证，不自动重试密码。之前完成的独立业务结果保留。
+
+编排开始记录所选各业务的退出代次与密文指纹，协议检查点及逐项处理前核对。保存仍由该业务锁和原来的 `login_http` guard 保护；保存后必须确认文件密文指纹匹配本次 `Vault.save` 回执，才推进本次基线，不能把并发退出后同账号的新登录当成本次保存。最后再核对整组状态，失败明确返回未完成，而非声称全部成功。`school_login_complete` 也可能包含仅本地保留的会话，须逐项看 `verified_live`。
+
+能力目录的学校组只关联上述三个已适配业务，显示会话保存、未知或失效状态；`r` 综合报修、一网通办、水电、流量等仍按具体业务标记导航或未接入。同一账号、同一主机或同属学校 SSO 都不能授予新功能。CLI `status` 与 MCP `get_capabilities` 的新 `capability_catalog` 保留旧字段，设置页共用该目录；目录本身不读业务、不网络探测、不启动 worker。
+
+## 传输与浏览器兼容选择
 
 教务 `--allow-http-callback` 只授权本次已知 HTTP 票据回调，不更改持久设置。本人可分别开启持续兼容：
 

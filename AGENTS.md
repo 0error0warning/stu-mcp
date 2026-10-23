@@ -48,6 +48,17 @@ The source baseline is School Hub commit `13f1b216ac35269d9840b6854ccff64c1e25e5
 - Renew WebVPN only during a protected OA read, with bounded attempts and a cooldown. Pause on rejected credentials
   or human challenges. Never automate CAPTCHA or token binding. Logout removes saved auto-login credentials.
 - Missing credentials or expired sessions affect only the dependent source.
+- Current unreleased source provides `login school` for one human credential entry across the selected
+  `jw`, `mystu` and `repair` adapters. `--services` limits the selection; `--reauthenticate` refreshes
+  selected sessions. Keep each source's independent CAS proof, cookie jars, encryption and logout
+  generation fences. Never persist the ordinary shared password or borrow another source's session.
+  Skip only locally readable, unexpired sessions with the matching encrypted account association;
+  report skipped sessions as not verified live. Legacy/other-account sessions require fresh proof.
+  Do not widen JW HTTP permission; it remains an explicit per-attempt or existing local choice.
+  A rejection, human challenge, unknown credential-send outcome or selected-source generation change
+  stops subsequent shared-password attempts. Compare each saved ciphertext with that exact Vault.save
+  receipt before advancing the group baseline; a concurrent same-account login is not this save.
+  Keep partial results and final group-check errors explicit, without resurrecting logged-out sessions.
 - CAS SSO and business sessions use separate jars. The necessary _UT_ bridge is limited to the fixed
   HTTPS MySTU/repair services, with live evidence tracked separately; never copy CASTGC, SSO host-only cookies, or a whole central jar into a business
   session, especially the explicitly allowed JW HTTP callback. Repair alone retains an encrypted nested
@@ -71,6 +82,13 @@ The source baseline is School Hub commit `13f1b216ac35269d9840b6854ccff64c1e25e5
   explicit. Shared school SSO is a user-facing configuration family, not proof that one existing login
   already configures every service. Classify by business/path, not host alone; course access must not
   imply booking access, and public library search must not inherit personal-reader login requirements.
+- `capability_catalog` is the shared pure metadata/status projection for App.status, HostRuntime and
+  setup guidance in current unreleased source. Preserve old fields and all 47 tool interfaces. It must
+  use already-read local status only: no authentication, network probe, credential values or worker
+  startup. Saved-session, historical-read and local-worker facts are not current business availability.
+  Navigation-only and unintegrated entries never enroll SOURCES, auth allowlists or network probe
+  targets. Keep v0.6.2 release instructions distinct: its published wheel lacks this catalog and the
+  new school-group CLI arguments until a later release explicitly ships them.
 - Network diagnosis keeps each service and its SSO dependency separate. Use only a user-supplied campus/off-campus
   hint, otherwise unknown; private/fake IP and proxy configuration do not prove physical location or traffic path.
   Probe fixed anonymous endpoints directly and optionally compare credential-free loopback HTTP(S)/SOCKS proxies.

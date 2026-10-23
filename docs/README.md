@@ -2,6 +2,8 @@
 
 发行安装说明对应 **v0.6.2 学生预览版**，包括默认纯 HTTP CLI、个人服务器接入、HTTP 报修与按需更新。安装见[安装说明](install.md)，单命令升级见[更新说明](updates.md)；版本功能和真实验收范围分别记录在更新记录与验证索引中，发布版本不表示全部学校业务或客户端均已完成实测。
 
+当前源码新增的统一账号 `login school`、配置分组与能力目录**尚未发布**，不包含在 v0.6.2 wheel 中；用法见[配置与服务总表](campus-services.md)，检查范围见[本轮记录](verification/2026-10-23-configuration-catalog.md)。
+
 | 用途 | 文档 |
 | --- | --- |
 | 安装、升级、登录 | [安装说明](install.md)、[更新说明](updates.md)、[客户端接入](clients.md) |
