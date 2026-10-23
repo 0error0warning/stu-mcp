@@ -59,7 +59,11 @@ def parser() -> argparse.ArgumentParser:
     setup.add_argument("--no-browser", action="store_true", help="仅在终端输出本机设置地址")
     setup.add_argument("--port", type=int, default=0, help="本机设置端口，默认随机；远程转发可指定8766")
     login = sub.add_parser("login", help="默认纯HTTP登录；认证输入只在本人终端输入")
-    login.add_argument("service", choices=("jw", "mystu", "yuketang", "webvpn", "duifene", "repair"))
+    login.add_argument("service", choices=("school", "jw", "mystu", "yuketang", "webvpn", "duifene", "repair"))
+    login.add_argument("--services", nargs="+", choices=("jw", "mystu", "repair"),
+                       help="仅 login school：选择本次建立会话的业务；默认教务、MySTU、宿舍报修")
+    login.add_argument("--reauthenticate", action="store_true",
+                       help="仅 login school：重新认证所选业务，处理服务器端已失效的本地保存会话")
     login.add_argument("--browser", action="store_true", help="显式使用原浏览器兼容登录，不自动回退")
     login.add_argument("--allow-http-callback", action="store_true", help="仅本次教务登录允许官方HTTP票据回调；密码仍HTTPS")
     transport = sub.add_parser("transport", help="查看或明确设置本地HTTP兼容选项")
@@ -300,12 +304,17 @@ def _dispatch(args) -> int:
             finally:
                 drafts.shutdown()
         if args.command == "login" and args.service == "duifene":
-            if args.browser or args.allow_http_callback:
+            if args.browser or args.allow_http_callback or args.services or args.reauthenticate:
                 raise AppError("invalid_login_options", "对分易沿用原微信回调登录，不使用这些选项。")
             from .checkin_login import login_via_callback
             return emit(login_via_callback())
         if args.command == "login":
-            if args.allow_http_callback and args.service != "jw":
+            if (args.services or args.reauthenticate) and args.service != "school":
+                raise AppError("invalid_login_options", "--services / --reauthenticate 只用于 login school。")
+            if args.service == "school" and (args.browser or args.services and len(args.services) != len(set(args.services))):
+                raise AppError("invalid_login_options", "学校账号批量登录使用 HTTP；请选择不重复的业务，不使用 --browser。")
+            if args.allow_http_callback and (args.service not in {"jw", "school"}
+                                              or args.service == "school" and args.services and "jw" not in args.services):
                 raise AppError("invalid_login_options", "HTTP票据回调选项只适用于教务。")
             if args.browser and args.allow_http_callback:
                 raise AppError("invalid_login_options", "本次回调选项用于HTTP登录；浏览器兼容请先明确设置教务传输兼容。")
@@ -378,6 +387,11 @@ def _dispatch(args) -> int:
         if args.command == "login":
             if args.browser:
                 return emit(interactive_login(app.vault, args.service))
+            if args.service == "school":
+                from .auth_http import login_school
+                return emit(login_school(app.vault, services=args.services,
+                                         allow_http_callback=args.allow_http_callback,
+                                         **({"reauthenticate": True} if args.reauthenticate else {})))
             from .auth_http import login_http
             return emit(login_http(app.vault, args.service, allow_http_callback=args.allow_http_callback))
         if args.command == "logout":

@@ -5,9 +5,7 @@ import json
 import os
 import subprocess
 import sys
-import threading
 import time
-import uuid
 from collections.abc import Callable
 from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urlparse
@@ -148,7 +146,8 @@ def interactive_login(vault: Vault, service: str, *, timeout: int = 300,
             last_probe = 0.0
             while time.monotonic() < deadline:
                 if insecure_navigation[0]:
-                    raise AppError("insecure_transport", "HTTP 回调被拦截。学校教务回调需先在本地设置页确认兼容。", source)
+                    raise AppError("insecure_transport", "HTTP 回调被拦截。浏览器兼容登录可通过 "
+                                   "stu-mcp transport --jw-http on 启用教务官方回调。", source)
                 if not browser.is_connected() or page.is_closed():
                     raise AppError("login_cancelled", "登录窗口已关闭；尚未保存会话。", source)
                 page.wait_for_timeout(1000)
@@ -188,49 +187,8 @@ def interactive_login(vault: Vault, service: str, *, timeout: int = 300,
         raise
     except BrowserError:
         if insecure_navigation[0]:
-            raise AppError("insecure_transport", "HTTP 回调被拦截；请在本地设置页确认教务回调兼容。", source) from None
+            raise AppError("insecure_transport", "HTTP 回调被拦截；浏览器兼容登录可通过 "
+                           "stu-mcp transport --jw-http on 启用教务官方回调。", source) from None
         raise AppError("browser_unavailable", "登录浏览器无法启动或学校页面无法访问。请运行 stu-mcp browser install 并检查网络。",
                        source) from None
     raise AppError("login_timeout", "登录等待超时；未保存未验证的登录会话。", source)
-
-
-class LoginJobs:
-    def __init__(self, vault: Vault):
-        self.vault = vault
-        self.jobs: dict[str, dict] = {}
-        self.lock = threading.Lock()
-
-    def start(self, service: str, *, backend: str = "http") -> dict:
-        source = login_service(service)
-        if backend == "http":
-            command = "stu-mcp login " + ("webvpn" if source == "oa" else source)
-            return {"ok": False, "service": source, "status": "host_cli_required", "command": command,
-                    "message": "请在运行服务的主机终端执行该命令；认证输入不经过设置页或MCP。"}
-        if backend != "browser":
-            raise AppError("invalid_login_backend", "登录方式只接受 http 或显式 browser。", source)
-        with self.lock:
-            if any(j["status"] == "running" for j in self.jobs.values()):
-                raise AppError("login_running", "已有登录窗口，请先完成或关闭它。")
-            with key_lock(self.vault.runtime.home, SOURCES[source].session):
-                revision = self.vault.login_revision(SOURCES[source].session)
-            self.jobs = {k: v for k, v in self.jobs.items() if v["status"] == "running"}
-            job_id = uuid.uuid4().hex
-            self.jobs[job_id] = {"id": job_id, "service": source, "status": "running", "phase": "starting"}
-        def run():
-            def progress(phase):
-                with self.lock:
-                    self.jobs[job_id]["phase"] = phase
-            try:
-                result = interactive_login(self.vault, service, on_phase=progress, expected_revision=revision)
-            except AppError as exc:
-                result = exc.result()
-            except Exception:
-                result = {"ok": False, "status": "login_failed", "message": "登录未完成；没有输出认证信息。"}
-            with self.lock:
-                self.jobs[job_id] = {"id": job_id, "service": source, "status": "finished", "result": result}
-        threading.Thread(target=run, daemon=True, name="stu-login").start()
-        return {"ok": True, "id": job_id, "status": "running"}
-
-    def snapshot(self) -> list[dict]:
-        with self.lock:
-            return list(self.jobs.values())

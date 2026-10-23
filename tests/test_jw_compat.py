@@ -81,20 +81,99 @@ def test_jw_collector_uses_selected_transport(app, grades_html, monkeypatch):
         assert result.coverage["transport"] == "https"
 
 
-def test_setup_transport_option_is_explicit_boolean(app):
+def test_private_setup_does_not_offer_transport_preferences(app):
     ui = SetupServer(app)
     ui.start(open_browser=False)
     try:
         with httpx.Client(base_url=ui.origin, trust_env=False) as client:
             headers = {"X-STU-Setup": ui.secret, "Origin": ui.origin}
             assert app.runtime.preferences() == {"jw_http_compat": False}
-            for invalid in ({}, {"jw_http_compat": "true"}, {"jw_http_compat": 1},
+            for invalid in ({}, {"jw_http_compat": True}, {"jw_http_compat": "true"}, {"jw_http_compat": 1},
                             {"jw_http_compat": True, "password": "SYNTHETIC"}):
                 assert client.post("/api/transport", headers=headers, json=invalid).status_code == 400
                 assert not app.runtime.preferences()["jw_http_compat"]
-            assert client.post("/api/transport", headers=headers, json={"jw_http_compat": True}).status_code == 200
-            assert client.get("/api/status", headers=headers).json()["transport"]["jw_http_compat"] is True
+            assert client.get("/api/status", headers=headers).json()["transport"]["jw_http_compat"] is False
             assert client.post("/api/transport", json={"jw_http_compat": False}).status_code == 403
-            assert app.runtime.preferences()["jw_http_compat"]
+            assert not app.runtime.preferences()["jw_http_compat"]
     finally:
         ui.close()
+
+
+@pytest.mark.parametrize("marker,allowed", [(True, True), (False, False), ("true", False), (1, False), (None, False)])
+def test_jw_session_transport_marker_requires_exact_boolean(app, marker, allowed):
+    from stu_mcp.features.jw.adapter import JwAdapter
+    state = {"cookies": [], "jw_http_compat": marker}
+    app.vault.save("jw", state)
+    received = []
+    JwAdapter(app.vault, http_factory=lambda source, session, **options: received.append((source, session, options)))
+    assert received == [("jw", state, {"allow_legacy_http": allowed})]
+    assert not app.runtime.preferences()["jw_http_compat"]
+
+
+@pytest.mark.parametrize("service,permit,proof_flag,expected", [
+    ("jw", True, True, True), ("jw", True, "true", False), ("jw", True, False, False),
+    ("jw", False, True, False), ("mystu", True, True, False),
+])
+def test_only_proven_allowed_jw_callback_attaches_session_route(app, monkeypatch, service, permit, proof_flag, expected):
+    from stu_mcp.auth_http import Candidate, Credentials, login_http
+    state = {"cookies": [], "origins": [], "jw_http_compat": True}
+    monkeypatch.setattr("stu_mcp.auth_http.cas.acquire_state", lambda *_, **__: Candidate(
+        state, {"authenticated": True, "http_callback_used": proof_flag}))
+    assert login_http(app.vault, service, credentials=Credentials("synthetic", "SYNTHETIC_PASSWORD"),
+                      allow_http_callback=permit)["ok"]
+    assert (app.vault.load(service).get("jw_http_compat") is True) is expected
+    assert not app.runtime.preferences()["jw_http_compat"]
+
+
+def test_official_cas_login_session_continues_into_http_grade_read_without_global_preference(app, grades_html):
+    from stu_mcp.auth_http import Credentials, login_http
+    from stu_mcp.features.jw.adapter import JwAdapter
+    from stu_mcp.features.jw.schema import JW_GRADE_URL
+    from stu_mcp.sources import JW_HOME, JW_LOGIN_URL
+    callback = JW_LOGIN_URL.replace("https:", "http:", 1)
+    calls = []
+    form = ('<form method="post"><input name="username"><input name="password" type="password">'
+            '<input name="lt" type="hidden" value="synthetic-lt">'
+            '<input name="execution" type="hidden" value="synthetic-execution">'
+            '<input name="_eventId" type="hidden" value="submit"></form>')
+
+    def handler(request):
+        calls.append(request)
+        cookies = request.headers.get("cookie", "")
+        if request.url.host == "sso.stu.edu.cn":
+            assert request.url.scheme == "https" and "jw_session=" not in cookies
+            if request.method == "POST":
+                return httpx.Response(302, headers={"location": callback + "?ticket=synthetic-ticket"})
+            return httpx.Response(200, text=form, headers={
+                "set-cookie": "central=SYNTHETIC_SSO; Domain=.stu.edu.cn; Path=/"})
+        assert request.url.host == "jw.stu.edu.cn" and "central=" not in cookies
+        if str(request.url) == JW_HOME:
+            return httpx.Response(200, text='<a id="NEW_XSD_XJCJ_WDCJ_KCCJCX"></a>'
+                                 '<a id="NEW_XSD_KSBM_WDKS_KSAPCX"></a>')
+        if request.url.path == httpx.URL(JW_GRADE_URL).path:
+            if request.url.scheme == "https":
+                return httpx.Response(303, headers={"location": JW_GRADE_URL.replace("https:", "http:", 1)})
+            assert cookies == "jw_session=SYNTHETIC_JW" and request.method == "GET"
+            return httpx.Response(200, text=grades_html)
+        return httpx.Response(200, text="synthetic official callback", headers=[
+            ("set-cookie", "jw_session=SYNTHETIC_JW; Path=/"),
+            ("set-cookie", "secure_jw=SYNTHETIC_SECURE; Path=/; Secure")])
+
+    transport = httpx.MockTransport(handler)
+    result = login_http(app.vault, "jw", credentials=Credentials("synthetic", "SYNTHETIC_PASSWORD"),
+                        allow_http_callback=True, transport=transport)
+    assert result["ok"] and result["proof"]["http_callback_used"] is True
+    assert app.vault.load("jw")["jw_http_compat"] is True
+    assert not app.runtime.preferences()["jw_http_compat"]
+    def factory(source, state, **options):
+        return CampusHTTP(source, state, transport=transport, **options)
+    with JwAdapter(app.vault, http_factory=factory) as adapter:
+        assert adapter.grades("2026-2027-1")
+        assert adapter.transport == "school_legacy_http"
+    assert all(request.url.scheme == "https" for request in calls if request.method == "POST")
+    assert all("SYNTHETIC_PASSWORD" not in request.content.decode() for request in calls
+               if request.url.host != "sso.stu.edu.cn")
+    app.logout("jw")
+    with pytest.raises(AppError) as error:
+        app.vault.load("jw")
+    assert error.value.code == "needs_login" and not app.runtime.preferences()["jw_http_compat"]

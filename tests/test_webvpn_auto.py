@@ -329,25 +329,15 @@ def test_notice_and_attachment_resume_with_renewed_session(app, vpn_session, mon
     assert len(calls) == 1
 
 
-def test_setup_is_the_only_credential_input_and_status_never_reads_secrets(app, capsys):
+def test_legacy_private_settings_routes_are_removed(app):
     ui = SetupServer(app)
     ui.start(open_browser=False)
     try:
         with httpx.Client(base_url=ui.origin, trust_env=False) as client:
             headers = {"X-STU-Setup": ui.secret, "Origin": ui.origin}
-            assert client.post("/api/webvpn-auto", json=FIELDS).status_code == 403
-            assert client.post("/api/webvpn-auto", headers={"X-STU-Setup": ui.secret}, json=FIELDS).status_code == 403
-            invalid = client.post("/api/webvpn-auto", headers=headers, json={**FIELDS, "totp": "123456"})
-            assert invalid.status_code == 400 and "123456" not in invalid.text
-            saved = client.post("/api/webvpn-auto", headers=headers, json=FIELDS)
-            assert saved.status_code == 200
-            status = client.get("/api/status", headers=headers)
-            assert status.json()["webvpn_auto_login"]["enabled"] is True
-            for value in (FIELDS["username"], FIELDS["password"], SEED):
-                assert value not in status.text + saved.text + capsys.readouterr().out
-            assert client.get("/api/webvpn-auto", headers=headers).status_code == 404
-            assert client.post("/api/webvpn-auto/remove", headers=headers, json={}).status_code == 200
-            assert client.get("/api/status", headers=headers).json()["webvpn_auto_login"]["configured"] is False
+            for path in ("/api/webvpn-auto", "/api/webvpn-auto/remove", "/api/transport"):
+                assert client.post(path, headers=headers, json={}).status_code == 400
+            assert not WebVPNConfig(app.vault).status()["configured"]
     finally:
         ui.close()
 

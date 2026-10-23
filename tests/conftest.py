@@ -41,7 +41,9 @@ def synthetic_login_interaction(monkeypatch):
 
 
 @pytest.fixture
-def app(tmp_path, keys):
+def app(tmp_path, keys, monkeypatch):
+    # Setup pages now show passive worker status; never inspect the user's worker.
+    monkeypatch.setenv("STU_CHECKIN_HOME", str(tmp_path / "checkin"))
     runtime = Runtime(tmp_path / "runtime")
     return App(runtime, Vault(runtime, keys))
 

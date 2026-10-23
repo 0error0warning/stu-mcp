@@ -27,7 +27,9 @@ The source baseline is School Hub commit `13f1b216ac35269d9840b6854ccff64c1e25e5
   personal server: an external private master-key file protects per-application encrypted credential mappings.
   Never generate/rotate a key at service startup, accept it through MCP, or store it in either data directory.
 - Never silently fall back to plaintext credential storage.
-- Default authentication to the source-specific HTTP adapters in auth_http and human-only CLI input.
+- Default authentication to the source-specific HTTP adapters in auth_http. Human input may come from
+  the real TTY or the private loopback setup page in the person's own browser; both call the same
+  authentication core. HTTP-first does not mean CLI-only. Never simulate a TTY for a web interaction.
   Playwright is an optional explicit browser compatibility backend, never an automatic fallback or a
   Docker/runtime prerequisite. Preserve tool interfaces, source isolation, positive proof and Vault
   logout/account-generation fences when replacing an adapter. Keep historical acceptance distinct from
@@ -42,17 +44,56 @@ The source baseline is School Hub commit `13f1b216ac35269d9840b6854ccff64c1e25e5
   plaintext stdin, command-line arguments, environment values or MCP parameters. CLI reuses existing proof,
   secure storage and the single check-in worker; it must not create a new monitoring plan. Previously authorized
   continuous plans keep their existing restoration rules and are reported explicitly.
+- The v0.7.0 setup page may privately receive school credentials, display the official QR challenge,
+  and accept the original WeChat callback. Keep this API separate from MCP: strict loopback Host/Origin,
+  per-page capability header, no CORS, no-store, no request-body logs or secret reflection. Do not persist
+  ordinary school passwords, QR challenges or callback inputs. Check cancellation at protocol checkpoints
+  and the final save guard; clear pending input and private challenges on explicit cancellation or setup-server close.
+  Browser pagehide only attempts cancellation; retain task expiry as the fallback if that request is not delivered.
+  Preserve completed sessions and already-authorized worker plans. Open the local page in the person's
+  browser by default; do not return its capability URL through MCP. Remote/headless CLI remains complete.
+  Present four configuration families, with one school-account flow for all implemented SCHOOL_SERVICES.
+  Derive capabilities and aggregate configuration state from the catalog; show partial failures without
+  duplicating per-business selectors or session-management panels. "Configured" is not live availability.
+  Keep CLI help optional and detailed capability scope folded. Private setup uses only the shared HTTP
+  task runner; do not preserve obsolete browser schedulers or standalone transport/auto-login form routes.
 - Optional WebVPN auto-login is explicitly enabled by the user in local setup or human terminal. Store its account/password/TOTP seed
   through the approved credential backend; never as plaintext in a file, command-line argument, MCP tool,
   or client configuration. The optional file backend encrypts them with the external master key.
-- Renew WebVPN only during a protected OA read, with bounded attempts and a cooldown. Pause on rejected credentials
+  The main WebVPN form accepts an optional existing token seed: save it through WebVPNConfig and use
+  the shared HTTP login to generate the code and verify authentication. Reuse saved credentials only
+  when configured and enabled; disabled/paused configurations return to the main credential form.
+  Without a seed or usable saved configuration, request the current code. Never implement a second TOTP flow.
+- Renew WebVPN on explicit login or during a protected OA read, with bounded attempts and a cooldown. Pause on rejected credentials
   or human challenges. Never automate CAPTCHA or token binding. Logout removes saved auto-login credentials.
 - Missing credentials or expired sessions affect only the dependent source.
+- v0.7.0 provides `login school` for one human credential entry across the selected
+  `jw`, `mystu` and `repair` adapters. `--services` limits the selection; `--reauthenticate` refreshes
+  selected sessions. Keep each source's independent CAS proof, cookie jars, encryption and logout
+  generation fences. Never persist the ordinary shared password or borrow another source's session.
+  Skip only locally readable, unexpired sessions with the matching encrypted account association;
+  report skipped sessions as not verified live. Legacy/other-account sessions require fresh proof.
+  The private school-account page handles the verified fixed JW HTTP callback internally for its own
+  login attempt; no technical checkbox or global preference change. CLI explicit per-attempt flags
+  and existing local preferences remain compatible. This is not HTTP permission for OA or other sources.
+  Positive JW proof that used the official HTTP callback records strict jw_http_compat=True inside
+  that encrypted session. Grades/exams use this exact boolean or the existing explicit local preference
+  for their fixed JW route; no global preference is written. School-page setup reauthenticates older
+  same-account JW sessions lacking this marker once, rather than skipping an unusable read route.
+  A rejection, human challenge, unknown credential-send outcome or selected-source generation change
+  stops subsequent shared-password attempts. Compare each saved ciphertext with that exact Vault.save
+  receipt before advancing the group baseline; a concurrent same-account login is not this save.
+  Keep partial results and final group-check errors explicit, without resurrecting logged-out sessions.
 - CAS SSO and business sessions use separate jars. The necessary _UT_ bridge is limited to the fixed
   HTTPS MySTU/repair services, with live evidence tracked separately; never copy CASTGC, SSO host-only cookies, or a whole central jar into a business
   session, especially the explicitly allowed JW HTTP callback. Repair alone retains an encrypted nested
   SSO jar for bounded fixed-page GET ticket renewal; never forward its central cookies to the business
   host, follow authentication from a final POST, or share it with another source. Preserve Moodle's fixed redirects.
+- OA bulletin reading, its network access channel and employee identity are separate. The original
+  `/login/Login.jsp` bulletin route can be anonymous; a login-looking path is not authentication proof.
+  OA uses the `webvpn` session only on the WebVPN access path. Employee `/login/cas.jsp` points to
+  school SSO with an `office.stu.edu.cn` callback; employee office business is not adapted. Do not
+  conflate WebVPN login with employee login or infer all notices/attachments are anonymous from samples.
 - Campus service entries must keep their exact business and campus identity. Consult the maintained
   [service catalog](docs/campus-services.md) for dated purpose/form evidence and the
   [network verification archive](docs/verification/2026-10-18-to-19-network.md) for observed availability.
@@ -61,6 +102,18 @@ The source baseline is School Hub commit `13f1b216ac35269d9840b6854ccff64c1e25e5
   A cached label, shared login or unreachable page does not make these interchangeable or prove retirement/migration.
   Keep purpose verification, endpoint availability and authenticated workflow verification separate.
   Campus HTTP ignores environment proxies; check DNS and the actual route/TUN when direct access fails.
+- Organize the entry inventory around login/configuration -> currently supported features, and
+  school business -> exact entries and integration gaps. Keep current support and proposed support
+  explicit. Shared school SSO is a user-facing configuration family, not proof that one existing login
+  already configures every service. Classify by business/path, not host alone; course access must not
+  imply booking access, and public library search must not inherit personal-reader login requirements.
+- `capability_catalog` is the shared pure metadata/status projection for App.status, HostRuntime and
+  setup guidance in v0.7.0. Preserve old fields and all 47 tool interfaces. It must
+  use already-read local status only: no authentication, network probe, credential values or worker
+  startup. Saved-session, historical-read and local-worker facts are not current business availability.
+  Navigation-only and unintegrated entries never enroll SOURCES, auth allowlists or network probe
+  targets. v0.7.0 ships this catalog, the school-group CLI arguments and shared HTTP web interaction.
+  Keep older release artifacts and their historical verification records unchanged.
 - Network diagnosis keeps each service and its SSO dependency separate. Use only a user-supplied campus/off-campus
   hint, otherwise unknown; private/fake IP and proxy configuration do not prove physical location or traffic path.
   Probe fixed anonymous endpoints directly and optionally compare credential-free loopback HTTP(S)/SOCKS proxies.
@@ -114,9 +167,11 @@ The source baseline is School Hub commit `13f1b216ac35269d9840b6854ccff64c1e25e5
   Do not make a virtual desktop or Chromium a deployment prerequisite. Rain Classroom uses its official
   QR challenge with the person's phone authorization; no server browser is needed. Do not bypass school login proof,
   TLS, human review or the one-send submission guard. Consult docs/authentication.md before changing login routes.
-- JW HTTP ticket callback and authenticated OA HTTP compatibility are separate, explicit local choices,
-  both off by default. Only the currently verified fixed school route may receive its own session;
-  passwords and TOTP always stay on HTTPS. Never disable TLS, invent a resource type, or treat a remote
+- JW HTTP ticket callback and authenticated OA HTTP compatibility remain separate. CLI transport
+  preferences are off by default; private school setup explicitly selects only the verified fixed JW
+  callback internally. Only that source's allowed route may receive its own session;
+  school-bound passwords and TOTP always stay on HTTPS; human setup input is restricted to the protected
+  private loopback API. Never disable TLS, invent a resource type, or treat a remote
   MCP connection as evidence of campus network access. Default Docker contains no browser or desktop.
 - Do not modify the original School Hub checkout or production services for this project.
 
