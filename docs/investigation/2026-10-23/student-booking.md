@@ -47,7 +47,7 @@ GET https://xg.stu.edu.cn/xsfw/sys/emaphome/portal/index.do
 
 | 声明接口 | 参数/用途 | 方法和验证程度 |
 | --- | --- | --- |
-| `/xsfwnew/sys/emapfunauth/loginValidate.do` | 验证登录；`getCryptoPwd` 将密码做 AES-ECB、Pkcs7 后返回字符串 | 公共辅助方法使用 POST；实际参数对象和成功凭据交换未核实，没有调用 |
+| `/xsfwnew/sys/emapfunauth/loginValidate.do` | 验证登录；实际 Impl 声明 `userName/password` 均经 `getCryptoPwd` 的 AES-ECB、Pkcs7 加密，另有 `isWeekLogin` 和条件 `verifyCode` | **URL 编码表单 POST**；Turing 初始化改写 Axios 默认序列化，不能按其一般默认发 JSON，详见下文运行时补证 |
 | `/xsfwnew/sys/emapfunauth/getVerifyCode.do`、`getRefreshVerifyCode.do` | 图片验证码/刷新 | 静态 URL，未调用；不能自动识别或绕过 |
 | `/xsfwnew/sys/emapfunauth/getVerifyReciever.do` | 可用邮件/SMS 接收方式 | `getAvailableReciverService` 明确 POST；未调用 |
 | `/xsfwnew/sys/emapfunauth/sendVerifyCodeService.do` | 发送验证码 | 静态声明，未调用，不因名字有 query/read 就当只读 |
@@ -57,7 +57,7 @@ GET https://xg.stu.edu.cn/xsfw/sys/emaphome/portal/index.do
 | 同目录 `query_user_match.do` | `ACCOUNTID/USERID`，声明 `result:int` | 未调用，不能任取账号查匹配关系 |
 | 同目录 `save_verifyCode.do/query_verifyCode.do/delete_verifyCode.do` | `ACCOUNTID/VERIFYCODE/FSSJ` 或 `ACCOUNTID` | 只记录模型声明，不查询、不发送、不清除任何验证码 |
 
-客户端还声明固定成功转向 `/xsfw/sys/xggzptapp/index.do?min=1`；`api.js` 识别 `success` 和 `reset_pwd` 状态，HTTP 辅助超时 40000ms、`X-Requested-With: XMLHttpRequest`。实际业务失败/空集合同、验证码触发条件和认证后独立会话均未验证。
+页面配置的 `defaultForwardPath/refererPath` 指向 `/xsfw/sys/xggzptapp/index.do?min=1`；**实际前端跳转还做 context 检查，并不无条件使用这条配置**，后续 Impl 分析见下。`api.js` 识别 `success` 和 `reset_pwd` 状态，HTTP 辅助超时 40000ms、`X-Requested-With: XMLHttpRequest`。实际业务失败/空集合同、验证码触发条件和认证后独立会话仍需验证。
 
 ### 补充：一网通办公开事项给出的 xg 业务路由
 
@@ -157,16 +157,154 @@ root 为 `/xsfwnew` 新发 CAS 后，本轮目标仍跳回学校 SSO；这比“
 | `https://res.stu.edu.cn/fe_components/appcore-min.js` | `1a40ea935cf145f9670137a2b3a9e755fdc89f905eb52f33f67bbdd43dfce9e7` |
 | `https://res.stu.edu.cn/fe_components/commonlib.js` | `c934a01dc7c639701a1f2f4b7bcc6da8883838801b29c0712c047ae9d91762f8` |
 
+### 综测/xg 后续只读复核步骤：先取得配置，再取模型
+
+本段是由上述已读取 appcore 推导的调查操作顺序，**不是尚未发生的验证结果**。由 root 统一完成一次正常 SSO 交互，研究客户端按来源隔离并仅保留内存会话；这里不接收登录凭据、Cookie、票据或完整个人页面。
+
+1. **仅请求已发布的综测业务页**：`https://xg.stu.edu.cn/xsfwnew/sys/zhcptybbapp/*default/index.do`。当前新会话若仍返回 SSO，应记录有限跳转中的主机/路径和是否重复回到同一服务，不继续无限刷新或把另一路径会话复制进来。不能改用任何猜测的综测应用名称。
+2. 如果实际返回业务 HTML，提取非个人配置白名单：`WIS_CONFIG.ROOT_PATH/APPNAME/contextPath`；`APP_CONFIG.SERVER_CONFIG_API` 的**完整值或原始拼接表达式**；`MODULES` 的 `title/route/url/hide/children/isOpenNewPage`；`APP_ENTRY/INNER_INDEX_MODE/APP_VERSION/STATIC_TIMESTAMP/RELEASE_MODE/RESOURCE_SERVER`；`THIRD_PARTY_PLUGIN` 的依赖路径；实际 `script.src/data-main/require([...])`、`require.config` 的 `baseUrl/paths/map`。不输出整份 `APP_CONFIG.HEADER`、用户配置、认证 callback 或个人信息。
+3. `SERVER_CONFIG_API` 若只剩截断字符串，先列缺失变量，**不请求猜测 URL**。若能由已观察常量严格还原，按 appcore 的 GET 方式请求；记录 status/content-type、是否登录页、JSON 外层类型及菜单 `MODULES`，不把 code 缺省/HTTP 200 解释为本人身份已证实。原配置若引用 HTTP:80，只能分别记录它与已验证的 HTTPS 同路径，不能默默把会话送到明文地址。
+4. appcore 的 `getModules()` 会将普通 `route` 保留首段用于路由模块；`getCurrentAppViews()` 再按真实配置构造 `(INNER_INDEX_MODE ? '../' : '') + 'modules/' + route + '/' + route`，由 RequireJS 的实际 `baseUrl/paths` 解析 `.js`。因此**模块 JS 路径可在真实 route、模式和 baseUrl 都已取得后确定**，无需枚举文件名。`url/isOpenNewPage` 模块是外部跳转分支，不能硬套此公式。
+5. 只下载这些实际声明/可严格解析的模块 JS 或原页公开 `pageMeta`；登记 `models[].name/url/type`、`params/controls` 的字段名/类型/必填/分页元数据，及实际 `mineQuery/dataModelQuery` 的 action 与参数表达式。若存在 `CONFIG_READY` 动态修改菜单，先分析修改依赖，不运行所有回调或执行应用初始化动作。
+6. 只挑已经确认语义只读的项目、学年、规则、本人列表模型验证；查询经 POST 发送也必须按实际语义辨别。缺失的业务项目 ID 从本人获准列表或发布配置取得，**不猜项目、不填其他学生 ID、不把空筛选扩成全校查询**。申请保存/提交、审批、签到、综测自评或加分变更、角色切换均只记录，不执行。
+
+每个后续结果分别记录：入口落地、认证正向证明、菜单/模型声明、真正只读数据/空集及失败合同。`xsfw` 与 `xsfwnew` 的历史结果不相互覆盖，当前没有综测业务读取成功的证据。
+
+### 补充：21:14 HTTP/HTTPS canonical 与迎新登录实现
+
+2026-10-23 21:14:47 使用无认证客户端比较同一个已发布综测路径：
+
+| GET 目标 | 本轮实际结果 |
+| --- | --- |
+| `http://xg.stu.edu.cn/xsfwnew/sys/zhcptybbapp/*default/index.do` | **301 到完全同路径 HTTPS**，未在 HTTP 收到或发送任何认证材料 |
+| `https://xg.stu.edu.cn/xsfwnew/sys/zhcptybbapp/*default/index.do` | 302 到 HTTPS SSO；其 service 为 HTTPS 同路径，没有额外端口或语言参数 |
+| `http://xg.stu.edu.cn/xsfwnew/sys/emapfunauth/pages/funauth-login.do` | 301 到 HTTPS 同路径 |
+| `https://xg.stu.edu.cn/xsfwnew/sys/emapfunauth/pages/funauth-login.do` | 200“登录”，内容 SHA256 与前轮一致 |
+| `https://xg.stu.edu.cn/xsfw/sys/xggzptapp/index.do?min=1` | 匿名 302 到 HTTPS SSO，service 为该旧 context 路径 |
+
+综测 HTTPS 302 的匿名会话 cookie 作用域是 `JSESSIONID`、`Path=/xsfwnew`、host `xg.stu.edu.cn`，仅记录名称/作用域，没有记录值。因此没有证据支持“改成 HTTP CAS 回调即可”或“把旧 `/xsfw` 会话当新 context 会话”。root 后续报告：综测新票据回调仍回同 SSO；一次把 SSO 实际下发的父域 `_UT_` 收窄至 xg HTTPS 后仍相同。**这次失败不能简单归因于漏带一个 token**，也不应重复复制或尝试认证 cookie。
+
+继续排查只比较这些非敏感元数据：同一新 context 研究 jar 是否先保留初始化产生的会话、CAS service 与回调的 scheme/host/path/查询参数名是否一致、回调前后会话是否保持/旋转、是否原样重复回到同一服务；不输出 cookie/票据值、不将凭据发 HTTP、不猜未发布服务端校验接口。不凭 302 循环认定学校不支持 HTTP 认证；当前只是该完整链路尚未跑通。
+
+为核实迎新入口实际行为，本轮沿**已发布 HTML 和真实 loader 拼接规则**读取，而非猜脚本：
+
+- 原页 `TG_CONFIG.pageName='funauth-login'`、`router:{'/':'funauth-login'}`、`inject:false`。
+- 实际 `turing_loader_v2.js` 拼接 `pageName + path + module_name + 'Impl.js'`，带原页版本参数；`inject:false` 跳过基础同名 JS，仍加载 Impl。
+- `GET https://res.stu.edu.cn/1.8.1_TR36/fe_components/turing-form/turing_loader_v2.js?v=1789792952058`：200，SHA256 `c5054520a04deb61a94dd2430ee46a54153cb025415f6856fdf7a30d83f431ed`。
+- 严格解析所得 `GET https://xg.stu.edu.cn/xsfwnew/sys/emapfunauth/pages/funauth-login/funauth-loginImpl.js?rel=1789792952058`：200，SHA256 `d2a844a296150acb671f23c49d3590339c6577653f06fafc51bf159ead4075c1`。
+
+Impl 的静态认证/初始化合同（以下未由本调查作者发送 POST）：
+
+| 方法与路径（xg HTTPS 主机） | 真实代码声明的输入 | 结果与边界 |
+| --- | --- | --- |
+| `POST /xsfwnew/sys/emapfunauth/welcomeAutoIndex.do` | 页面 mounted 时无参数 | 非空 `res.data` 会转 `refererPath` 或返回 URL；不是本人业务数据查询，不输出含认证参数的返回地址 |
+| `POST /xsfwnew/sys/emapfunauth/loginValidate.do` | 自动登录传 JS 空对象，经 transform 得空表单；手工登录对象字段 `userName/password/isWeekLogin` 和条件 `verifyCode` 最终编码为表单 | `result.data.validate==='success'` 进入跳转，`reset_pwd` 进入改密界面，其他结果显示 msg/刷新图片码。**不跟随改密流程**；不能把大写 `ACCOUNTID/PASSWORD` 的页面模型字段误当此接口输入 |
+| `POST /xsfwnew/sys/emapfunauth/getRefreshVerifyCode.do` | JS 空对象经 transform 得空表单 body | `result.data` 赋给图片路径；是否非空决定 `showVerifyCode`，实际是否出现挑战未验证；不是读取固定图片 URL 猜验证码 |
+| `POST /xsfwnew/sys/emapfunauth/getNoLoginApp.do` | JS 空对象经 transform 得空表单 body | `result.data.code=='0'` 时读 `result.data.data`，数组项 `ENTRY/APPNAME/ICON`；只声明公开应用初始化，不遍历个人资料 |
+
+`enterRefererPath()` 在 `forceForwardPath` 为空时，先把目标设为 `/xsfwnew/sys/emapfunauth/pages/emap-userinfo.do`；只有 `refererPath` 不是跨 context 的绝对 URL 才采用它。现页配置的旧 `/xsfw/...` 地址不含 `/xsfwnew`，因此该普通成功分支**会留在新 context 的 userinfo fallback，而非直接跳旧门户**。mounted 的 welcomeAutoIndex 又是另一个先行跳转分支；二者必须分别验证，不能只看 `defaultForwardPath` 就判断当前认证归属。
+
+这是一条官方公开的自定义认证机制，不证明它就是综测 CAS 循环的替代方案，也未验证它接受当前校园账号或可访问综测。后续若业务页实际采用 Turing，按原页 `TG_CONFIG` 和上述 loader 解析资产；只有实际引用 appcore 的页面才按 `APP_CONFIG/RequireJS` 路由规则解析，不能跨框架套路径。
+
+### 后续补证：奖助原页配置表达式已完整取得
+
+root 对原 200 奖助 index 的非个人配置进行静态提取，取得：`WIS_CONFIG.PATH='/xsfw'`、`APPID='4592429014624916'`、`APPNAME='jxjapp'`，实际 `SERVER_CONFIG_API` 表达式为：
+
+```js
+WIS_CONFIG.PATH + '/sys/swpubapp/indexmenu/getAppConfig.do?appId=' +
+WIS_CONFIG.APPID + '&appName=' + WIS_CONFIG.APPNAME + roleIdparam
+```
+
+本页当前解析到的目标为：
+
+```text
+GET https://xg.stu.edu.cn/xsfw/sys/swpubapp/indexmenu/getAppConfig.do?appId=4592429014624916&appName=jxjapp
+```
+
+这是从原配置严格还原的**奖助菜单配置**，不是猜根路径，也不是综测查询。`appId` 是应用标识，不是个人编号；有 `roleIdparam` 分支时必须按实际页面解析，不猜角色。后续 root 已对该精确目标 GET 得到 200、`MODULES` 三条：奖学金申请 `route=apply`、GPA（截至每年 9 月 1 日）`route=gpaxxglxg`、GPA（实时）`route=gpaxxgl`。它用 `PATH` 相对路径，不能与旧配置的 HTTP:80 `ROOT_PATH` 混淆；这三个菜单均不是综测，也不证明 GPA/申请业务数据已读到。
+
+自定义新 context 认证研究按真实前端顺序有界进行：先读原登录页并保持当前 context 会话；`welcomeAutoIndex` 空 body 和 `loginValidate({})` 只判断现有认证状态；未成功才取得验证码图片路径，存在挑战就停止自动凭据尝试；公开应用配置可单独读取。若没有挑战且用户已明确授权，最多一次按当前页的公开 AES 参数走 HTTPS 新登录；`reset_pwd`、拒绝或发送结果未知均停止，不自动改密、不自动勾选一周免登录。实际用户名/密码不写调查脚本、日志或本文；AES 公共常量从当前官方页解析，不固定复制成产品配置。
+
+### 更正与补证：Turing 改写了 Axios 序列化，实际是表单
+
+root 按初次分析发出 JSON 格式的空对象初始化及一次 AES 凭据验证后，`loginValidate` 都只返回 HTTP 200 `{"msg":""}`、没有 `validate`。其余初始化的实际结果为 welcome 200 零字节、公开应用 `code=0/data=[]`、刷新图片码 200 零字节。**这些结果不证明登录成功，也不能认定密码错误或明确认证拒绝；空的验证码响应尚不足以证明完整认证协议已正确实现。**
+
+随后补查原 loader 实际加载的完整运行时，查明初次“Axios 对象按 JSON 发”的建议遗漏了初始化改写，需要更正：
+
+- 原 HTML **没有 `<base href>`**。
+- `turing_init_v2.js` 第 16–22 行设置 `exports.axios.defaults.headers.post['Content-Type']='application/x-www-form-urlencoded'`，并将 `transformRequest` 覆盖为逐键 `encodeURIComponent(key)+'='+encodeURIComponent(value)` 后用 `&` 连接。
+- `api.js:getCommonAxios()` 从同一 `exports.axios` 调用 `.create`；实际打包库 `.create` 会合并该默认配置，因此也继承表单变换。
+- 该 init/boot 中没有 `baseURL` 改写，运行库只是普通 Axios 可选 baseURL 合并逻辑。JS 相对 URL 由**页面地址**而非 `api.js` 文件地址解析：`../loginValidate.do` 相对 `/xsfwnew/sys/emapfunauth/pages/funauth-login.do` 仍是 `/xsfwnew/sys/emapfunauth/loginValidate.do`。目前没有证据支持改成 `/pages/loginValidate.do`。
+
+严格对应客户端的线请求模板为：
+
+```text
+POST https://xg.stu.edu.cn/xsfwnew/sys/emapfunauth/loginValidate.do
+Content-Type: application/x-www-form-urlencoded
+X-Requested-With: XMLHttpRequest
+
+userName=<URL编码的AES密文Base64>&password=<URL编码的AES密文Base64>&isWeekLogin=false
+```
+
+只有页面确实显示验证码时再加 `verifyCode`。Base64 中 `+ / =` 也必须正确表单编码，不能手工直接拼接。空 JS 对象经过该 transform 后是零长度表单 body，不是字面 `{}`；`welcomeAutoIndex` 原本就是未传 data 的 POST。此前 JSON 结果作为**错误编码的历史探测**保留，不能用它判断当前账号有效性。此处只完成静态诊断，没有据此自动再次发送凭据。
+
+| 实际运行时依赖（2026-10-23 匿名 GET，`?rel=1789792952058`） | SHA256 |
+| --- | --- |
+| `https://res.stu.edu.cn/1.8.1_TR36/fe_components/turing-form/turing_init_v2.js` | `ba131a44d4621ef0708e2b4557d44670b4bd0669590d02e551c96bf8cdc9cd7c` |
+| `https://res.stu.edu.cn/1.8.1_TR36/fe_components/turing-form/turing_boot_v2.js` | `0b862b7943a882f84e12234a74df97790b665b5ab5071c93eeb4cecba69aa2e1` |
+| `https://res.stu.edu.cn/1.8.1_TR36/fe_components/turing-form/wisedu-vue/wisedu-vue.pc.min.js` | `59b1a52bb4f6dd922158a714ebe683d94c7b2d15d4b4e6a40739df6061f38df9` |
+
+### 后续实测：正确表单得到独立认证拒绝，停止凭据尝试
+
+2026-10-23 **13:24:57 UTC（北京时间 21:24:57）**，root 在发现完整 transform 前的一次 JSON 凭据请求仍只得到 `{"msg":""}`。这条历史结果继续归为错误输入编码，不能算成功或明确密码拒绝。
+
+**13:27:57 UTC（北京时间 21:27:57）**，root 按刚核实的官方 transform 更正为 URL 编码表单，由 HTTP 库正确编码 AES Base64，`isWeekLogin=false`，对同一个官方 HTTPS `loginValidate.do` 做了一次凭据验证。返回明确：
+
+```json
+{"msg":"用户名或者密码错误"}
+```
+
+因此该**自定义认证入口拒绝了这次凭据验证**；研究客户端的一次性表单尝试额度已经用完，已停止所有凭据重试。**不能说用户的学校 SSO 密码错误**：相同用户授权的账号密码此前已通过中央 SSO，而这个独立入口返回了不同结果。没有对身份类型、账号同步、入口适用群体或迁移原因作未经证实的结论，也没有触发改密、注册、短信或验证码自动处理。
+
+**13:49:17 UTC（北京时间 21:49:17）**，本地编码审计确认实际使用的 AES key 与当前页面解析值相同（仅记录布尔判据），请求确为 `application/x-www-form-urlencoded`，字段为 `userName/password/isWeekLogin`；两个密文均可正确 Base64 解码，`isWeekLogin=false`。**13:49:41 UTC** 取得页面引用的官方 `crypto-js.js`（SHA256 `c6826494432163d74fd27e78ad011a13d55e4670441cd49fc9f1e52a4afd28d9`），用纯合成 ASCII/中文输入及 16/32 字节合成 key 对照官方 CryptoJS 与 Python AES-ECB/PKCS7，**4/4 结果一致**。合成对照未使用真实凭据或服务器 key，没有再次发送真实凭据；脱敏判据存于忽略目录 `output/campus-protocol-survey/followup/crypto-fixture.json`。这只补强本地编码实现的证据，**不证明认证服务可用，也未完全排除账户、策略或其他协议差异**。
+
+综测 CAS 回环的追加元数据已确认：初始化得到的 `JSESSIONID` 实际随回调请求发送，回调没有将它旋转，原路径中的字面 `*` 保留；一次 SSO 父域 `_UT_` 收窄到精确 xg HTTPS 主机后仍无改观。这排除了“研究客户端完全漏发初始化会话”这一简单描述，但**不证明学校端根因或账号无权使用**。不记录任何会话值或票据，也不据此继续复制认证材料。
+
+另对 13:15 UTC 的成功门户缓存页做脱敏结构解析，得到 **19 个 `main_tab` 应用卡**及 **5 个与之重复的常用入口**，本页没有综测卡片；以“综测”关键词请求门户 search 页面虽 200，未显示应用结果。不能将它们相加成 24 个不同业务，也不能从当前账号可见菜单和一次搜索就认定综测废弃。一网通办仍发布官方综测目标；用户“可能废弃”的印象只是一种猜测，没有替代实际退役或迁移通知。
+
+上述探测后主机曾切到 OPPO 手机热点；这个临时网络条件按其发生时间保留。用户随后明确切回校园网，恢复后的复核见下一段，不能继续把旧热点条件当当前事实。
+
+### 校园网恢复后的综测复核与官方入口查找
+
+用户明确切回校园网后，2026-10-23 **13:40 UTC** 记录到网络配置名 `stu.edu.cn`，**13:41 UTC** 宿舍/水电的 SSO GET 续票均恢复。这里结合用户的接入说明与业务实测，不单凭配置名推断物理网络。
+
+**13:43:33 UTC（北京时间 21:43:33）**，root 在恢复后的路径给官方综测 service 再发一次新的 SSO 票据，**没有重新提交账号密码**；回调仍为 302 到同一个 SSO。因此综测的当前调查结论仍是完整认证链路未跑通，不能再仅以手机热点解释；没有突破此前自定义认证表单的一次尝试限制，也没有把旧消息当新的密码拒绝。
+
+为查找是否有另一个正式入口，本轮只检索校方公开来源（`stu.edu.cn` 及学校部门子域），关键词覆盖“综测/综测系统/综合测评系统/综合素质测评/综合素质评价”“操作/登录/评价工作/2025/2026/2025-2026学年”，再匿名读取能核实的原文。未登录 OA、未查个人名单或任何私人会话。**截至本轮，没有找到能证明替代当前一网通办综测 URL 的新官方操作入口，也没有找到该系统退役通知。**
+
+| 可引用的校方公开来源 | 日期与实测 | 对入口问题能证明什么 |
+| --- | --- | --- |
+| [一网通办“本科生综测”事项](https://service.stu.edu.cn/fe/site/matterDetails?app_id=240) | 本轮匿名详情已取得，目标见 `service-matters.csv` | 仍发布 `/xsfwnew/sys/zhcptybbapp/*default/index.do` 和 mobile 版本。发布链接不等于当前业务可用，仍是应优先核实的正式来源 |
+| [学生处《关于开展2024-2025学年本科生奖学金评选工作的通知》](https://xsc.stu.edu.cn/News.aspx?ID=13852) | 原文发布日期 **2025-10-13**；本轮本机匿名 GET 200 | 指向 xg 的“奖惩服务→奖学金”，并引用综合素质评价结果。这与已读 jxj 菜单相符，**不是 2026 综测操作指南，也不是综测替代系统** |
+| [学生处《全日制本科学生综合素质评价办法》PDF](https://xsc.stu.edu.cn/ckeditor/userfiles/file/20251225/20251225164334_8747.pdf) | 本轮 GET 200，9 页，SHA256 `68ed9de9edc10382353b9030df8993874bb828ae4832d0861b13db287ae074b0`；URL 路径为 2025-12-25，PDF正文未标明确切发布日期 | 规定秋季评价上一学年、学院组织审查评议/公示/上报，全文无系统 URL。**上传目录日期不能冒充 2026 新版政策或新登录指南** |
+| [工学院、敬一书院“破局校招・赋能职场”工作坊通知](https://eng.stu.edu.cn/info/1081/13761.htm) | 原文署名日期 **2026-05-13**、活动 2026-05-18；本轮匿名 GET 200 | 当期仍表述综测活动加分，未给综测系统 URL。只证明评价用途仍被使用，不证明特定应用当前可登录 |
+| [工学院、敬一书院2025-2026学年“五色双院”第二课堂立项通知](https://eng.stu.edu.cn/info/1081/10791.htm) | 原文署名日期 **2025-11-06**；本轮匿名 GET 200 | 活动在“到梦空间”登记并按综合素质评价办法加分。**活动登记来源与年度综合评价系统分开**，不能据此用到梦空间替代综测接口 |
+
+学生处首页本轮可匿名读取，含 2026 年通知，但首页出现近期通知不意味着旧奖学金通知已更新成 2026 内容；没有把网页抓取日期、搜索引擎抓取时间、附件目录时间当发布日期。一次公开列表读取超时后未无限重试。仍缺少的是当前学年正式综测办理通知/操作手册中的明确入口或学校发布的迁移/退役依据，而非更多密码试探。
+
 ## 2. dorm 与 power：同用学校 SSO，不是同一个业务
 
-两者匿名根路径均返回 302，SSO 地址 HTTPS，但业务服务回调为各自 **HTTP `default.aspx`**。
-本轮没有用 JW 兼容权限自动允许这些回调，也没有把宿舍报修 `repair` 的会话借给它们。
+初轮两个 HTTP 根入口均返回 302，业务 service 为各自 HTTP `default.aspx`。
+后续对照确认 **dorm 的 HTTPS 原入口会生成 HTTPS service，且已认证读取成功**；power 的
+HTTPS 端口拒绝连接，本次经用户单独允许官方 HTTP 回调后读取成功。没有沿用 JW 的
+HTTP 兼容权限，也没有借用宿舍报修 `repair` 或其他业务的会话。完整时序与协议见
+[宿舍与水电补查](dorm-utilities-followup.md)。
 
 [2025 智慧校园简介](https://zs.med.stu.edu.cn/upload_files/file/20250801/1754016918198845.pdf)把“学生事务及宿舍管理系统”列到 `xg`，把水电管理列到 `power`；因此旧 `dorm` 虽仍跳 SSO，不足以证明它仍承办所有宿舍事项或已经迁移。
 
-[东海岸校区 2024-01-15 水电通知](https://stuecc.stu.edu.cn/info/1027/1395.htm)确认 `power` 可用校园网账号自助缴费，允许设置代理缴费，涉及欠费、扣款、恢复供电。后续协议调查需要先看本人只读账单与操作链接，把查询、代理授权与缴费分开；本轮没有真实数据字段或支付接口证据。
+[东海岸校区 2024-01-15 水电通知](https://stuecc.stu.edu.cn/info/1027/1395.htm)确认 `power` 可用校园网账号自助缴费，允许设置代理缴费，涉及欠费、扣款、恢复供电。历史通知的校区规则不能直接当作当前桑浦山规则。本次已取得读数、历史账单的实际数组结构，以及原 WebForms 表单的未缴费筛选和有效空结果；没有打开自助缴费页、设置代理或进行支付/退款。
 
-认证后待查：页面 title/菜单、本人宿舍关联、计费周期/币种/单位、历史分页和空记录、WebForms 隐藏状态/事件名、会话过期时是否跳 CAS。只登记字段名，不保存隐藏状态、个人账单或付款凭据。
+宿舍已读三个实际导航及表头，并在内存完成一份本人姓名关联核对；已观察 302 回 SSO 后续票恢复。水电也已验证正常查询、筛选与空数组，但实际历史数组 9 列与静态 reader 的 12 字段不一致，不能直接映射金额或余额。仍需补完整身份绑定、字段语义、单位/分摊、分页与完整范围，以及更全面的失效判据。只登记结构，不保存隐藏状态值、个人页面或账单。
 
 ## 3. smartcard：独立查询密码与图片验证码
 

@@ -1,6 +1,6 @@
 # r 校园服务台：真实页面与 V3 接口调查
 
-调查日期：2026-10-23，北京时间约 20:10–20:47；本机当前网络路径、忽略环境代理、TLS 正常校验。接口调用为短超时匿名 GET；认证后页面证据来自 root 在 Chrome 调查标签页的只读核查。后续纯 HTTP 认证交接尝试另列结果，没有导出 Cookie、票据、CSRF、个人预填信息或认证存储。
+调查日期：2026-10-23，北京时间约 20:10–20:47；21:06–21:43:23 补做认证页面、公开脚本及纯 HTTP 交接诊断。本机网络路径、忽略环境代理、TLS 正常校验；业务接口调用为短超时 GET。已认证页面证据来自初轮 root 在 Chrome 调查标签页的只读核查，后续纯 HTTP 认证交接结果另列，没有导出 Cookie、票据、CSRF、个人预填信息或认证存储。
 
 **业务边界：`r.stu.edu.cn` 是本报告对象，不是已接入的 `repair.stu.edu.cn` 宿舍报修。**未实现新 MCP 功能，也未创建、保存草稿、提交、更新、关闭、删除、评价或签到任何请求。
 
@@ -170,3 +170,85 @@ GET /api/v3/requests/template?input_data=<URL编码的下方JSON>
 | `spa.js?13001` | `acb3627614f9f58deb31d25509c106e8f59b94d5ebde7a2a4826677ff28b5a4e` |
 
 仍待补证：真实分类/子类/项目标签，`udf_*` 精确标签关联和日期格式，认证后 V3 列表/详情/空集/权限错误原始合同，模板权限，知识库检索字段，HTTP 首次登录/6443→443 的正向证明，附件读取权限与下载范围。当前没有“r 全部接口已验证”的结论。
+
+## 7. HTTP 交接的自动表单分支补查
+
+2026-10-23 `13:06:58Z`（北京时间 21:06）匿名实读页面本身引用的 `GET https://r.stu.edu.cn/scripts/Login.js?13001`：200，39615 字节，SHA256 `5996241a89dec4fcc233e3d61230f19a1e22d82765260921c6fc509ae5188fea`。这轮只读公开脚本，没有向本地登录表发送学校密码或任何认证 POST。
+
+### 已确定的客户端逻辑
+
+公开 `Login.js` 定义 `loadLoginAndEncryptPassword(uName, pwd, domain, publicKey, token)`：
+
+1. `uName` 非空时，把传入材料放入当前登录表的 `j_username/j_password`。
+2. `publicKey != null` 时调用 `encryptPassword`，即只排除 JS `null/undefined`，不排除空字符串。后者在需要时先给 `pwd` 拼固定分隔符和页面提供的 `token`，再以页面公钥调用 JSEncrypt 的 RSA 加密，结果替换 `j_password`。
+3. `domain` 既不是 `null/undefined`、也不是 `"-"` 时，调用 `createDomain_NameForLogin` 生成相应域字段。
+4. 最后选中登录表的记住登录复选框，并调用原生 `document.login.submit()`。
+
+这是一个**自动表单提交**分支。直接使用 `httpx` 跟重定向只会拿到 HTML，不会执行它。原生 `form.submit()` 也不经过普通按钮调用的 `checkForNullInLogin`，因此不能把手动登录按钮的全部字段改写直接套进这个分支。
+
+但是“函数在发行脚本里存在”不证明它在这次学校桥接页面被调用，也不证明其中 `pwd` 是派生材料而不是原密码。匿名初始登录 HTML 中**没有调用**这个函数。后续必须只在内存中检查实际桥接后 HTML 的调用、参数是否非空/占位以及表单是否完整；不能打印、保存或重新拼接认证材料。
+
+### 匿名 Cookie/页面对照
+
+`2026-10-23T13:10:01Z` 至 `13:10:06Z` 使用一个全新的、来源专用的匿名 HTTP 客户端顺序执行 3 个 GET，正常 TLS，不跟随学校 SSO：
+
+| 请求 | 实际结果 | 仅保留的 Cookie 元数据 |
+| --- | --- | --- |
+| `GET https://r.stu.edu.cn/HomePage.do` | 200，普通登录表，`j_username/j_password` 都为空；包装调用也没有用户名材料，不会自动提交 | 设置 host-only `SDPSESSIONID`，`Path=/`、HttpOnly |
+| `GET https://r.stu.edu.cn:6443/` | 302 到 HTTPS 学校 SSO | 未设置或替换上一步 Cookie |
+| 无参数 `GET https://r.stu.edu.cn/approval/Login.jsp` | 302 到同业务 `HomePage.do`，包含用户名/密码参数名；没有有效身份材料 | 设置 host-only `sdpcsrfcookie`、`_zcsr_tmp`（Path=/，后者 SameSite=Strict）；临时 `priority` 也在响应头中出现 |
+
+Cookie 值只在请求客户端内存里按服务器正常处理，没有输出、散列或保存。匿名对照**没有支持**“6443 和 443 的同名会话 Cookie 覆盖导致失败”这一猜测；不能把它当成已确诊原因。认证后 6443 是否另有会话 Cookie、域/路径冲突或是否需先初始化 443，还需 root 持有的当次业务 jar 元数据验证。
+
+### 下一步的有限诊断顺序
+
+- 保持学校中央 SSO 与 `r` 的业务客户端隔离；业务的 6443 和 443 路径按服务器自身 Cookie 域/路径处理，不复制中央整份 Cookie jar，也不任意改 Cookie 域。
+- 从官方 6443 完成当次 CAS 后，精确跟随服务器返回的同业务桥接，保留认证参数在进程内；摘要仅输出路径、参数名称和布尔判据。
+- 若最后 HTML 含 `loadLoginAndEncryptPassword` 调用，先确定参数来源、有效性和是否来自这次正常桥接，再讨论如何还原它；禁止拿学校 SSO 原密码填 `/j_security_check`，也禁止拿旧返回 URL 重放。
+- 若没有自动调用、材料为空或参数语义未证实，就继续保留未成功结论；不能因为通用函数存在便补发手动登录。
+- 只有建立了该业务身份正向证据，再调用本人列表/分类等只读接口；不以“密码框消失”或 HTTP 200 当作最终身份依据。
+
+新的匿名元数据保存在忽略目录 `repair-r/auth-anonymous-metadata.json`；公开脚本与静态分析在 `library/r-auth-login-js.*`、`library/r-auth-login-static-analysis.json`。这只是调查文件归属沿用，不新增产品依赖。当前尚未执行该自动表单，也没有新增纯 HTTP 认证成功结论。
+
+### 全部登录页脚本对照
+
+`2026-10-23T13:15:29Z`（北京时间 21:15）按实际匿名 HTML 的引用顺序，逐个匿名读取 13 个脚本，均为正常 TLS 的 200。清单、时间、字节数和各自 SHA256 保存在忽略目录 `repair-r/login-script-manifest.json`，原文为 `login-script-00.js` 至 `login-script-12.js`。没有用认证 URL 或账号参数请求这些资源。
+
+- 13 个脚本都没有 `isSSOLogin`；`Login.js` 本身没有 `ready`、`DOMContentLoaded` 或解析查询参数的自动登录入口。
+- `Login.js` 还定义 `loadLogin(username,junkVal,domainname,publicKey,token)`，它包装前述自动函数。因此实际 HTML 必须同时查这两个函数的**调用**，不能只查长函数名或脚本中的定义。
+- ESAPI 发行脚本确有通用 `getRequestParameter`，内部读取 `window.top.location.search`；其他已读脚本和匿名 inline 未见它用于认证，也没有读取 `isSSOLogin` 的逻辑。通用工具定义不能算已执行的认证分支。
+- `getCustomHtml(login_logo,prodName,prodLink,prodVersion,cssClass)` 另取 `/custom/login/Login.html`。复核全部 inline 后，匿名页和当次 CAS 交接页都确有调用，不能漏查其他 inline 块。五参数仅用于本地品牌、版本和显示替换，函数的 HTTP GET 不携带这些参数；不能把品牌参数当成认证材料。
+- 匿名 HTML 的 `changeLoginHtml` 仅处理外部聊天窗口、消息和显示内容，没有 URL 解析或认证提交。
+
+root 随后重新取得当次 CAS 交接页面，在内存中检查最终 `HomePage.do` HTML：11215 字节，仍有 `/j_security_check` 普通表单。完整调用检查发现 `loadLogin` 调用的五个参数**全为空字符串**；按公开函数，这只会聚焦用户名输入框，不会加密或提交。`getCustomHtml` 的显示参数与匿名页不同，但表单用户名/密码仍为空。重定向全程直接跟随官方 Location 原串，没有先解析参数再重建 URL。以上仅保存结构、长度/非空布尔摘要，没有保存认证参数或完整认证 HTML。
+
+因此，在当前实际 HTML 中，自动提交缺失不是简单“HTTP 客户端没有执行现有 JS”即可解释：可见包装调用没有收到有效参数；服务端桥接或账号映射等原因仍未证实。现阶段**既未证实 HTTP 登录成功，也未证实必须执行浏览器 JS**。
+
+`2026-10-23T13:19:19Z` 实际匿名读取已启用的 `GET https://r.stu.edu.cn/custom/login/Login.html`：200，3325 字节，SHA256 `114f239cbce0abdd4023e8ceb87e614dce7c7ff57d633aa46ce2f82d07e598a1`。该 HTML **没有 script、事件处理器、查询参数解析或自动登录代码**，仅包含外观占位和“SSO单点登录”链接，指回 `https://r.stu.edu.cn:6443`。它不会补上隐藏的认证提交。安全摘要在忽略目录 `repair-r/login-custom-metadata.json`；没有保存 Cookie 值或认证 URL。
+
+对 URL/参数检查只输出名称、长度和布尔判据，不能输出或散列认证值。正常 UA、Accept、语言头对照仍返回同类登录表，`loadLogin` 五参数仍为空；没有证明这些正常头能恢复认证。不得伪造身份，不把学校 SSO 原密码发往本地登录表。
+
+### 普通按钮的字段合同
+
+继续逐行检查公开 `checkForNullInLogin(btn,form,pubKey,token)` 和已有匿名表单，得到以下**当前页条件下**的可还原逻辑，不代表已经认证成功：
+
+| 页面事实 | 当前普通按钮实际行为 |
+| --- | --- |
+| `onclick=checkForNullInLogin(this,this.form,null,null)` | 公钥为 JS `null`，不会调用 RSA；不能把空字符串误当成 `null`，因为代码判据为 `pubKey != null` |
+| `AdEnable=false`、`LDAPEnable=false`、`enableDomainDropdown=true`、`DomainCount=0` | 不创建 `DOMAIN_NAME`，不选择或改变域，保留页面现有其他域字段 |
+| 默认 `AUTHRULE_NAME=RememberMeLoginModule` | 函数最后仍设为同一个值；不需要试探其他认证模块 |
+| 输入 `id=username`、`name=j_username` | 提交前将用户名转小写；这两个名称指同一控件 |
+| 无 `captcha_text`、记住登录默认未选 | 无验证码分支，不提交未选复选框，不擅自开启记住登录 |
+| `form method=post action=/j_security_check` | 按原表单的 successful controls 提交，保留当页 CSRF 和当前业务 Cookie jar |
+
+公开表单合同可以说明正常按钮如何提交，但**不能据此认定网关 URL 中的材料就是可用凭据**。完整前置检查必须先验证材料不为空、不为占位且确属当次正常交接，不能仅排除 `null/undefined`，也不能只因与学校原密码长度不同便当成有效派生凭据。当前实际检查结果见下节；本轮没有进入提交阶段。
+
+若最新页出现验证码、公钥或域选择变化，则本段简化条件失效，须按实际页面继续分析；不得用明文、默认域或其他认证模块试探。只有从同来源页面得到本人身份正向证据，再继续本人列表等只读 API；302、200、Cookie 变化或密码框消失都不是充分判据。
+
+### 本轮最终阻碍与停止点
+
+root 已实现普通表单等价验证的**前置检查**，当次表单枚举、按钮参数、RSA 条件与 CSRF 均符合上述分析；但补全占位类别检查后，发现官方网关返回的密码材料属于占位字符串。先前仅检查 `null/undefined` 而称其“非占位”的判断不充分，现已纠正；具体值没有输出或保存。
+
+因此在认证 POST **之前**停止，安全摘要原因为 `gateway_material_missing_or_placeholder`。本轮没有向 `r` 的 `/j_security_check` 或其他认证接口发送任何 POST，也没有用学校原密码代填、猜测材料或切换域。已在正确的 443 业务基址观察到分类 GET 的认证错误；早先误向 6443 发送业务 API 造成的 404 是调查器基址错误，不是该业务接口不可用的证据。
+
+当前具体结论是：**本次网关交接没有提供已验证可用于普通表单的凭据，纯 HTTP 首次认证仍未跑通。** “旧 GET 交接与当前版本不兼容”、账号映射或其他服务端原因都未确诊。后续需要校方实际 SSO 流程的有效协议证据，或以全新浏览器会话首次登录作正常流程对照；这种对照是调查方法，不能据此宣称业务必须依赖浏览器。
