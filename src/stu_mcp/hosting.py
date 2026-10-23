@@ -7,6 +7,7 @@ from contextlib import contextmanager
 from typing import Any
 
 from .app import App
+from .capability_catalog import build_capability_catalog
 from .checkin import CheckinClient
 from .connectivity import NetworkDiagnostics
 from .credentials import backend_name
@@ -100,7 +101,12 @@ class HostRuntime:
         except AppError as exc:
             interaction = {"mode": "invalid" if exc.code == "invalid_interaction_mode" else interaction_mode(),
                            "scope": "manual_browser", "available": False, "status": exc.code}
-        return self.app.status() | {"checkin": self.checkin.status(), "execution": execution_context(),
+        local = self.app.status()
+        checkin = self.checkin.status()
+        catalog = build_capability_catalog(
+            local["sources"], repair_status=local["repair"]["auth"], checkin_status=checkin,
+            takeout_status=local["takeout"], freshness=local["freshness"])
+        return local | {"checkin": checkin, "execution": execution_context(), "capability_catalog": catalog,
             "updates": self.updates.capabilities(),
             "hosting": {"transport": self.transport, "identity_scope": "single_user_instance",
                         "shared_between_clients": True, "multi_user": False, "workers": 1,
@@ -110,6 +116,9 @@ class HostRuntime:
                         "credential_backend": backend_name(), "credential_backend_verified": False,
                         "setup_on": "mcp_host", "setup_url_returned_to_agent": False,
                         "login_flows": {
+                            "school": {"method": "isolated_cas_http", "input": "host_tty_once",
+                                       "services": ["jw", "mystu", "repair"], "sessions_shared": False,
+                                       "credentials_persisted": False, "requires_display": False},
                             "duifene": {"method": "wechat_callback", "input": "host_tty_or_loopback_page",
                                         "requires_display": False, "new_monitoring_plan": False,
                                         "existing_authorized_plan_may_resume": True},
@@ -131,7 +140,8 @@ class HostRuntime:
             return {"ok": False, "status": "host_setup_required", "execution": execution_context(),
                     "message": "对分易请由本人在 MCP 宿主终端运行 stu-mcp login duifene，使用原微信回调。"
                     "WebVPN 自动重登可在终端用 stu-mcp webvpn-auto configure 配置；不把凭据发给 agent。"
-                    "教务、MySTU、雨课堂和报修请运行 stu-mcp login 对应来源，默认使用 HTTP，无需显示环境。"
+                    "学校账号可运行 stu-mcp login school，一次输入后分别建立教务、MySTU和报修会话；"
+                    "雨课堂仍用独立登录。默认使用 HTTP，无需显示环境。"
                     "可选设置页仍仅在宿主回环提供，私密地址不会通过 MCP 返回。"}
         with self._lock:
             if self._closed:
@@ -147,7 +157,8 @@ class HostRuntime:
             else:
                 opened = open_local_page(self._setup.url)
         return {"ok": opened, "status": "settings_opened" if opened else "local_browser_required",
-                "message": "账号认证默认在 MCP 宿主终端运行 stu-mcp login 来源；设置页提供本机可选配置。"}
+                "message": "学校账号在 MCP 宿主终端运行 stu-mcp login school；设置页展示对应功能、"
+                "各业务会话及尚未接入的学校服务，也保留单来源登录。"}
 
     def checkin_result(self, result: dict[str, Any]) -> dict[str, Any]:
         if self.transport != "stdio" and (result.get("needs_login") or result.get("next_action") == "open_local_browser"):

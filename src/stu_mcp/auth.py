@@ -201,6 +201,13 @@ class LoginJobs:
         self.lock = threading.Lock()
 
     def start(self, service: str, *, backend: str = "http") -> dict:
+        if service in {"school", "repair", "duifene"}:
+            if backend != "http":
+                raise AppError("invalid_login_backend", "此配置请在宿主终端完成 HTTP 登录。", service)
+            return {"ok": False, "service": service, "status": "host_cli_required",
+                    "command": "stu-mcp login " + service,
+                    "message": "请在运行服务的主机终端执行该命令；学校账号只输入一次，各业务分别核验。"
+                    if service == "school" else "请在运行服务的主机终端执行该命令；认证信息不经过 MCP。"}
         source = login_service(service)
         if backend == "http":
             command = "stu-mcp login " + ("webvpn" if source == "oa" else source)

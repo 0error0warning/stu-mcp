@@ -44,6 +44,7 @@ def setup_page(app, monkeypatch):
 def test_cancel_or_switch_clears_unsaved_webvpn_fields(setup_page, keys, close_action):
     page, ui = setup_page
     page.goto(ui.url)
+    page.locator("#advanced-login > summary").click()
     page.locator('[data-service="oa"] .act').click()
     for field in ("vpn-user", "vpn-pass", "vpn-totp"):
         page.locator("#" + field).fill("SYNTHETIC_UNSAVED_ONLY")
@@ -57,6 +58,7 @@ def test_cancel_or_switch_clears_unsaved_webvpn_fields(setup_page, keys, close_a
 def test_rejected_webvpn_save_clears_every_input(setup_page, keys):
     page, ui = setup_page
     page.goto(ui.url)
+    page.locator("#advanced-login > summary").click()
     page.locator('[data-service="oa"] .act').click()
     page.locator("#vpn-user").fill("SYNTHETIC_STUDENT")
     page.locator("#vpn-pass").fill("SYNTHETIC_PASSWORD")
@@ -113,10 +115,11 @@ def test_login_finishes_after_one_status_read_failure(setup_page, app, session, 
     page.route("**/api/status", status)
     try:
         page.goto(ui.url)
+        page.locator("#advanced-login > summary").click()
         start_explicit_browser_login(page)
         wait_for_requests(page, requests, failed_request)
         complete.set()
-        expect(page.locator('[data-service="oa"] .meta')).to_have_text("已登录", timeout=10000)
+        expect(page.locator('[data-service="oa"] .meta')).to_have_text("会话已保存，访问待核验", timeout=10000)
         expect(page.locator('[data-service="oa"] .act')).to_be_enabled()
         assert calls == ["oa"]
     finally:
@@ -143,6 +146,7 @@ def test_status_retries_stop_on_forbidden_or_retry_budget(setup_page, app, sessi
     page.route("**/api/status", status)
     try:
         page.goto(ui.url)
+        page.locator("#advanced-login > summary").click()
         start_explicit_browser_login(page)
         expected = 2 if http_status == 403 else 7
         wait_for_requests(page, requests, expected)
@@ -164,9 +168,40 @@ def test_default_http_login_displays_host_command_without_browser_or_background_
 
     page.route("**/api/login", record)
     page.goto(ui.url)
+    page.locator("#advanced-login > summary").click()
     page.locator('[data-service="mystu"] .act').click()
     expect(page.locator("#toast")).to_contain_text("stu-mcp login mystu")
     expect(page.locator("#toast")).to_have_attribute("role", "status")
     expect(page.locator('[data-service="mystu"] .act')).to_be_enabled()
     assert submitted == [{"service": "mystu", "backend": "http"}]
     assert ui.jobs.snapshot() == []
+
+
+def test_configuration_view_has_one_school_entry_and_keeps_gaps_separate(setup_page, monkeypatch):
+    page, ui = setup_page
+    monkeypatch.setattr("stu_mcp.auth_http.login_school", lambda *_a, **_kw: pytest.fail("background credentials"))
+    page.goto(ui.url)
+    school = page.locator('[data-profile="school"]')
+    expect(school).to_contain_text("成绩")
+    expect(school).to_contain_text("作业")
+    expect(school).to_contain_text("报修")
+    expect(page.locator("#advanced-login")).not_to_have_attribute("open", "")
+    school.locator("button").click()
+    expect(page.locator("#login-command-text")).to_have_text("stu-mcp login school")
+    expect(page.locator("#login-command-text")).to_be_visible()
+    assert ui.jobs.snapshot() == []
+    page.locator("#integration-gaps > summary").click()
+    expect(page.locator('[data-service-id="campus_repair"]')).to_contain_text("业务未接入")
+    expect(page.locator('[data-service-id="dorm_utilities"]')).to_contain_text("业务未接入")
+
+
+def test_saved_school_sessions_are_not_shown_as_live_verified(setup_page, app, session):
+    for source in ("jw", "mystu", "repair"):
+        app.vault.save(source, session)
+    page, ui = setup_page
+    page.goto(ui.url)
+    school = page.locator('[data-profile="school"]')
+    expect(school.locator(".profile-sessions li")).to_have_count(3)
+    expect(school.locator(".profile-sessions")).to_contain_text("会话已保存，访问待核验")
+    page.locator("#integration-gaps > summary").click()
+    expect(page.locator('[data-service-id="campus_repair"]')).to_contain_text("业务未接入")

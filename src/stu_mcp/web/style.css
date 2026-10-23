@@ -46,7 +46,7 @@ button, input { font: inherit; color: inherit; }
 p { text-wrap: pretty; }
 :focus-visible { outline: 3px solid var(--accent-soft); outline-offset: 2px; }
 
-.page { max-width: 560px; margin: 0 auto; padding: max(56px, 14vh) 20px 48px; }
+.page { max-width: 720px; margin: 0 auto; padding: max(40px, 7vh) 20px 48px; }
 
 .top { display: flex; align-items: center; gap: 14px; margin-bottom: 44px; }
 .mark {
@@ -61,6 +61,21 @@ h1 { margin: 0; font-size: 26px; line-height: 1.2; font-weight: 700; letter-spac
 section { margin-bottom: 40px; }
 h2 { margin: 0 0 6px; font-size: 20px; font-weight: 650; letter-spacing: -.01em; }
 .hint { margin: 0 0 14px; color: var(--dim); font-size: 15px; }
+
+.configuration { padding: 18px 20px; margin-bottom: 12px; }
+.configuration h3 { margin: 0; font-size: 17px; }
+.configuration ul { margin: 10px 0; padding-left: 22px; font-size: 15px; }
+.configuration .profile-state { margin: 8px 0; color: var(--dim); font-size: 14px; }
+.configuration .profile-button { margin-top: 6px; }
+.command-panel { padding: 14px 18px; margin: 14px 0; border-radius: 12px; background: var(--accent-soft); }
+.command-panel p { margin: 0 0 8px; }
+.command-panel code { display: block; overflow-wrap: anywhere; user-select: all; font-size: 15px; }
+.command-panel .note { margin-top: 10px; font-size: 14px; }
+details { margin: 22px 0; }
+summary { cursor: pointer; font-weight: 600; }
+details > section { margin-top: 16px; }
+.catalog-gaps li { margin: 10px 0; font-size: 14px; }
+.catalog-gaps .note { display: block; margin: 3px 0; }
 
 .card { background: var(--card); border-radius: 16px; box-shadow: var(--shadow); overflow: hidden; }
 

@@ -79,3 +79,22 @@ def test_setup_page_only_handles_sign_in(app):
             assert app.runtime.profile().get("major", "") == ""
     finally:
         ui.close()
+
+
+def test_school_setup_only_returns_fixed_cli_guidance_and_rejects_credentials(app, monkeypatch):
+    monkeypatch.setattr("stu_mcp.auth_http.login_school", Mock(side_effect=AssertionError("no background TTY")))
+    ui = SetupServer(app)
+    ui.start(open_browser=False)
+    try:
+        with httpx.Client(base_url=ui.origin, trust_env=False) as client:
+            headers = {"X-STU-Setup": ui.secret, "Origin": ui.origin}
+            result = client.post("/api/login", headers=headers, json={"service": "school", "backend": "http"})
+            assert result.json()["command"] == "stu-mcp login school"
+            assert result.json()["status"] == "host_cli_required" and ui.jobs.snapshot() == []
+            for fields in ({"password": "SYNTHETIC_SECRET"}, {"username": "SYNTHETIC_ACCOUNT"}):
+                rejected = client.post("/api/login", headers=headers, json={"service": "school", **fields})
+                assert rejected.status_code == 400 and "SYNTHETIC" not in rejected.text
+            blocked = client.post("/api/login", headers=headers, json={"service": "school", "backend": "browser"})
+            assert blocked.json()["status"] == "invalid_login_backend" and ui.jobs.snapshot() == []
+    finally:
+        ui.close()

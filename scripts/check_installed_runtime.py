@@ -165,6 +165,11 @@ async def check_stdio_session(session) -> None:
     assert capabilities["hosting"]["default_authentication"] == "http"
     assert capabilities["hosting"]["browser_backend"] == "optional_explicit"
     assert capabilities["repair"]["default_backend"] == "http"
+    catalog = capabilities["capability_catalog"]
+    assert catalog["catalog_version"] == 1
+    school = next(item for item in catalog["profiles"] if item["configuration_id"] == "school")
+    assert school["setup_command"] == "stu-mcp login school" and len(school["service_ids"]) == 3
+    assert school["state"]["business_read"] == "not_checked"
     names = {tool.name for tool in installed_tools}
     assert {"get_capabilities", "get_charging_overview", "get_charging_device", "get_checkin_status",
             "open_checkin_page", "list_checkin_courses", "select_checkin_courses", "start_checkin_monitor",

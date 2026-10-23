@@ -9,6 +9,7 @@ from contextlib import nullcontext
 from urllib.parse import urljoin
 
 from . import __version__, collectors
+from .capability_catalog import build_capability_catalog
 from .charging import ChargingService
 from .clients import detected_clients
 from .connectivity import CAPABILITY as NETWORK_CAPABILITY
@@ -55,10 +56,10 @@ class App:
                              "access": "anonymous_first" if name == "oa" else "community_public" if name == "huyou"
                              else "third_party_public" if name == "charging"
                              else "public" if name == "public" else "personal"})
-        return {"ok": True, "version": __version__, "sources": features, "freshness": self.store.freshness(),
+        result = {"ok": True, "version": __version__, "sources": features, "freshness": self.store.freshness(),
                 "clients": detected_clients(), "profile": self.runtime.profile(), "transport": self.runtime.preferences(),
                 "webvpn_auto_login": WebVPNConfig(self.vault).status(),
-                "repair": dict(REPAIR_CAPABILITY),
+                "repair": {**REPAIR_CAPABILITY, "auth": self.vault.status("repair")},
                 "network_diagnostics": dict(NETWORK_CAPABILITY),
                 "network_audit": copy.deepcopy(NETWORK_AUDIT_CAPABILITY),
                 "takeout": self.takeout.status(),
@@ -66,6 +67,10 @@ class App:
                             "private_wechat": False, "storage": "os_keyring_and_encrypted_sessions"
                             if backend_name() == "os_keyring" else "external_key_and_encrypted_sessions",
                             "credential_backend": backend_name(), "credential_backend_verified": False}}
+        result["capability_catalog"] = build_capability_catalog(
+            features, repair_status=result["repair"]["auth"], takeout_status=result["takeout"],
+            freshness=result["freshness"])
+        return result
 
     def refresh(self, source: str, limit: int = 20, semester: str = "") -> dict:
         if source == "huyou":
@@ -86,7 +91,8 @@ class App:
             if source in {"jw", "mystu", "yuketang"}:
                 auth = self.vault.status(SOURCES[source].session)
                 if auth["status"] != "session_saved":
-                    raise AppError(auth["status"], "此来源需要在本地设置页登录；公开功能可直接使用。", source)
+                    command = "stu-mcp login yuketang" if source == "yuketang" else "stu-mcp login school"
+                    raise AppError(auth["status"], f"请本人在 MCP 宿主终端运行 {command}；公开功能可直接使用。", source)
             if source == "public":
                 result = collectors.public(limit)
             elif source == "oa":

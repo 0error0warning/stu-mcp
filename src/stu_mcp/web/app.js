@@ -2,7 +2,8 @@
 (() => {
   const token = location.hash.slice(1);
   const $ = id => document.getElementById(id);
-  const NAMES = {jw: "教务系统", mystu: "MySTU", yuketang: "雨课堂", oa: "WebVPN"};
+  const NAMES = {school: "学校统一账号", jw: "教务系统", mystu: "MySTU", repair: "宿舍报修",
+                 yuketang: "雨课堂", oa: "WebVPN"};
   const EXPIRED = new Set(["login_expired", "session_invalid", "session_changed"]);
   const SECRETS = ["vpn-user", "vpn-pass", "vpn-totp"];
   const rows = [...document.querySelectorAll(".row[data-service]")];
@@ -30,8 +31,12 @@
       error.httpStatus = response.status;
       error.status = body.status;
       if (body.status === "host_cli_required" && typeof body.command === "string"
-          && /^stu-mcp login (jw|mystu|yuketang|webvpn)$/.test(body.command)) {
+          && /^stu-mcp login (school|jw|mystu|repair|yuketang|webvpn|duifene)$/.test(body.command)) {
         error.message += "\n" + body.command;
+        $("login-command-text").textContent = body.command;
+        $("login-command").hidden = false;
+        $("jw-command-note").hidden = !["stu-mcp login school", "stu-mcp login jw"].includes(body.command);
+        $("login-command").scrollIntoView({block: "nearest"});
       }
       throw error;
     }
@@ -65,7 +70,63 @@
   function sourceState(id) {
     const source = state.sources.find(item => item.source === id);
     const fresh = state.freshness.find(item => item.source === id);
-    return {auth: source ? source.auth.status : "needs_login", last: fresh ? fresh.status : null};
+    const auth = id === "repair" ? state.repair?.auth?.status : source?.auth?.status;
+    return {auth: auth || "needs_login", last: fresh ? fresh.status : null};
+  }
+
+  function renderCatalog() {
+    const catalog = state.capability_catalog;
+    const container = $("configuration-profiles");
+    const gaps = $("unintegrated-services");
+    container.replaceChildren();
+    gaps.replaceChildren();
+    if (!catalog) {
+      container.append(el("p", "功能目录暂未读取，请检查运行中的 MCP 版本。", "hint"));
+      return;
+    }
+    const loginIds = new Set(["school", "webvpn", "yuketang", "duifene"]);
+    const serviceLabels = new Map(catalog.services.map(item => [item.service_id, item.label]));
+    for (const profile of catalog.profiles) {
+      const card = el("article", undefined, "card configuration");
+      card.dataset.profile = profile.configuration_id;
+      card.append(el("h3", profile.label));
+      const features = el("ul");
+      for (const feature of profile.features) {
+        const label = profile.service_ids.length > 1 ? serviceLabels.get(feature.service_id) : null;
+        features.append(el("li", label ? `${label}：${feature.label}` : feature.label));
+      }
+      card.append(features, el("p", profile.note, "note"),
+                  el("p", profile.state.message, "profile-state"));
+      if (loginIds.has(profile.configuration_id)) {
+        const button = el("button", "查看登录命令", "act profile-button");
+        button.type = "button";
+        button.disabled = Boolean(runningJob());
+        button.addEventListener("click", () => { closePanels(); login(profile.configuration_id); });
+        card.append(button);
+      } else if (profile.configuration_id === "takeout") {
+        card.append(el("p", profile.setup_command, "note"));
+      }
+      if (profile.configuration_id === "school") {
+        const list = el("ul", undefined, "profile-sessions");
+        const names = {session_saved: "会话已保存，访问待核验", needs_login: "尚未登录",
+                       login_expired: "会话已过期", session_invalid: "会话无法读取",
+                       secure_storage_unavailable: "密钥库不可用"};
+        for (const [id, item] of Object.entries(profile.state.services || {})) {
+          const status = typeof item === "string" ? item : item.status;
+          list.append(el("li", `${serviceLabels.get(id) || id}：${names[status] || "待核验"}`));
+        }
+        card.append(list);
+      }
+      container.append(card);
+    }
+    for (const service of catalog.services.filter(item => item.integration !== "implemented")) {
+      const row = el("li");
+      row.dataset.serviceId = service.service_id;
+      row.append(el("strong", service.label + " · " +
+        (service.integration === "navigation_only" ? "仅入口导航，业务未接入" : "业务未接入")));
+      row.append(el("span", service.scope, "note"));
+      gaps.append(row);
+    }
   }
 
   // ---- accounts --------------------------------------------------------
@@ -77,7 +138,7 @@
     if (mode === "enabled") return ["已保存账号，过期自动登录", "ok", "管理"];
     if (mode === "paused") return ["自动登录已暂停，需要更新账号", "warn", "更新"];
     if (mode === "broken") return ["保存的账号无法读取", "warn", "管理"];
-    if (auth === "session_saved" && !EXPIRED.has(last)) return ["已登录", "ok", "管理"];
+    if (auth === "session_saved" && !EXPIRED.has(last)) return ["会话已保存，访问待核验", "ok", "管理"];
     if (auth === "session_saved" || EXPIRED.has(auth)) return ["登录已过期", "warn", "设置"];
     return [null, "", "设置"];
   }
@@ -87,7 +148,7 @@
     if (job && job.service === id) {
       return [job.phase === "preparing_browser" ? "正在准备登录窗口…" : "请在弹出的窗口中登录", "busy", "等待中"];
     }
-    if (auth === "session_saved" && !EXPIRED.has(last)) return ["已登录", "ok", "退出"];
+    if (auth === "session_saved" && !EXPIRED.has(last)) return ["会话已保存，访问待核验", "ok", "退出"];
     if (auth === "session_saved" || EXPIRED.has(auth)) return ["登录已过期", "warn", "重新登录"];
     if (auth === "secure_storage_unavailable") return ["无法访问系统钥匙串", "bad", "登录"];
     return [null, "", "登录"];
@@ -284,6 +345,7 @@
     pollFailures = 0;
     $("version").textContent = state.version;
     renderRows();
+    renderCatalog();
     if (runningJob()) {
       watching = true;
       schedulePoll();
@@ -300,6 +362,7 @@
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden && state) load().catch(() => {});
   });
+  window.addEventListener("focus", () => { if (state) load().catch(() => {}); });
   window.addEventListener("pagehide", clearCredentials);
   load().catch(error => toast(error.message, true));
 })();

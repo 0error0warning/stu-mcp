@@ -26,12 +26,14 @@ def test_setup_page_is_local_and_csp_compatible():
 def test_setup_page_only_asks_for_what_is_needed():
     _, script, page = load()
     services = [row["data-service"] for row in page.select(".row[data-service]")]
-    assert services == ["jw", "mystu", "yuketang", "oa"]
+    assert services == ["jw", "mystu", "repair", "yuketang", "oa"]
     # Connecting, refreshing and the profile are the agent's job; the page only signs in.
     for path in ("/api/refresh", "/api/profile", "/api/connect", "/api/skill"):
         assert path not in script
-    assert len(page.find_all("section")) == 1
-    assert not page.find(string=lambda s: s and ("刷新" in s or "接入" in s))
+    assert page.find(id="configuration-profiles") and page.find(id="unintegrated-services")
+    assert not page.find(id="advanced-login").has_attr("open")
+    assert page.find(id="login-command-text").name == "code"
+    assert "innerHTML" not in script
 
 
 def test_credentials_are_never_prefilled_and_always_cleared():

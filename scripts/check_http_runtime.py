@@ -189,6 +189,15 @@ async def _handshake(url: str, token: str, child: OwnedHTTPProcess) -> None:
         assert capabilities["hosting"]["interaction"]["available"] is False
         assert capabilities["hosting"]["interaction"]["scope"] == "manual_browser"
         flows = capabilities["hosting"]["login_flows"]
+        assert flows["school"]["input"] == "host_tty_once"
+        assert flows["school"]["services"] == ["jw", "mystu", "repair"]
+        assert flows["school"]["sessions_shared"] is False
+        catalog = capabilities["capability_catalog"]
+        assert catalog["catalog_version"] == 1
+        school = next(item for item in catalog["profiles"] if item["configuration_id"] == "school")
+        assert school["setup_command"] == "stu-mcp login school" and len(school["service_ids"]) == 3
+        assert school["state"]["business_read"] == "not_checked"
+        assert next(item for item in catalog["services"] if item["service_id"] == "campus_repair")["state"]["status"] == "not_integrated"
         assert flows["duifene"]["method"] == "wechat_callback"
         assert flows["duifene"]["requires_display"] is False
         assert capabilities["hosting"]["default_authentication"] == "http"
@@ -229,10 +238,13 @@ def main() -> None:
                             capture_output=True, timeout=20, check=False,
                             creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
     assert status.returncode == 0
-    assert json.loads(status.stdout)["version"] == __version__
+    status_data = json.loads(status.stdout)
+    assert status_data["version"] == __version__
+    assert status_data["capability_catalog"]["catalog_version"] == 1
+    assert status_data["repair"]["auth"]["status"] == "needs_login"
     assert token.encode() not in status.stdout + status.stderr
     # Actual installed CLI dispatch must fail before input or App side effects.
-    for arguments in (*(("login", source) for source in ("jw", "mystu", "yuketang", "webvpn", "repair", "duifene")),
+    for arguments in (*(("login", source) for source in ("school", "jw", "mystu", "yuketang", "webvpn", "repair", "duifene")),
                       ("webvpn-auto", "configure")):
         denied = subprocess.run([interpreter, "-m", "stu_mcp", *arguments], env=env, cwd=root,
                                 input=b"", capture_output=True, timeout=15, check=False,
