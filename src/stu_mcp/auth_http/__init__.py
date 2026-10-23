@@ -1,4 +1,4 @@
-"""HTTP-first local login, with source isolation and guarded encrypted saving."""
+"""HTTP authentication with replaceable human interaction and isolated sessions."""
 from __future__ import annotations
 
 import sys
@@ -62,12 +62,14 @@ def login_http(vault: Vault, service: str, *, credentials: Credentials | None = 
                interaction=None, on_phase: Callable[[str], None] | None = None,
                expected_revision: bytes | None = None, allow_http_callback: bool = False,
                transport=None, check_group: Callable[[], None] | None = None,
-               commit_receipt: dict | None = None) -> dict:
+               commit_receipt: dict | None = None,
+               check_cancelled: Callable[[], None] | None = None,
+               use_saved_credentials: bool = True) -> dict:
     source = "oa" if service in {"oa", "webvpn"} else service
     session = "webvpn" if source == "oa" else source
     if source not in {"jw", "mystu", "repair", "yuketang", "oa"}:
         raise AppError("unknown_service", "请选择教务、MySTU、雨课堂、WebVPN 或宿舍报修。")
-    interaction = interaction or TerminalInteraction()
+    interaction = TerminalInteraction() if interaction is None else interaction
     if expected_revision is None:
         with key_lock(vault.runtime.home, session):
             expected_revision = vault.login_revision(session)
@@ -80,6 +82,8 @@ def login_http(vault: Vault, service: str, *, credentials: Credentials | None = 
         snapshot = config.snapshot()
 
     def check_locked():
+        if check_cancelled is not None:
+            check_cancelled()
         if vault.login_revision(session) != expected_revision:
             raise AppError("session_changed", "登录期间已退出或切换账号；本次认证结果未保存。", source)
         if config is not None:
@@ -100,7 +104,7 @@ def login_http(vault: Vault, service: str, *, credentials: Credentials | None = 
     elif source == "oa":
         from .webvpn import acquire_state
         code = interaction.code
-        if credentials is None and config.marker()["configured"]:
+        if credentials is None and use_saved_credentials and config.marker()["configured"]:
             import time
             saved = config.credentials(config.marker())
             credentials = Credentials(saved.username, saved.password)
@@ -113,12 +117,14 @@ def login_http(vault: Vault, service: str, *, credentials: Credentials | None = 
                 return saved.totp.now()
             code = current_code
         credentials = credentials or interaction.credentials()
+        check()
         state, metadata = acquire_state(username=credentials.username, password=credentials.password,
                                         totp_code=code, check=check, on_phase=on_phase, transport=transport)
         candidate = Candidate(state, metadata)
     else:
         from .cas import acquire_state
         credentials = credentials or interaction.credentials()
+        check()
         legacy = bool(allow_http_callback or vault.runtime.preferences()["jw_http_compat"])
         candidate = acquire_state(source, credentials.username, credentials.password, check=check,
                                   transport=transport, legacy_jw=legacy)

@@ -2,7 +2,8 @@
 from __future__ import annotations
 
 import hashlib
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
+from copy import deepcopy
 
 from ..runtime import AppError, key_lock
 from ..terminal import require_terminal
@@ -24,12 +25,17 @@ def school_account_fingerprint(username: str) -> str:
 
 
 def login_school(vault: Vault, *, services: Sequence[str] | None = None, interaction=None,
-                 allow_http_callback: bool = False, transport=None, reauthenticate: bool = False) -> dict:
+                 allow_http_callback: bool = False, transport=None, reauthenticate: bool = False,
+                 check_cancelled: Callable[[], None] | None = None,
+                 on_result: Callable[[dict], None] | None = None) -> dict:
     """Migrate selected sessions independently; never persist the shared password.
 
     Saved sessions are skipped only when their encrypted account association
     matches the credentials just entered. That is a local check, not online proof.
     Old sessions without this metadata are reauthenticated rather than guessed.
+    An explicit human interaction can be a private setup-page bridge; the
+    default terminal interaction still requires a real TTY. Cancellation raises
+    at checkpoints. Progress callbacks receive safe copies outside source locks.
     """
     from . import TerminalInteraction, login_http
 
@@ -38,7 +44,10 @@ def login_school(vault: Vault, *, services: Sequence[str] | None = None, interac
         raise AppError("invalid_school_services", "请选择不重复的 jw、mystu、repair 业务。", "school")
     if allow_http_callback and "jw" not in selected:
         raise AppError("invalid_login_options", "HTTP 票据回调选项只适用于本次所选教务业务。", "school")
-    require_terminal()
+    if interaction is None:
+        require_terminal()
+    if check_cancelled is not None:
+        check_cancelled()
     vault._key(create=True)  # Fail before credential input or school requests.
     expected = {}
     previous = {}
@@ -51,6 +60,8 @@ def login_school(vault: Vault, *, services: Sequence[str] | None = None, interac
         return previous[source] is not None and vault.fingerprint(source) == previous[source]
 
     def check_group():
+        if check_cancelled is not None:
+            check_cancelled()
         for source in selected:
             with key_lock(vault.runtime.home, source):
                 if vault.login_revision(source) != expected[source]:
@@ -61,14 +72,25 @@ def login_school(vault: Vault, *, services: Sequence[str] | None = None, interac
     group_error = None
     credentials: Credentials | None = None
 
+    def publish(item):
+        if on_result is not None:
+            on_result(deepcopy(item))
+
+    def record(item):
+        results.append(item)
+        publish(item)
+
     def changed_result(error):
         for item in results:
             if item["service"] == error.source:
                 item.update(ok=False, status="session_changed", verified_live=False,
                             next_step="此业务的登录状态在本次认证后又被改变；请查看当前配置状态。")
+                publish(item)
 
     try:
-        credentials = (interaction or TerminalInteraction()).credentials()
+        credentials = (TerminalInteraction() if interaction is None else interaction).credentials()
+        if check_cancelled is not None:
+            check_cancelled()
         if not isinstance(credentials, Credentials) or not isinstance(credentials.password, str) or not 1 <= len(credentials.password) <= 1024:
             raise AppError("invalid_authentication_input", "账号或密码为空或超出长度范围。", "school")
         fingerprint = school_account_fingerprint(credentials.username)
@@ -86,7 +108,7 @@ def login_school(vault: Vault, *, services: Sequence[str] | None = None, interac
                         saved = None  # A legacy/unreadable session still needs fresh proof.
                     locally_saved = vault.status(source)["status"] == "session_saved" if saved else False
                 if not reauthenticate and locally_saved and saved.get("school_account_fingerprint") == fingerprint:
-                    results.append({"ok": True, "service": source, "status": "session_saved",
+                    record({"ok": True, "service": source, "status": "session_saved",
                                     "method": "http", "skipped": True, "verified_live": False,
                                     "next_step": "已保留同账号的本地加密会话，尚未在线核验；读取提示失效时可运行 "
                                     f"stu-mcp login school --services {source} --reauthenticate。"})
@@ -95,7 +117,8 @@ def login_school(vault: Vault, *, services: Sequence[str] | None = None, interac
                 result = login_http(vault, source, credentials=credentials,
                                     expected_revision=expected[source], check_group=check_group,
                                     allow_http_callback=allow_http_callback if source == "jw" else False,
-                                    transport=transport, commit_receipt=committed)
+                                    transport=transport, commit_receipt=committed,
+                                    check_cancelled=check_cancelled)
                 with key_lock(vault.runtime.home, source):
                     # A concurrent logout/account switch after saving must not
                     # become the baseline for later password submissions.
@@ -110,7 +133,7 @@ def login_school(vault: Vault, *, services: Sequence[str] | None = None, interac
                     if saved.get("school_account_fingerprint") != fingerprint:
                         raise AppError("session_changed", "此业务的登录状态已改变；后续认证已停止。", source)
                     expected[source] = vault.login_revision(source)
-                results.append(result)
+                record(result)
             except Exception as caught:
                 error = caught if isinstance(caught, AppError) else AppError(
                     "operation_failed", "此业务认证未完成；后续认证已停止，未输出认证信息。", source)
@@ -121,11 +144,11 @@ def login_school(vault: Vault, *, services: Sequence[str] | None = None, interac
                 if item["kept_previous"]:
                     item["previous_identity_verified"] = False
                     item["next_step"] = "保留原有会话和缓存；未确认它属于本次账号或仍可在线使用。"
-                results.append(item)
+                record(item)
                 if error.code not in _CONTINUE_ERRORS:
                     stopped = True
                     for remaining in selected[index + 1:]:
-                        results.append({"ok": False, "service": remaining, "status": "not_attempted",
+                        record({"ok": False, "service": remaining, "status": "not_attempted",
                                         "verified_live": False, "kept_previous": kept_previous(remaining),
                                         "next_step": "前一业务认证需先处理，本次没有继续发送共享密码。"})
                     break
