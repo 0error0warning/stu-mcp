@@ -6,8 +6,18 @@
 
 ## 阅读入口
 
+**当前覆盖状态先看 [完整性审计](completeness-audit.md)和
+[业务协议台账](business-protocol-ledger.csv)。** 原 620 URL 表只有来源归类，不能证明接口
+全已查完。后续补查已跨至北京时间 10 月 24 日，各报告使用 UTC 时间保留证据先后。
+
 | 内容 | 记录 |
 | --- | --- |
+| 全部已知入口、子业务、未验证范围与精确阻碍 | [completeness-audit.md](completeness-audit.md)、[业务协议台账](business-protocol-ledger.csv) |
+| 当前导航 12 分类及官网快速通道与原清单的差异 | [navigation-refresh.md](navigation-refresh.md)、[差异 CSV](navigation-new-entries.csv) |
+| 馆藏二段读取、空间与 CARSI 的最新补证 | [library-completion.md](library-completion.md) |
+| 行政/采购/财务/医学院的最新补证及 208 事项 | [administration-completion.md](administration-completion.md)、[医学院事项 CSV](medical-service-matters.csv) |
+| ehall、旧 booking、ELC、NetMS、一网通办与校园卡公开读取补证 | [booking-network-completion.md](booking-network-completion.md) |
+| 学工 19 个应用、动态模块、真实勤工和证明记录查询 | [xg-completion.md](xg-completion.md) |
 | 一网通办 50 个事项、网络账户/套餐、网络登录及旧入口 | [service-network.md](service-network.md)、[50 项明细 CSV](service-matters.csv) |
 | `r` 校园服务台、请求表、V3 协议及认证交接 | [repair-r.md](repair-r.md) |
 | 学工、宿舍/水电、校园卡、场地/SLC/教室/ELC 预约 | [student-booking.md](student-booking.md) |
@@ -46,7 +56,11 @@ UTC 12:54–12:55 另以 Firecrawl 远端重新读取导航首页（HTTP 200、`
 
 `entry-coverage.csv` 将精确请求、报告范围映射、已有适配器/其他分工、排除分开。报告讨论了某个主机，不代表其所有原始 URL 已逐一请求。补充发现的菜单、接口与事项保留在各分报告，不与原 620 项混算。
 
-## 能力目录中 16 个缺口的结果
+## 能力目录中 16 个缺口的初轮结果
+
+下表保留初轮调查对照，**不是最新全量完成表**。其后 OPAC 馆藏、CARSI 认证步骤、ehall
+资源/本人记录、ELC、NetMS 和一网通办身份、学工具体查询已有新证据，见上列补查及协议
+台账。目录 16 个缺口也不是学校全部入口；新发现的独立业务在台账中另列。
 
 | 现有目录 ID | 业务与本轮掌握程度 | 仍缺的业务证明 |
 | --- | --- | --- |
