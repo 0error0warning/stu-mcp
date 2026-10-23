@@ -145,7 +145,10 @@ def test_qr_stays_in_private_page_and_disappears_after_authorization(setup_page,
         page.goto(ui.url)
         page.locator('[data-login="yuketang"]').click()
         expect(page.locator("#login-qr")).to_be_visible()
-        assert page.locator("#login-qr").evaluate("image => image.complete && image.naturalWidth > 0")
+        page.wait_for_function("""() => {
+            const image = document.getElementById('login-qr');
+            return image.complete && image.naturalWidth > 0;
+        }""", timeout=3000)
         assert "qr" not in app.status()
         complete.set()
         expect(page.locator("#login-status")).to_contain_text("配置完成")
