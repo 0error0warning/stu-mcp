@@ -66,6 +66,11 @@ The source baseline is School Hub commit `13f1b216ac35269d9840b6854ccff64c1e25e5
   A cached label, shared login or unreachable page does not make these interchangeable or prove retirement/migration.
   Keep purpose verification, endpoint availability and authenticated workflow verification separate.
   Campus HTTP ignores environment proxies; check DNS and the actual route/TUN when direct access fails.
+- Organize the entry inventory around login/configuration -> currently supported features, and
+  school business -> exact entries and integration gaps. Keep current support and proposed support
+  explicit. Shared school SSO is a user-facing configuration family, not proof that one existing login
+  already configures every service. Classify by business/path, not host alone; course access must not
+  imply booking access, and public library search must not inherit personal-reader login requirements.
 - Network diagnosis keeps each service and its SSO dependency separate. Use only a user-supplied campus/off-campus
   hint, otherwise unknown; private/fake IP and proxy configuration do not prove physical location or traffic path.
   Probe fixed anonymous endpoints directly and optionally compare credential-free loopback HTTP(S)/SOCKS proxies.

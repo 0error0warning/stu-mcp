@@ -18,7 +18,7 @@
 | 学期课表、技能资源分发与后续取数条件 | [使用与范围](timetable.md) |
 | 教务成绩/考试表格与学期选择 | [教务适配](academic.md) |
 | 雨课堂课程、活动/公告与字段变化 | [雨课堂适配](yuketang.md) |
-| 按需求找校园入口、登录关系与未接入功能 | [校园服务映射](campus-services.md)、[导航与官方入口普查](verification/2026-10-22-campus-entries.md) |
+| 配置登录能用什么、学校服务入口与接入缺口 | [配置与服务总表](campus-services.md)、[导航与官方入口普查](verification/2026-10-22-campus-entries.md) |
 | 桑浦山宿舍报修预览、确认和提交 | [报修流程](repair.md) |
 | 网络访问与排障 | [单服务连接诊断](network.md)、[学校入口批量检测](network-audit.md) |
 | 数据和代码来源 | [安全与隐私](../SECURITY.md)、[来源清单](provenance.json) |
