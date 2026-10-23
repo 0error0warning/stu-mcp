@@ -38,7 +38,7 @@
 
 选择登录配置时，可先看[配置哪些登录，当前能用哪些功能](docs/campus-services.md#配置哪些登录当前能用哪些功能)：学校统一账号对应已适配的教务、MySTU 和宿舍报修；雨课堂、对分易、WebVPN 及第三方配置各有自己的功能范围，公开内容按条件免登录。同目录另列学校服务的入口和未接入项，不将“学校有这个系统”算成“MCP 已能使用”。
 
-**未发布源码**已将这份对应关系接入设置页、`stu-mcp status` 和 MCP `get_capabilities`。本机可让 agent 打开设置页，在自己的浏览器中配置学校统一账号、雨课堂、对分易或 WebVPN；网页与 CLI 共用 HTTP 认证核心，密码、扫码和回调不经过 MCP。也可运行 `uv run stu-mcp login school`，学校账号只输入一次，各业务分别认证并保存独立会话；`--services` 选择业务，`--reauthenticate` 重新认证。教务 HTTP 回调仍需明确选择。已发布 v0.6.2 尚不包含统一命令及新版网页交互。新实现的[验证范围](docs/verification/2026-10-23-private-setup.md)另列。
+**未发布源码**已将这份对应关系接入设置页、`stu-mcp status` 和 MCP `get_capabilities`。本机可让 agent 打开设置页，在自己的浏览器中配置学校统一账号、雨课堂、对分易或 WebVPN；学校账号输入一次，连接全部已接入业务。页面展示配置结果与对应功能，仅未完成项目显示原因；WebVPN 可直接填写已有令牌密钥，让程序生成动态码并自动登录。网页与 CLI 共用 HTTP 核心，凭据不经过 MCP。喜欢终端可用 `uv run stu-mcp login school`，原有参数保持兼容，详见[认证说明](docs/authentication.md)。已发布 v0.6.2 尚不包含统一命令及新版网页交互。[验证范围](docs/verification/2026-10-23-private-setup.md)另列。
 
 也可以记一下本地待办，或者告诉 agent 你的学院、专业和兴趣。它们都不是必填项，本地勾选“完成”也不会替你向学校提交作业。
 

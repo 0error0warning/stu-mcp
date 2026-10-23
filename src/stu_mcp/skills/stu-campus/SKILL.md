@@ -101,10 +101,10 @@ CLI 返回 JSON，读取 `ok`、`status`、`coverage`、`limited`、`errors` 和
 
 对分易使用 MCP 的 `get_checkin_status`、`open_checkin_page`、`list_checkin_courses`、`select_checkin_courses`、`start_checkin_monitor`、`pause_checkin_monitor`、`get_checkin_results`、`stop_checkin_service`。先查状态；桌面模式可打开宿主网页让用户完成原微信回调流程。v0.6.0 支持本人在宿主终端运行 `stu-mcp login duifene` 并隐藏输入回调；私有 HTTP 按返回的 `next_action` 引导用户，agent 不索要或代填回调，不采用官网扫码替换原流程。登录不创建新监听计划，原已授权的同账号持续计划可按原规则恢复。只有用户要求新监听时才启动，`minutes=0` 表示持续监听。MCP 退出后后台仍运行，状态为查询异常时不能说已暂停。结果要区分本程序提交成功与平台已有出勤，不能把空结果当作未签到。CLI 登录的 `login_outcome=unknown` 不得重发回调，附带旧状态不能当作本次登录成功。具体状态约定见仓库 `docs/checkin.md`。
 
-公开信息和匿名 OA 无需账号。先用 `get_capabilities` 核对宿主、传输和 `login_flows` / `setup_authentication`。需要登录时，让用户选择网页或 CLI：支持 `private_setup_page` 的本机实例可用 `open_setup` 打开用户自己的浏览器，直接输入账号、扫码或完成原微信回调；不支持的新旧版本区别以运行中的能力为准。CLI 始终可用，例如 `stu-mcp login mystu`；支持统一账号时可用 `stu-mcp login school` 分别建立教务、MySTU、报修会话。配置后读取状态，再刷新所需来源。两种入口共用 HTTP 核心，不启动服务端浏览器，也不要求先安装本技能。雨课堂仍需本人手机确认；未知挑战准确报告，不自动退回浏览器。
+公开信息和匿名 OA 无需账号。先用 `get_capabilities` 核对宿主、传输和 `login_flows` / `setup_authentication`。需要登录时，让用户选择网页或 CLI：支持 `private_setup_page` 的本机实例可用 `open_setup` 打开用户自己的浏览器。学校统一账号一次连接已接入业务，雨课堂、对分易和 WebVPN 各自配置；不把内部独立会话变成多次设置要求。CLI 始终可用，支持统一账号时可用 `stu-mcp login school`，旧版本按已有单业务命令引导。功能范围取自能力目录；「已配置」仅是本地状态，随后按需读取实际业务。两种入口共用 HTTP 核心，不启动服务端浏览器，也不要求先安装本技能。雨课堂仍需本人手机确认；未知挑战准确报告，不自动退回浏览器。
 
-密码、动态码、微信回调只在本人宿主终端或私密设置页输入，不在 MCP 参数、聊天、命令行、环境变量或管道传递，不读取或导出会话文件。教务官方 HTTP 票据回调需本人明确允许（CLI 为 `login jw --allow-http-callback`）或本地持续兼容开关，密码仍只发 HTTPS SSO。OA 官方 HTTP 代理兼容另有独立开关，不能借用教务许可。确有需要时显式 `login --browser` 使用可选 browser 依赖；默认路径不安装或启动 Chromium。
+密码、动态码、微信回调只在本人宿主终端或私密设置页输入，不在 MCP 参数、聊天、命令行、环境变量或管道传递，不读取或导出会话文件。新版网页学校配置内部处理已验证的固定教务回调，无需要求用户再勾选 HTTP 票据选项；CLI 保留 `login jw --allow-http-callback` 或本地兼容参数，密码仍只发 HTTPS SSO。OA 官方 HTTP 代理兼容独立，不能借用教务路线或扩大传输许可。确有需要时显式 CLI `login --browser` 使用可选 browser 依赖；默认路径不安装或启动 Chromium。
 
-用户可主动在宿主设置页或本人交互终端 `stu-mcp webvpn-auto configure` 启用按需重登，将账号密码和已绑定令牌的 TOTP 密钥存入选定的安全凭据后端。agent 不读取、截图或代填凭据，不在聊天、参数、环境变量或管道中接收这些值。配置不会执行登录或绑定新令牌；默认按需重登使用官方普通 Web 的纯 HTTP 密码/TOTP 协议，出现图形验证码、首次绑定或其他人工挑战时暂停。公开 OA 不依赖该配置。门户认证、资源目录验证和 OA 正文读取分别核验；OA 网络或 TLS 故障不应触发反复重登。`auto_login_paused` 时请用户更新配置；`auto_login_cooldown` 时稍后再试。退出 WebVPN 会关闭自动重登并移除凭据；未复用已配置凭据的手动重登移除旧自动配置。
+WebVPN 新版主表单支持账号密码加可选令牌密钥：安全保存后由已有 TOTP 实现生成动态码并验证登录；已启用的自动配置可直接复用，无密钥时仍可手动输入当前动态码。这是既有自动登录能力，不必引导用户另找高级页面。CLI `stu-mcp webvpn-auto configure` 仍只保存配置，`login webvpn` 可复用；不绑定新令牌。agent 不读取、截图或代填凭据，不在聊天、参数、环境变量或管道中接收这些值。出现图形验证、首次绑定或其他人工挑战时暂停。公开 OA 不依赖此配置；门户认证与 OA 正文读取分别核验，网络或 TLS 故障不触发反复重登。`auto_login_paused` 时请用户更新配置；`auto_login_cooldown` 时稍后再试。退出 WebVPN 移除自动凭据；未复用已配置凭据的手动重登移除旧自动配置。
 
 本工具不提交作业；待办状态只修改本机。可用 `logout jw\|mystu\|yuketang\|webvpn\|repair` 退出单个来源。不需要模型 API key、Hermes、微信聊天数据或独立后台 AI。
