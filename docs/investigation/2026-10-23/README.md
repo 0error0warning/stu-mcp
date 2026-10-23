@@ -6,13 +6,21 @@
 
 ## 阅读入口
 
-**当前覆盖状态先看 [完整性审计](completeness-audit.md)和
+**当前结果先看 [第二轮收尾与剩余条件](round2-completion.md)和
 [业务协议台账](business-protocol-ledger.csv)。** 原 620 URL 表只有来源归类，不能证明接口
 全已查完。后续补查已跨至北京时间 10 月 24 日，各报告使用 UTC 时间保留证据先后。
+下面保留历轮来源和证据。旧阶段的“尚未验证”须结合第二轮相应范围阅读，不能作为当前失败事实。
 
 | 内容 | 记录 |
 | --- | --- |
-| 全部已知入口、子业务、未验证范围与精确阻碍 | [completeness-audit.md](completeness-audit.md)、[业务协议台账](business-protocol-ledger.csv) |
+| 当前已知范围、第二轮成功读取、真实阻碍与不执行边界 | [round2-completion.md](round2-completion.md)、[业务协议台账](business-protocol-ledger.csv) |
+| 学工 17 应用实际查询、本人字段、模型／分页与消息 | [student-affairs-round2.md](student-affairs-round2.md) |
+| 本人学期课表／选课／评教读取及 NetMS 实时流量边界 | [academic-network-round2.md](academic-network-round2.md) |
+| OPAC 两段检索／榜单、newic、软件／WPS 与卡公告 | [library-round2.md](library-round2.md) |
+| 宿舍／水电公式和筛选、各预约资格与完整分页 | [utilities-booking-round2.md](utilities-booking-round2.md) |
+| 就业／公开开课／行政／研究生／医学院和 37 内部事项 | [public-administration-round2.md](public-administration-round2.md) |
+| ehall 独立办事大厅、NetMS 剩余菜单与入口纠偏 | [remaining-entry-round2.md](remaining-entry-round2.md) |
+| 前轮完整性审计、范围行定义与历史缺口快照 | [completeness-audit.md](completeness-audit.md) |
 | 当前导航 12 分类及官网快速通道与原清单的差异 | [navigation-refresh.md](navigation-refresh.md)、[差异 CSV](navigation-new-entries.csv) |
 | 馆藏二段读取、空间与 CARSI 的最新补证 | [library-completion.md](library-completion.md) |
 | 行政/采购/财务/医学院的最新补证及 208 事项 | [administration-completion.md](administration-completion.md)、[医学院事项 CSV](medical-service-matters.csv) |
@@ -84,6 +92,9 @@ UTC 12:54–12:55 另以 Firecrawl 远端重新读取导航首页（HTTP 200、`
 目录 ID 按调查开始时源码保留；发现的额外事项没有自动变为新来源或现有工具参数。
 
 ## 访问与认证结论
+
+本节及下方追查过程、校验记录属于前轮调查时点。第二轮已重新认证教务、软件等来源，
+并补齐更多学工和预约读取；当前结果以本页开头的第二轮报告及台账为准。
 
 学校统一账号可以作为配置入口，但不能把业务会话合并。一网通办事项目录可匿名读，部分专题要求登录；xg 不同上下文也不能凭同域名共享成功结论。校园卡查询密码、微信/二维码授权、图书馆读者身份、医学院门户和主校 CAS 必须分别验证。
 
