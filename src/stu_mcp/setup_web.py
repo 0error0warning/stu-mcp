@@ -107,7 +107,10 @@ class SetupServer:
                     return
                 if self.path == "/api/status":
                     try:
-                        self.json(200, {**owner.status(), "jobs": owner.jobs.snapshot()})
+                        # A finished job must precede the account-state read.
+                        # An older running snapshot simply schedules one more poll.
+                        jobs = owner.jobs.snapshot()
+                        self.json(200, {**owner.status(), "jobs": jobs})
                     except AppError as exc:
                         self.json(400, exc.result())
                     return

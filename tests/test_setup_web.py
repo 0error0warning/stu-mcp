@@ -30,6 +30,30 @@ def test_setup_starts_without_reverse_dns(app, monkeypatch):
         ui.httpd.server_close()
 
 
+def test_status_does_not_pair_finished_login_with_earlier_account_state(app, monkeypatch):
+    ui = SetupServer(app)
+    saved = False
+
+    def completed_job():
+        nonlocal saved
+        # Model the login save finishing at this snapshot boundary.
+        saved = True
+        return [{"status": "finished", "result": {"ok": True}}]
+
+    monkeypatch.setattr(ui.jobs, "snapshot", completed_job)
+    monkeypatch.setattr(ui, "status", lambda: {"configured": saved})
+    ui.start(open_browser=False)
+    try:
+        with httpx.Client(base_url=ui.origin, trust_env=False) as client:
+            response = client.get("/api/status", headers={"X-STU-Setup": ui.secret, "Origin": ui.origin})
+        assert response.status_code == 200
+        result = response.json()
+        assert result["jobs"][0]["status"] == "finished"
+        assert result["configured"] is True
+    finally:
+        ui.close()
+
+
 def test_rejected_post_with_delayed_body_returns_complete_error_without_side_effects(app):
     ui = SetupServer(app)
     ui.start(open_browser=False)

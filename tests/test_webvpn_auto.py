@@ -1,7 +1,7 @@
 import base64
 import json
 import threading
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, TimeoutError
 from contextlib import nullcontext
 from types import SimpleNamespace
 
@@ -10,7 +10,7 @@ import pytest
 
 from stu_mcp import collectors, webvpn
 from stu_mcp.network import CampusHTTP
-from stu_mcp.runtime import AppError
+from stu_mcp.runtime import AppError, key_lock
 from stu_mcp.setup_web import SetupServer
 from stu_mcp.sources import OA_SECURE_PROXY
 from stu_mcp.webvpn import KEYRING_SERVICE, WebVPNConfig, parse_totp, protected_access
@@ -107,6 +107,29 @@ def test_interrupted_configuration_remains_disabled_and_credentials_can_be_remov
     assert (KEYRING_SERVICE, app.vault.account) in keys.values
     config.remove()
     assert (KEYRING_SERVICE, app.vault.account) not in keys.values
+
+
+def test_status_waits_for_marker_mutation_without_reading_pending_configuration(app):
+    config = WebVPNConfig(app.vault)
+    config.configure(FIELDS)
+    marker = config.marker()
+    started = threading.Event()
+
+    def read_status():
+        started.set()
+        return config.status()
+
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        with key_lock(app.runtime.home, "webvpn"):
+            config._write({**marker, "enabled": False})
+            result = pool.submit(read_status)
+            assert started.wait(2)
+            # The reader must not open the marker during its atomic replacement
+            # or expose the intermediate disabled state as the final status.
+            with pytest.raises(TimeoutError):
+                result.result(timeout=.2)
+            config._write(marker)
+        assert result.result(timeout=2)["enabled"] is True
 
 
 def test_logout_erases_webvpn_credentials_session_and_cache_only(app, keys, vpn_session, session):

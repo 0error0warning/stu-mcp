@@ -132,7 +132,11 @@ class WebVPNConfig:
 
     def status(self) -> dict:
         try:
-            marker = self.marker()
+            # Windows cannot replace a marker while the setup poll has it open.
+            # Mutation callers already hold this non-reentrant lock; only the
+            # independent status reader takes it here, never marker() itself.
+            with key_lock(self.vault.runtime.home, "webvpn"):
+                marker = self.marker()
             return {"configured": marker["configured"], "enabled": marker["enabled"],
                     "status": "paused" if marker["failure"] else "enabled" if marker["enabled"]
                     else "disabled" if marker["configured"] else "not_configured",
