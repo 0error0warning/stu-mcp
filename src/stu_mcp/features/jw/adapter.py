@@ -10,7 +10,9 @@ from .schema import (
     JW_EXAM_QUERY_URL,
     JW_GRADE_QUERY_DEFAULTS,
     JW_GRADE_URL,
+    JW_TIMETABLE_URL,
 )
+from .timetable import TimetableForm, parse_timetable, timetable_form
 
 
 class JwAdapter:
@@ -42,3 +44,10 @@ class JwAdapter:
     def exams(self, semester: str) -> list[dict]:
         response = self._http.request(JW_EXAM_LIST_URL, data=JW_EXAM_QUERY_DEFAULTS | {"xnxqid": semester})
         return parse_jw(response.text, "exam", semester)
+
+    def timetable_form(self) -> TimetableForm:
+        return timetable_form(self._http.text(JW_TIMETABLE_URL))
+
+    def timetable(self, form: TimetableForm, semester: str) -> dict:
+        response = self._http.request(JW_TIMETABLE_URL, data=form.data | {"xnxq01id": semester})
+        return parse_timetable(response.text, semester)

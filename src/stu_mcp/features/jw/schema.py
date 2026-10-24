@@ -10,6 +10,14 @@ JW_EXAM_LIST_URL = JW_BASE + "/xsks/xsksap_list"
 JW_GRADE_QUERY_DEFAULTS = {"kcmc": "", "kcxz": "", "kspage": "1", "jspage": "200"}
 JW_EXAM_QUERY_DEFAULTS = {"xqlb": "", "xqlbmc": ""}
 
+JW_TIMETABLE_URL = JW_BASE + "/xskb/xskb_list.do"
+JW_TIMETABLE_FIELDS = frozenset({"cj0701id", "zc", "demo", "xnxq01id", "kbjcmsid",
+                                "sfFD", "wkbkc", "xstzd", "xswk"})
+JW_TIMETABLE_COLUMNS = {
+    "class_name": ("上课班级", "教学班"), "course_code": ("课程编号", "课程号", "课程代码"),
+    "title": ("课程名称", "课程名"), "teacher": ("授课教师", "教师"),
+}
+
 JW_HOME_MARKERS = ("#NEW_XSD_XJCJ_WDCJ_KCCJCX", "#NEW_XSD_KSBM_WDKS_KSAPCX")
 JW_SSO_HOST = "sso.stu.edu.cn"
 JW_TERM_SELECTOR = "select[name=xnxqid],select#xnxqid"
