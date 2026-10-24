@@ -62,12 +62,14 @@ _SERVICES = (
                      "WebVPN 登录只提供另一条访问通道，不保证所有正文和附件可读。"),
              evidence_level="anonymous_content_sample", evidence_document=
              "docs/verification/2026-10-22-oa-entry-boundaries.md"),
-    _service("jw_academics", "教务成绩与考试", "school", "school_cas", source_id="jw", login_id="jw",
-             scope="本人教务成绩、学分加权统计、考试安排",
+    _service("jw_academics", "教务成绩、考试与课表", "school", "school_cas", source_id="jw", login_id="jw",
+             scope="本人教务成绩、学分加权统计、考试安排与按学期读取的理论课表",
              entries=("https://jw.stu.edu.cn/jwglxt/xtgl/login_slogin.html",),
              features=(_feature("grades", "成绩与加权统计", "refresh_source", "get_grades", "academic_summary"),
-                       _feature("exams", "考试安排", "refresh_source", "get_exams")),
-             limits=("完整学期课表、选课、评教尚未接入。",
+                       _feature("exams", "考试安排", "refresh_source", "get_exams"),
+                       _feature("academic_timetable", "本人理论课表（按需读取）", "get_academic_timetable")),
+             limits=("课表会列出读取范围和待核对项；实验课表、选课和评教尚未接入。",
+                     "周次和节次不等于日期；导出仍需核对最新校历、作息与调课安排。",
                      "设置页使用已验证的学校官方登录路线；CLI 可用 --allow-http-callback 兼容旧入口。"),
              evidence_level="authenticated_http_read", evidence_on="2026-10-21",
              evidence_document=_HTTP_VERIFICATION),
@@ -143,6 +145,16 @@ _SERVICES = (
                                 "set_student_profile"),
                        _feature("timetable_conversion", "已有课表文件转换（CLI/技能）")),
              limits=("文件转换不代表已自动获取学期课表；课表与校历核对仍有独立步骤。",)),
+    _service("campus_card", "一卡通本人查询", "smartcard", "independent_query_password_captcha",
+             source_id="smartcard", login_id="smartcard",
+             scope="本人卡概况、余额、状态及按日期和类型读取的历史流水",
+             entries=("http://smartcard.stu.edu.cn/homeLogin.action",),
+             features=(_feature("campus_card", "卡概况与余额", "get_campus_card"),
+                       _feature("campus_card_transactions", "本人历史流水", "get_campus_card_transactions")),
+             limits=("独立一卡通查询密码和本人填写的图片验证码，不属于学校统一账号配置。",
+                     "学校官方入口为明文 HTTP；只向固定一卡通入口提交其独立查询密码。",
+                     "不接入挂失、充值、改密、完整个人资料或统计图；分页未核实范围明确报告。"),
+             evidence_level="implementation", evidence_on="2026-10-24", evidence_document="docs/smartcard.md"),
 )
 
 
@@ -196,8 +208,6 @@ _GAPS = (
          evidence_level="anonymous_sso_redirect"),
     _gap("elc_cill_booking", "ELC/CILL 预约", "http://my.stu.edu.cn/courses/elc/blocks/mrbs/web/index.php",
          "具体预约路径未验证；同域课程活动适配不覆盖预约", auth_family="not_verified_for_business_path"),
-    _gap("campus_card", "校园卡业务", "http://smartcard.stu.edu.cn/homeLogin.action",
-         "个人查询、挂失等业务及认证须分别验证", evidence_level="official_entry"),
 )
 
 _PROFILES = (
@@ -212,6 +222,8 @@ _PROFILES = (
      "本人手机确认官方二维码，宿主通过 HTTP 建立独立会话。"),
     ("duifene", "对分易授权", "wechat_callback", "stu-mcp login duifene",
      "沿用原微信回调和独立后台；登录不新建监听计划。"),
+    ("smartcard", "一卡通查询", "independent_query_password_captcha", "stu-mcp login smartcard",
+     "本人使用独立查询密码并填写正常图片验证码；官方入口为明文 HTTP，不保存查询密码。"),
     ("takeout", "外卖平台配置（实验）", "third_party_configuration", "stu-mcp takeout configure --file <文件>",
      "仅在宿主导入第三方配置，不使用学校账号。"),
     ("local", "本地工具维护", "none", None,
@@ -330,7 +342,7 @@ def build_capability_catalog(source_statuses: Iterable[Mapping] | Mapping = (), 
             state.update(status="not_required", message="无需学校登录，实际可读范围须分别核实。")
         profiles.append({"configuration_id": profile_id, "label": label, "auth_family": auth_family,
                          "setup_command": command, "setup_on": "mcp_host", "note": note,
-                         "setup_ui": {"available": profile_id in {"school", "webvpn", "yuketang", "duifene"},
+                         "setup_ui": {"available": profile_id in {"school", "webvpn", "yuketang", "duifene", "smartcard"},
                                       "tool": "open_setup", "backend": "http"},
                          "service_ids": [item["service_id"] for item in supported],
                          "not_integrated_service_ids": [item["service_id"] for item in gaps],

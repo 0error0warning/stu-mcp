@@ -5,6 +5,7 @@ JW_LOGIN_URL = "https://jw.stu.edu.cn/jwglxt/xtgl/login_slogin.html"
 # The current SSO entry still serves the student query modules under /jsxsd.
 JW_BASE = "https://jw.stu.edu.cn/jsxsd"
 JW_HOME = JW_BASE + "/framework/xsMainV.htmlx"
+SMARTCARD_BASE = "http://smartcard.stu.edu.cn"
 
 
 @dataclass(frozen=True)
@@ -23,7 +24,7 @@ SOURCES = {
     "oa": Source("oa", "OA 通知", ("通知列表", "正文", "附件文字"),
                  "https://webvpn.stu.edu.cn/portal/#!/service",
                  ("oa.stu.edu.cn", "webvpn.stu.edu.cn", "oa-stu-edu-cn.webvpn.stu.edu.cn"), "webvpn"),
-    "jw": Source("jw", "教务系统", ("成绩", "加权统计", "考试安排"),
+    "jw": Source("jw", "教务系统", ("成绩", "加权统计", "考试安排", "本人理论课表"),
                  JW_LOGIN_URL, ("jw.stu.edu.cn", "sso.stu.edu.cn"), "jw"),
     "mystu": Source("mystu", "MySTU", ("课程", "作业", "Moodle / ELC 活动", "个人日程"),
                     "https://my.stu.edu.cn/discussion/my-courses",
@@ -34,6 +35,8 @@ SOURCES = {
                     hosts=("cs-ol.sns.sohu.com", "hy.sns.sohu.com")),
     "charging": Source("charging", "校园充电设备 · 第三方平台", ("按位置查询设备", "空闲插座", "逐口状态"),
                        hosts=("wx.isfdz.com",)),
+    "smartcard": Source("smartcard", "一卡通本人查询", ("卡概况与余额", "本人历史流水"),
+                        SMARTCARD_BASE + "/homeLogin.action", ("smartcard.stu.edu.cn",), "smartcard"),
 }
 
 PUBLIC_LISTINGS = (

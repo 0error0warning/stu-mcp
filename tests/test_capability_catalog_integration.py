@@ -3,6 +3,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 from stu_mcp.hosting import HostRuntime
+from stu_mcp.sources import SOURCES
 
 
 def test_app_and_host_publish_additive_catalog_without_authentication(app, monkeypatch):
@@ -17,12 +18,17 @@ def test_app_and_host_publish_additive_catalog_without_authentication(app, monke
         assert calls == ["passive_status"]
         for old_key in ("sources", "repair", "takeout", "network_diagnostics", "network_audit"):
             assert old_key in local and old_key in remote
-        assert len(local["sources"]) == 7
+        source_ids = {source["source"] for source in local["sources"]}
+        assert source_ids == set(SOURCES)
+        assert {"public", "oa", "jw", "mystu", "yuketang", "huyou", "charging", "smartcard"} == source_ids
         assert remote["hosting"]["login_flows"]["school"]["input"] == "host_tty_once"
         assert not remote["hosting"]["login_flows"]["school"]["sessions_shared"]
         catalog = remote["capability_catalog"]
         school = next(p for p in catalog["profiles"] if p["configuration_id"] == "school")
         assert len(school["service_ids"]) == 3
+        smartcard = next(p for p in catalog["profiles"] if p["configuration_id"] == "smartcard")
+        assert smartcard["service_ids"] == ["campus_card"]
+        assert not set(school["service_ids"]).intersection(smartcard["service_ids"])
         assert all(s["integration"] != "implemented" for s in catalog["services"]
                    if s["service_id"] in school["not_integrated_service_ids"])
         assert next(s for s in catalog["services"] if s["service_id"] == "duifene_checkin")["state"][

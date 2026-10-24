@@ -107,7 +107,10 @@ class SetupServer:
                     return
                 if self.path == "/api/status":
                     try:
-                        self.json(200, {**owner.status(), "jobs": owner.jobs.snapshot()})
+                        # A finished job must precede the account-state read.
+                        # An older running snapshot simply schedules one more poll.
+                        jobs = owner.jobs.snapshot()
+                        self.json(200, {**owner.status(), "jobs": jobs})
                     except AppError as exc:
                         self.json(400, exc.result())
                     return
@@ -172,7 +175,7 @@ class SetupServer:
 
     def logout(self, service: str) -> dict:
         """Remove a page configuration as a unit; source-specific CLI stays separate."""
-        if not isinstance(service, str) or service not in {"school", "webvpn", "yuketang"}:
+        if not isinstance(service, str) or service not in {"school", "webvpn", "yuketang", "smartcard"}:
             raise AppError("unknown_service", "请选择已配置的账号。")
         # Cancellation and generation fences stop in-flight logins from restoring it.
         for task in self.jobs.snapshot():

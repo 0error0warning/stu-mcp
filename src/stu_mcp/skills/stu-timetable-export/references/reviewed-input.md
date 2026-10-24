@@ -24,6 +24,16 @@
 
 `latest_verified=false`、`timetable.complete=false`或非空`pending`会产生阻塞报告。设true必须有本次实际取证，不能为了运行成功改标志。OA关闭不制造待核实阻塞；报告明确标注未检索。OA已开启但未完成时先说明检索缺口，不伪造`checked`输入。
 
+## 从教务读取结果组装
+
+`get_academic_timetable` / `stu-mcp timetable` 负责本人理论课表取数，转换器仍只接收本页的 JSON v1。复用返回的 `semester` 与 `courses`，包括课程和每组安排的稳定 `id`；不要重新按行号编号、按课程名合并或再写一份周次解析。
+
+把返回的 `source_url`、`checked_at` 放进 `timetable`，保留真正的读取时间。查询的 `coverage` 只说明理论课表的读取范围；`timetable.complete` 是本次导出范围已核对的声明。`unarranged` 中没有上课安排的课程必须说明，返回的 `pending` 要带入输入，待取得依据后再处理；不能为了通过转换器而删除缺口。转换器会忽略未知字段，仅附上 `unarranged` 或 `coverage` 不会自动阻止漏课导出。
+
+另行读取目标学期最新有效校历和适用作息，填写 `calendar`、`periods` 及 `periods_source`；理论课表查询不提供这些证明，也不能证明实验课已覆盖。若用户只要求理论课，明确保留该范围；若要求全部课程，补齐实验课等来源后才能确认完整。校历与课表周次需对应，同名学期不能代替周次基准核对。
+
+完成这些核对后仍执行同一个 `scripts/build_timetable.py`，不用另一个转换工具。旧版本无查询入口时，用户提供的课表继续按同一 JSON v1 处理。
+
 ## 调整的精确语义
 
 每项共同字段：`id,kind,date,source_url,checked_at`。选择的是**未调整的原课次**，不能依靠列表顺序形成隐含调整链。同一原课次受多条规则影响时应先在取证阶段消歧；脚本拒绝冲突。

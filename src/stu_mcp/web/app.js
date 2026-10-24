@@ -2,8 +2,8 @@
 (() => {
   const token = location.hash.slice(1);
   const $ = id => document.getElementById(id);
-  const SECRET_FIELDS = ["login-user", "login-pass", "login-token", "login-code", "login-callback"];
-  const FORMS = ["credentials-form", "code-form", "qr-panel", "callback-form"];
+  const SECRET_FIELDS = ["login-user", "login-pass", "login-token", "login-code", "login-callback", "login-captcha"];
+  const FORMS = ["credentials-form", "code-form", "qr-panel", "callback-form", "captcha-form"];
   let state = null;
   let activeJobId = null;
   let activeService = null;
@@ -70,6 +70,7 @@
     for (const id of FORMS) $(id).hidden = true;
     clearCredentials();
     $("login-qr").removeAttribute("src");
+    $("login-captcha-image").removeAttribute("src");
     $("callback-link").removeAttribute("href");
     $("token-field").hidden = true;
     challenge = null;
@@ -191,11 +192,21 @@
     challenge = next;
     errorMessage(null);
     if (next.kind === "credentials" || next.kind === "webvpn_credentials") {
-      $("login-status").textContent = job.service === "school" ? "一次登录，连接已接入的学校服务。" : "";
+      $("login-status").textContent = job.service === "school" ? "一次登录，连接已接入的学校服务。"
+        : job.service === "smartcard" ? "此站使用普通连接，请填写独立的一卡通查询密码。" : "";
+      $("login-user-label").textContent = job.service === "smartcard" ? "学（工）号" : "学校账号";
+      $("login-pass-label").textContent = job.service === "smartcard" ? "一卡通查询密码" : "密码";
       $("token-field").hidden = next.kind !== "webvpn_credentials";
       $("login-submit").textContent = "登录";
       $("credentials-form").hidden = false;
       $("login-user").focus();
+    } else if (next.kind === "captcha") {
+      $("login-status").textContent = "输入图片中的验证码";
+      if (typeof next.image === "string" && /^data:image\/(png|jpeg);base64,[A-Za-z0-9+/=]+$/.test(next.image)) {
+        $("login-captcha-image").src = next.image;
+        $("captcha-form").hidden = false;
+        $("login-captcha").focus();
+      } else errorMessage("验证码暂时无法显示，请取消后重试。");
     } else if (next.kind === "code") {
       $("login-status").textContent = "输入令牌当前显示的动态口令";
       $("code-form").hidden = false;
@@ -293,6 +304,9 @@
   $("code-form").addEventListener("submit", event => {
     event.preventDefault(); submitInput({code: $("login-code").value}, event.currentTarget);
   });
+  $("captcha-form").addEventListener("submit", event => {
+    event.preventDefault(); submitInput({code: $("login-captcha").value}, event.currentTarget);
+  });
   $("callback-form").addEventListener("submit", event => {
     event.preventDefault(); submitInput({callback: $("login-callback").value}, event.currentTarget);
   });
@@ -355,6 +369,7 @@
   window.addEventListener("pagehide", () => {
     clearCredentials();
     $("login-qr").removeAttribute("src");
+    $("login-captcha-image").removeAttribute("src");
     if (activeJobId) api("/api/login/cancel", {id: activeJobId}, {keepalive: true}).catch(() => {});
   });
   load().catch(error => toast(error.message, true));

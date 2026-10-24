@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import math
+import re
 import socket
 import ssl
 import time
@@ -86,10 +87,16 @@ def checked_url(source: str, url: str, *, authenticated: bool = False, allow_leg
     legacy_jw = source == "jw" and allow_legacy_http and parsed.hostname == "jw.stu.edu.cn"
     legacy_oa = (source == "oa" and allow_oa_http and parsed.scheme == "http"
                  and parsed.hostname == "oa-stu-edu-cn.webvpn.stu.edu.cn" and parsed.port == 8118)
+    card_read = source == "smartcard" and parsed.hostname == "smartcard.stu.edu.cn"
+    if card_read and (parsed.path not in {"/accountcardUser.action", "/accounthisTrjn.action"}
+                      or parsed.params or len(parsed.query) > 2048
+                      or any(key != "__continue" or not value for key, value in parse_qsl(parsed.query, keep_blank_values=True))
+                      or len(parse_qsl(parsed.query, keep_blank_values=True)) > 1):
+        raise AppError("unsafe_url", "一卡通仅允许已核验的本人只读查询路线。", source)
     if parsed.port not in (None, 443) and not legacy_oa and not (
-            parsed.port == 80 and (legacy_jw or source == "oa" and not authenticated)):
+            parsed.port == 80 and (legacy_jw or card_read or source == "oa" and not authenticated)):
         raise AppError("unsafe_url", "该来源端口不受支持。", source)
-    if parsed.scheme != "https" and not legacy_oa and not (parsed.scheme == "http" and (legacy_jw or source == "oa"
+    if parsed.scheme != "https" and not legacy_oa and not (parsed.scheme == "http" and (legacy_jw or card_read or source == "oa"
                                         and parsed.hostname == "oa.stu.edu.cn" and not authenticated)):
         raise AppError("insecure_transport", "已阻止通过非 HTTPS 连接发送登录态。", source)
     if any(k.lower() in AUTH_QUERY_KEYS for k, _ in parse_qsl(parsed.query)):
@@ -104,12 +111,20 @@ def scoped_state(state: dict, source: str) -> dict:
         if not isinstance(c, dict):
             continue
         domain = str(c.get("domain", "")).lstrip(".").lower()
-        if domain and any(h == domain or h.endswith("." + domain) for h in hosts):
+        if (domain and any(h == domain or h.endswith("." + domain) for h in hosts)
+                and (source != "smartcard" or domain == "smartcard.stu.edu.cn")):
             cookies.append(c)
     origins = [o for o in state.get("origins", []) if isinstance(o, dict)
                and urlparse(str(o.get("origin", ""))).hostname in hosts
                and urlparse(str(o.get("origin", ""))).scheme == "https"]
     result = {"cookies": cookies, "origins": origins}
+    if source == "smartcard":
+        account = state.get("smartcard_account")
+        if not isinstance(account, str) or not re.fullmatch(r"[0-9]{4,20}", account):
+            if state:
+                raise AppError("session_invalid", "一卡通会话缺少本人账号关联，请重新登录。", source)
+        else:
+            result["smartcard_account"] = account
     if source == "yuketang" and "yuketang_authorization" in state:
         authorization = state["yuketang_authorization"]
         if (not isinstance(authorization, str) or not authorization.startswith("Bearer ")

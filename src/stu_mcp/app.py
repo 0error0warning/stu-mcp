@@ -51,8 +51,9 @@ class App:
         for name, source in SOURCES.items():
             auth = self.vault.status(source.session) if source.session else {"status": "not_required"}
             features.append({"source": name, "label": source.label, "features": list(source.features),
-                             "auth": auth, "login_required": name in {"jw", "mystu", "yuketang"},
-                             "login_available": bool(source.session), "refresh_requires_query": name in {"huyou", "charging"},
+                             "auth": auth, "login_required": name in {"jw", "mystu", "yuketang", "smartcard"},
+                             "login_available": bool(source.session),
+                             "refresh_requires_query": name in {"huyou", "charging", "smartcard"},
                              "access": "anonymous_first" if name == "oa" else "community_public" if name == "huyou"
                              else "third_party_public" if name == "charging"
                              else "public" if name == "public" else "personal"})
@@ -77,6 +78,8 @@ class App:
             raise AppError("query_required", "狐友需要关键词；请使用 search_huyou_posts 或 stu-mcp huyou search。", source)
         if source == "charging":
             raise AppError("query_required", "充电查询请使用 get_charging_overview/get_charging_device 或 stu-mcp charging。", source)
+        if source == "smartcard":
+            raise AppError("query_required", "一卡通请使用 get_campus_card/get_campus_card_transactions 或 stu-mcp card。", source)
         if source not in SOURCES or not 1 <= limit <= 50:
             raise AppError("invalid_source", "请选择 public、oa、jw、mystu 或 yuketang；数量为 1–50。")
         if semester and not re.fullmatch(r"20\d{2}-20\d{2}-[123]", semester):
@@ -313,6 +316,21 @@ class App:
         return {"ok": True, "name": attachments[index]["name"], "text": text,
                 "url": url, "content_trust": "untrusted_source_data", "truncated": len(text) >= 60000}
 
+    def academic_timetable(self, semester: str = "") -> dict:
+        from .features.jw.service import academic_timetable
+
+        return academic_timetable(self.vault, semester)
+
+    def campus_card(self) -> dict:
+        from .features.smartcard.service import card_overview
+
+        return card_overview(self.vault)
+
+    def campus_card_transactions(self, start_date: str, end_date: str, transaction_type: str = "") -> dict:
+        from .features.smartcard.service import card_transactions
+
+        return card_transactions(self.vault, start_date, end_date, transaction_type)
+
     def academic_summary(self, semester: str = "") -> dict:
         # One internal scan; the MCP response contains aggregates, not an unbounded grade list.
         page = self.store.list(sources=("jw",), kind="grade", _all_items=True)
@@ -342,9 +360,9 @@ class App:
                 "unverified_count": page["unverified_count"]}
 
     def logout(self, service: str) -> dict:
-        if service == "repair":
-            with key_lock(self.runtime.home, "repair"):
-                return self.vault.logout("repair")
+        if service in {"repair", "smartcard"}:
+            with key_lock(self.runtime.home, service):
+                return self.vault.logout(service)
         source = "oa" if service == "webvpn" else service
         if source not in SOURCES or not SOURCES[source].session:
             raise AppError("unknown_service", "此来源没有需要移除的登录态。")

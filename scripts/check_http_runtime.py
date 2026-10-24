@@ -32,6 +32,26 @@ CONTRACT = Path(__file__).with_name("mcp-tool-contract.json")
 CONTRACT_FIELDS = ("name", "inputSchema", "outputSchema", "annotations")
 
 
+def safe_failure_summary(error: BaseException) -> str:
+    """Locate our failed check without exception messages, paths or child data."""
+    sites, pending = [], [error]
+    categories = {AssertionError: "assertion", TimeoutError: "timeout", RuntimeError: "runtime",
+                  OSError: "os", ValueError: "value", ImportError: "import"}
+    while pending and len(sites) < 8:
+        current = pending.pop()
+        if isinstance(current, BaseExceptionGroup):
+            pending.extend(current.exceptions[:8])
+            continue
+        category = next((label for kind, label in categories.items() if isinstance(current, kind)), "dependency")
+        trace, line = current.__traceback__, None
+        while trace is not None:
+            if trace.tb_frame.f_code.co_filename == __file__:
+                line = trace.tb_lineno
+            trace = trace.tb_next
+        sites.append(f"{category} at check_http_runtime.py:{line}" if line is not None else category)
+    return "; ".join(sites) or "unknown"
+
+
 def assert_tool_contract(tools) -> list[str]:
     """Compare all public tool fields against the committed tool contract.
 
@@ -210,6 +230,12 @@ async def _handshake(url: str, token: str, child: OwnedHTTPProcess) -> None:
             assert flows[source]["input"] == "host_tty"
             assert flows[source]["new_login_requires_display"] is False
         assert flows["repair"]["method"] == "isolated_cas_http"
+        assert flows["smartcard"]["method"] == "http_image_captcha"
+        assert flows["smartcard"]["requires_display"] is False
+        assert flows["smartcard"]["credentials_persisted"] is False
+        card = next(item for item in catalog["profiles"] if item["configuration_id"] == "smartcard")
+        assert card["service_ids"] == ["campus_card"]
+        assert not set(card["service_ids"]).intersection(school["service_ids"])
         assert capabilities["repair"]["default_backend"] == "http"
         assert capabilities["privacy"]["credential_backend"] == "encrypted_file"
         assert capabilities["checkin"]["status"] == "service_not_started"
@@ -246,7 +272,8 @@ def main() -> None:
     assert status_data["repair"]["auth"]["status"] == "needs_login"
     assert token.encode() not in status.stdout + status.stderr
     # Actual installed CLI dispatch must fail before input or App side effects.
-    for arguments in (*(("login", source) for source in ("school", "jw", "mystu", "yuketang", "webvpn", "repair", "duifene")),
+    for arguments in (*(("login", source) for source in (
+            "school", "jw", "mystu", "yuketang", "webvpn", "repair", "duifene", "smartcard")),
                       ("webvpn-auto", "configure")):
         denied = subprocess.run([interpreter, "-m", "stu_mcp", *arguments], env=env, cwd=root,
                                 input=b"", capture_output=True, timeout=15, check=False,
@@ -293,6 +320,7 @@ if __name__ == "__main__":
     logging.disable(logging.CRITICAL)
     try:
         main()
-    except BaseException:
-        print("HTTP installed-runtime check failed; child output withheld", file=sys.stderr, flush=True)
+    except BaseException as error:
+        print("HTTP installed-runtime check failed; " + safe_failure_summary(error) + "; child output withheld",
+              file=sys.stderr, flush=True)
         raise SystemExit(1) from None

@@ -1,4 +1,5 @@
 """User-browser setup over private loopback HTTP; all school responses are synthetic."""
+import base64
 from pathlib import Path
 from threading import Event
 from time import monotonic
@@ -77,7 +78,7 @@ def test_school_browser_setup_reuses_http_core_and_saves_each_session(setup_page
     fill_credentials(page)
     expect(page.locator("#login-status")).to_contain_text("配置完成", timeout=12000)
     expect(page.locator("#login-results li")).to_have_count(0)
-    expect(page.locator("#login-features")).to_contain_text("教务成绩与考试")
+    expect(page.locator("#login-features")).to_contain_text("教务成绩、考试与课表")
     assert [call[0] for call in calls] == ["jw", "mystu", "repair"]
     assert len(inputs) == 1 and inputs[0]["password"] == "SYNTHETIC_PRIVATE_PASSWORD"
     expect(page.locator("#login-pass")).to_have_value("")
@@ -149,6 +150,39 @@ def test_qr_stays_in_private_page_and_disappears_after_authorization(setup_page,
         assert page.locator("#login-qr").get_attribute("src") is None
     finally:
         complete.set()
+
+
+def test_card_query_password_and_image_challenge_use_same_private_setup_core(setup_page, monkeypatch):
+    page, ui = setup_page
+    image = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAgAAAAECAIAAAA8r+mnAAAAFElEQVR4nGP8//8/AzbAhFWULAkAJt0DBd183KAAAAAASUVORK5CYII=")
+    observed = []
+
+    def core(_vault, service, *, interaction, check_cancelled, **_):
+        credentials = interaction.credentials()
+        observed.append((service, credentials.username, credentials.password))
+        observed.append(interaction.captcha(image, media_type="image/png"))
+        check_cancelled()
+        return {"ok": True, "status": "session_saved", "service": service}
+
+    monkeypatch.setattr("stu_mcp.auth_http.login_http", core)
+    page.goto(ui.url)
+    page.locator('[data-login="smartcard"]').click()
+    expect(page.locator("#login-user-label")).to_have_text("学（工）号")
+    expect(page.locator("#login-pass-label")).to_have_text("一卡通查询密码")
+    expect(page.locator("#login-status")).to_contain_text("独立的一卡通查询密码")
+    fill_credentials(page)
+    expect(page.locator("#captcha-form")).to_be_visible()
+    page.wait_for_function("""() => {
+        const image = document.getElementById('login-captcha-image');
+        return image.complete && image.naturalWidth > 0;
+    }""")
+    expect(page.locator("#login-pass")).to_have_value("")
+    page.locator("#login-captcha").fill("0246")
+    page.locator("#captcha-form button").click()
+    expect(page.locator("#login-status")).to_contain_text("配置完成")
+    assert observed == [("smartcard", "synthetic-student", "SYNTHETIC_PRIVATE_PASSWORD"), "0246"]
+    expect(page.locator("#login-captcha")).to_have_value("")
+    assert page.locator("#login-captcha-image").get_attribute("src") is None
 
 
 def test_webvpn_prompts_for_credentials_then_current_code(setup_page, monkeypatch):

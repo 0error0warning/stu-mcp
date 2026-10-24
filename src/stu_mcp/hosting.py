@@ -137,7 +137,10 @@ class HostRuntime:
                             "repair": {"method": "isolated_cas_http", "requires_display": False,
                                        "persistent_session": True, "draft_storage": "process_memory",
                                        "input_options": ["host_tty", "private_setup_page"],
-                                       "input": "host_tty"}},
+                                       "input": "host_tty"},
+                            "smartcard": {"method": "http_image_captcha", "requires_display": False,
+                                          "input_options": ["host_tty", "private_setup_page"],
+                                          "independent_query_password": True, "credentials_persisted": False}},
                         "repair_state": "process_memory", "repair_survives_restart": False,
                         "downloads_on": "mcp_host"}}
 

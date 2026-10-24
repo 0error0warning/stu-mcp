@@ -1,6 +1,6 @@
 {
   "baseline": "v0.6.1",
-  "tool_count": 47,
+  "tool_count": 50,
   "tools": [
     {
       "name": "academic_summary",
@@ -1726,6 +1726,90 @@
         "readOnlyHint": false,
         "destructiveHint": true,
         "idempotentHint": false,
+        "openWorldHint": true
+      }
+    },
+    {
+      "name": "get_academic_timetable",
+      "description": "按需读取本人教务理论课表，复用 jw 登录；留空使用学校当前选定学期。\n        返回可选学期、课程周次与节次、未排课和解析待核对项，不进入课程或个人日程缓存。\n        日历导出继续使用随包课表技能；生成日期前须核对最新校历、作息与调课安排。\n        ",
+      "inputSchema": {
+        "properties": {
+          "semester": {
+            "default": "",
+            "title": "Semester",
+            "type": "string"
+          }
+        },
+        "title": "get_academic_timetableArguments",
+        "type": "object"
+      },
+      "outputSchema": {
+        "additionalProperties": true,
+        "title": "get_academic_timetableDictOutput",
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": true
+      }
+    },
+    {
+      "name": "get_campus_card",
+      "description": "按需读取本人一卡通概况、余额与卡状态，使用独立 smartcard 会话，不进入缓存。\n        balance仅为卡余额，当前及上次过渡余额另列，不相加推断可用余额。\n        缺少登录时由本人在私密设置页或宿主 CLI 输入一卡通查询密码并填写正常图片验证码。\n        学校官方入口使用明文 HTTP；不接收凭据，不读取完整个人资料，不挂失、充值或修改账户。\n        ",
+      "inputSchema": {
+        "properties": {},
+        "title": "get_campus_cardArguments",
+        "type": "object"
+      },
+      "outputSchema": {
+        "additionalProperties": true,
+        "title": "get_campus_cardDictOutput",
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": true
+      }
+    },
+    {
+      "name": "get_campus_card_transactions",
+      "description": "按日期读取本人一卡通历史流水，不发起交易或持久缓存。\n        日期为学校时间 YYYY-MM-DD，单次最多30天；transaction_type留空为全部，其他值来自来源提供的类型选项。\n        返回实际读取范围及分页完整性；扣款、消费、补助和转账保留上游分类，不能混作餐饮消费。\n        独立 smartcard 会话，官方明文 HTTP；缺登录时引导本人配置，工具不接收查询密码或验证码。\n        ",
+      "inputSchema": {
+        "properties": {
+          "start_date": {
+            "title": "Start Date",
+            "type": "string"
+          },
+          "end_date": {
+            "title": "End Date",
+            "type": "string"
+          },
+          "transaction_type": {
+            "default": "",
+            "title": "Transaction Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "start_date",
+          "end_date"
+        ],
+        "title": "get_campus_card_transactionsArguments",
+        "type": "object"
+      },
+      "outputSchema": {
+        "additionalProperties": true,
+        "title": "get_campus_card_transactionsDictOutput",
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
         "openWorldHint": true
       }
     }

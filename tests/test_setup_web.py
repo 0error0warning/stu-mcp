@@ -8,6 +8,7 @@ import httpx
 import pytest
 
 from stu_mcp.setup_web import SetupServer
+from stu_mcp.sources import SOURCES
 
 
 @pytest.fixture(autouse=True)
@@ -28,6 +29,30 @@ def test_setup_starts_without_reverse_dns(app, monkeypatch):
         resolver.assert_not_called()
     finally:
         ui.httpd.server_close()
+
+
+def test_status_does_not_pair_finished_login_with_earlier_account_state(app, monkeypatch):
+    ui = SetupServer(app)
+    saved = False
+
+    def completed_job():
+        nonlocal saved
+        # Model the login save finishing at this snapshot boundary.
+        saved = True
+        return [{"status": "finished", "result": {"ok": True}}]
+
+    monkeypatch.setattr(ui.jobs, "snapshot", completed_job)
+    monkeypatch.setattr(ui, "status", lambda: {"configured": saved})
+    ui.start(open_browser=False)
+    try:
+        with httpx.Client(base_url=ui.origin, trust_env=False) as client:
+            response = client.get("/api/status", headers={"X-STU-Setup": ui.secret, "Origin": ui.origin})
+        assert response.status_code == 200
+        result = response.json()
+        assert result["jobs"][0]["status"] == "finished"
+        assert result["configured"] is True
+    finally:
+        ui.close()
 
 
 def test_rejected_post_with_delayed_body_returns_complete_error_without_side_effects(app):
@@ -323,7 +348,9 @@ def test_bad_worker_status_does_not_break_other_configuration_groups(app, worker
     try:
         state = ui.status()
         assert state["ok"] is True and state["checkin"]["status"] == "query_error"
-        assert len(state["sources"]) == 7 and state["capability_catalog"]["profiles"]
+        assert {row["source"] for row in state["sources"]} == set(SOURCES)
+        assert state["capability_catalog"]["profiles"]
+        assert next(item for item in state["sources"] if item["source"] == "smartcard")["auth"]["status"] == "needs_login"
         assert "SYNTHETIC_PRIVATE_ERROR" not in str(state)
     finally:
         ui.close()
