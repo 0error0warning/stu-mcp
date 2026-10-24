@@ -2,7 +2,7 @@
 
 # 学期课表与文件导出
 
-当前源码增加 `get_academic_timetable` 和 `stu-mcp timetable`，读取教务本人理论课表；此更新尚未发布。已有 `stu-timetable-export` 技能继续核对目标学期最新有效校历和作息，调用唯一转换核心生成 WakeUp CSV / 日历 ICS。取数与转换衔接，不增加第二套导出器，也不连接 Google/Microsoft 账号。
+v0.7.1增加 `get_academic_timetable` 和 `stu-mcp timetable`，读取教务本人理论课表。已有 `stu-timetable-export` 技能继续核对目标学期最新有效校历和作息，调用唯一转换核心生成 WakeUp CSV / 日历 ICS。取数与转换衔接，不增加第二套导出器，也不连接 Google/Microsoft 账号。
 
 ## 读取本人理论课表
 

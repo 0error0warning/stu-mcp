@@ -2,7 +2,7 @@
 
 日期：**2026-10-23**。对象是开源 `stu-mcp`，源码基线 `c8db73ea5f4b6c54ae207b58cc41bd496a09df68`（v0.7.0）。Hermes 上的私有 `school_hub` 不在本次改造范围内。
 
-本目录最初阶段只调查业务、认证、接口与访问条件；后续各记录保留自己的时间与范围。当前源码的本人理论课表开始接入，见[逐项计划](../../feature-expansion-plan.md)；其余研究成功不自动表示已成为 MCP 功能。凭据、个人页面和临时会话不进入仓库。
+本目录最初阶段只调查业务、认证、接口与访问条件；后续各记录保留自己的时间与范围。v0.7.1 纳入本人理论课表与一卡通概况／历史流水，见[正式验收](../../verification/2026-10-23-v0.7.1.md)和[逐项计划](../../feature-expansion-plan.md)；其余研究成功不自动表示已成为 MCP 功能。凭据、个人页面和临时会话不进入仓库。
 
 ## 阅读入口
 
@@ -13,7 +13,7 @@
 
 | 内容 | 记录 |
 | --- | --- |
-| 后续：一卡通本人正常验证码登录、基本信息与流水（未接入） | [smartcard-personal.md](smartcard-personal.md) |
+| 一卡通临时协议调查（原阶段）；正式概况／历史接入另见 v0.7.1 验收 | [smartcard-personal.md](smartcard-personal.md) |
 | 10/24 后续：学校 Outlook 中国云、邮件 API 与授权前提（未接入） | [campus-mail.md](campus-mail.md) |
 | 后续逐项接入：先复用课表导出；wpay、研究生／医学院等暂缓 | [feature-expansion-plan.md](../../feature-expansion-plan.md) |
 | 当前已知范围、第二轮成功读取、真实阻碍与不执行边界 | [round2-completion.md](round2-completion.md)、[业务协议台账](business-protocol-ledger.csv) |
@@ -72,6 +72,8 @@ UTC 12:54–12:55 另以 Firecrawl 远端重新读取导航首页（HTTP 200、`
 下表保留初轮调查对照，**不是最新全量完成表**。其后 OPAC 馆藏、CARSI 认证步骤、ehall
 资源/本人记录、ELC、NetMS 和一网通办身份、学工具体查询已有新证据，见上列补查及协议
 台账。目录 16 个缺口也不是学校全部入口；新发现的独立业务在台账中另列。
+
+v0.7.1 已将其中 `campus_card` 的本人概况／历史流水移至已接入能力，当前目录保留15项缺口；下表仍是初轮16项的历史对照。
 
 | 现有目录 ID | 业务与本轮掌握程度 | 仍缺的业务证明 |
 | --- | --- | --- |

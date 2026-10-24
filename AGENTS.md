@@ -52,7 +52,8 @@ The source baseline is School Hub commit `13f1b216ac35269d9840b6854ccff64c1e25e5
   Browser pagehide only attempts cancellation; retain task expiry as the fallback if that request is not delivered.
   Preserve completed sessions and already-authorized worker plans. Open the local page in the person's
   browser by default; do not return its capability URL through MCP. Remote/headless CLI remains complete.
-  Present four configuration families, with one school-account flow for all implemented SCHOOL_SERVICES.
+  Present five configuration families, including independent smartcard query-password/captcha login,
+  with one school-account flow for all implemented SCHOOL_SERVICES.
   Derive capabilities and aggregate configuration state from the catalog; show partial failures without
   duplicating per-business selectors or session-management panels. "Configured" is not live availability.
   Keep CLI help optional and detailed capability scope folded. Private setup uses only the shared HTTP
@@ -108,7 +109,8 @@ The source baseline is School Hub commit `13f1b216ac35269d9840b6854ccff64c1e25e5
   already configures every service. Classify by business/path, not host alone; course access must not
   imply booking access, and public library search must not inherit personal-reader login requirements.
 - `capability_catalog` is the shared pure metadata/status projection for App.status, HostRuntime and
-  setup guidance in v0.7.0. Preserve old fields and all 47 tool interfaces. It must
+  setup guidance. Preserve old fields and all existing tool interfaces; v0.7.1 adds card reads to the
+  earlier timetable addition for 50 tools. It must
   use already-read local status only: no authentication, network probe, credential values or worker
   startup. Saved-session, historical-read and local-worker facts are not current business availability.
   Navigation-only and unintegrated entries never enroll SOURCES, auth allowlists or network probe
@@ -170,9 +172,19 @@ The source baseline is School Hub commit `13f1b216ac35269d9840b6854ccff64c1e25e5
 - JW HTTP ticket callback and authenticated OA HTTP compatibility remain separate. CLI transport
   preferences are off by default; private school setup explicitly selects only the verified fixed JW
   callback internally. Only that source's allowed route may receive its own session;
-  school-bound passwords and TOTP always stay on HTTPS; human setup input is restricted to the protected
+  ordinary school/CAS passwords and TOTP always stay on HTTPS; human setup input is restricted to the protected
   private loopback API. Never disable TLS, invent a resource type, or treat a remote
   MCP connection as evidence of campus network access. Default Docker contains no browser or desktop.
+- Smartcard is an independent query-password and normal image-captcha source, never a SCHOOL_SERVICES/CAS member.
+  The person explicitly authorizes its published plaintext HTTP login: allow only the fixed smartcard host,
+  POST /loginstudent.action for this query password, and the observed read-only account/query actions.
+  Keep ordinary school passwords/TOTP on HTTPS and existing JW/OA policies unchanged. Never borrow SSO cookies,
+  persist the query password, run OCR/model solvers, bypass challenges, or retry uncertain credential POSTs.
+  Capture and display the official captcha only to the person in the protected setup page or real TTY.
+  Save only the independently proved, source-scoped encrypted session. Read overview/history on demand;
+  return minimal business fields, identity proof and exact coverage without full identity documents or raw HTML.
+  Query continuations stay in memory, fixed-path and bounded; unverified pagination is partial, not complete.
+  No loss reporting, recharge, password change, payment, account edits, statistics images or new persistent cache.
 - Do not modify the original School Hub checkout or production services for this project.
 
 ## Validation
