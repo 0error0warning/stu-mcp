@@ -284,6 +284,25 @@ def build_server(app: App | None = None, *, checkin: CheckinClient | None = None
         """
         return app.academic_timetable(semester)
 
+    @tool(world=True)
+    def get_campus_card() -> dict[str, Any]:
+        """按需读取本人一卡通概况、余额与卡状态，使用独立 smartcard 会话，不进入缓存。
+        balance仅为卡余额，当前及上次过渡余额另列，不相加推断可用余额。
+        缺少登录时由本人在私密设置页或宿主 CLI 输入一卡通查询密码并填写正常图片验证码。
+        学校官方入口使用明文 HTTP；不接收凭据，不读取完整个人资料，不挂失、充值或修改账户。
+        """
+        return app.campus_card()
+
+    @tool(world=True)
+    def get_campus_card_transactions(start_date: str, end_date: str,
+                                    transaction_type: str = "") -> dict[str, Any]:
+        """按日期读取本人一卡通历史流水，不发起交易或持久缓存。
+        日期为学校时间 YYYY-MM-DD，单次最多30天；transaction_type留空为全部，其他值来自来源提供的类型选项。
+        返回实际读取范围及分页完整性；扣款、消费、补助和转账保留上游分类，不能混作餐饮消费。
+        独立 smartcard 会话，官方明文 HTTP；缺登录时引导本人配置，工具不接收查询密码或验证码。
+        """
+        return app.campus_card_transactions(start_date, end_date, transaction_type)
+
     @tool()
     def get_courses(source: str = "all", query: str = "", limit: int = 20, offset: int = 0) -> dict[str, Any]:
         """读取 MySTU/雨课堂课程缓存；各来源独立登录，使用最新可用学期。"""

@@ -16,9 +16,20 @@ from .types import Candidate, Credentials
 class TerminalInteraction:
     """Only the person at the local TTY receives authentication challenges."""
 
+    def __init__(self, service: str = ""):
+        self.service = service
+
     def credentials(self) -> Credentials:
         require_terminal()
+        if self.service == "smartcard":
+            print("一卡通使用普通连接；仅填写独立的一卡通查询密码。", file=sys.stderr)
+            return Credentials(secret_input("学（工）号（隐藏输入）：").strip(),
+                               secret_input("一卡通查询密码（隐藏输入）："))
         return Credentials(secret_input("学校账号（隐藏输入）：").strip(), secret_input("学校密码（隐藏输入）："))
+
+    def captcha(self, image: bytes, *, media_type: str = "image/jpeg") -> str:
+        from ..terminal import captcha_input
+        return captcha_input(image, media_type=media_type)
 
     def code(self) -> str:
         return secret_input("学校要求已绑定令牌的当前动态码（隐藏输入）：").strip()
@@ -67,9 +78,9 @@ def login_http(vault: Vault, service: str, *, credentials: Credentials | None = 
                use_saved_credentials: bool = True) -> dict:
     source = "oa" if service in {"oa", "webvpn"} else service
     session = "webvpn" if source == "oa" else source
-    if source not in {"jw", "mystu", "repair", "yuketang", "oa"}:
+    if source not in {"jw", "mystu", "repair", "yuketang", "oa", "smartcard"}:
         raise AppError("unknown_service", "请选择教务、MySTU、雨课堂、WebVPN 或宿舍报修。")
-    interaction = TerminalInteraction() if interaction is None else interaction
+    interaction = TerminalInteraction(service) if interaction is None else interaction
     if expected_revision is None:
         with key_lock(vault.runtime.home, session):
             expected_revision = vault.login_revision(session)
@@ -98,7 +109,13 @@ def login_http(vault: Vault, service: str, *, credentials: Credentials | None = 
     check()
     if on_phase:
         on_phase("http_authentication")
-    if source == "yuketang":
+    if source == "smartcard":
+        from .smartcard import acquire_state
+        credentials = credentials or interaction.credentials()
+        check()
+        candidate = acquire_state(credentials.username, credentials.password, captcha=interaction.captcha,
+                                  check=check, transport=transport)
+    elif source == "yuketang":
         from .yuketang import acquire_state
         candidate = acquire_state(show_qr=interaction.show_qr, check=check, transport=transport)
     elif source == "oa":

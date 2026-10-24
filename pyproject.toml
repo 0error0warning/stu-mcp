@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "stu-mcp"
-version = "0.7.0"
+version = "0.7.1"
 description = "面向 AI agents 的汕大校园工具，默认 HTTP/CLI，支持本地与个人服务器"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -17,6 +17,7 @@ dependencies = [
   "dnspython>=2.9,<3",
   "pywin32>=311; sys_platform == 'win32'",
   "requests>=2.31,<3", "websocket-client>=1.7,<2",
+  "Pillow>=11,<13",
 ]
 
 [project.optional-dependencies]

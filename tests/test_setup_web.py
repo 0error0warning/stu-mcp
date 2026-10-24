@@ -8,6 +8,7 @@ import httpx
 import pytest
 
 from stu_mcp.setup_web import SetupServer
+from stu_mcp.sources import SOURCES
 
 
 @pytest.fixture(autouse=True)
@@ -347,7 +348,9 @@ def test_bad_worker_status_does_not_break_other_configuration_groups(app, worker
     try:
         state = ui.status()
         assert state["ok"] is True and state["checkin"]["status"] == "query_error"
-        assert len(state["sources"]) == 7 and state["capability_catalog"]["profiles"]
+        assert {row["source"] for row in state["sources"]} == set(SOURCES)
+        assert state["capability_catalog"]["profiles"]
+        assert next(item for item in state["sources"] if item["source"] == "smartcard")["auth"]["status"] == "needs_login"
         assert "SYNTHETIC_PRIVATE_ERROR" not in str(state)
     finally:
         ui.close()

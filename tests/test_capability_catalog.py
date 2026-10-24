@@ -14,7 +14,7 @@ def by_id(rows, key):
 def test_configuration_groups_describe_existing_tools_without_adding_or_losing_interfaces():
     catalog = build_capability_catalog()
     profiles = by_id(catalog["profiles"], "configuration_id")
-    assert set(profiles) == {"anonymous", "school", "webvpn", "yuketang", "duifene", "takeout", "local"}
+    assert set(profiles) == {"anonymous", "school", "webvpn", "yuketang", "duifene", "smartcard", "takeout", "local"}
     services = by_id(catalog["services"], "service_id")
     assert all(service_id in services for profile in profiles.values() for service_id in profile["service_ids"])
     assert all(services[service_id]["integration"] == "implemented"

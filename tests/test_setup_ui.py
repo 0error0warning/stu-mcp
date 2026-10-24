@@ -25,7 +25,7 @@ def test_setup_page_is_local_and_csp_compatible():
 
 def test_setup_page_exposes_user_choice_without_nested_configuration_cards():
     _, script, page = load()
-    assert [row["data-profile"] for row in page.select(".row[data-profile]")] == ["school", "yuketang", "duifene", "webvpn"]
+    assert [row["data-profile"] for row in page.select(".row[data-profile]")] == ["school", "yuketang", "duifene", "webvpn", "smartcard"]
     assert len(page.select(".card")) == 1
     assert page.find(id="login-panel").has_attr("hidden")
     assert page.find(id="unintegrated-services")
@@ -38,13 +38,14 @@ def test_setup_page_exposes_user_choice_without_nested_configuration_cards():
 
 def test_private_inputs_are_not_prefilled_or_saved_to_browser_storage():
     _, script, page = load()
-    for field in ("login-user", "login-pass", "login-code", "login-callback", "login-token"):
+    for field in ("login-user", "login-pass", "login-code", "login-callback", "login-token", "login-captcha"):
         assert page.find(id=field).get("value") is None
     for field in ("login-pass", "login-callback", "login-token"):
         assert page.find(id=field)["type"] == "password"
     assert "localStorage" not in script and "sessionStorage" not in script
     assert 'window.addEventListener("pagehide"' in script
     assert '$("login-qr").removeAttribute("src")' in script
+    assert '$("login-captcha-image").removeAttribute("src")' in script
 
 
 def test_setup_does_not_duplicate_service_choices_or_expose_transport_policy():

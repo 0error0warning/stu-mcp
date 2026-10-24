@@ -39,6 +39,11 @@
         <div class="info"><strong>WebVPN</strong><span class="desc" id="webvpn-features"></span><span class="meta" id="webvpn-state">正在读取…</span></div>
         <div class="row-actions"><button class="act" type="button" data-login="webvpn">配置</button><button class="ghost danger" type="button" data-logout="webvpn" hidden>退出账号</button></div>
       </div>
+      <div class="row" data-profile="smartcard">
+        <span class="ico card-account" aria-hidden="true">卡</span>
+        <div class="info"><strong>校园一卡通</strong><span class="desc" id="smartcard-features"></span><span class="meta" id="smartcard-state">正在读取…</span></div>
+        <div class="row-actions"><button class="act" type="button" data-login="smartcard">配置</button><button class="ghost danger" type="button" data-logout="smartcard" hidden>退出账号</button></div>
+      </div>
     </div>
     <p class="note">公开通知、校园入口、网络诊断、充电及狐友公开讨论可按条件免登录使用。</p>
   </section>
@@ -47,13 +52,18 @@
     <div class="panel-heading"><h2 id="login-title"></h2><button id="login-cancel" class="ghost" type="button">取消</button></div>
     <p id="login-status" role="status" aria-live="polite"></p>
     <form id="credentials-form" hidden autocomplete="off">
-      <label>学校账号<input id="login-user" autocomplete="username" maxlength="128" required></label>
-      <label>密码<input id="login-pass" type="password" autocomplete="current-password" maxlength="1024" required></label>
+      <label><span id="login-user-label">学校账号</span><input id="login-user" autocomplete="username" maxlength="128" required></label>
+      <label><span id="login-pass-label">密码</span><input id="login-pass" type="password" autocomplete="current-password" maxlength="1024" required></label>
       <div id="token-field" hidden>
         <label>令牌密钥（可选）<input id="login-token" type="password" autocomplete="off" maxlength="2048" placeholder="密钥或令牌导出链接"></label>
         <p class="note">填写后加密保存账号与密钥，自动生成动态码并登录；留空则手动输入动态码。</p>
       </div>
       <div class="actions"><button id="login-submit" class="primary" type="submit">登录</button></div>
+    </form>
+    <form id="captcha-form" hidden autocomplete="off">
+      <img id="login-captcha-image" alt="一卡通登录验证码">
+      <label>图片中的四位数字<input id="login-captcha" inputmode="numeric" autocomplete="off" pattern="[0-9]{4}" maxlength="4" required></label>
+      <div class="actions"><button class="primary" type="submit">验证</button></div>
     </form>
     <form id="code-form" hidden autocomplete="off">
       <label>当前动态口令<input id="login-code" inputmode="numeric" autocomplete="one-time-code" maxlength="16" required></label>

@@ -13,6 +13,7 @@ from stu_mcp.runtime import AppError
 from stu_mcp.setup_auth import SetupAuthJobs
 
 PRIVATE = "SYNTHETIC_PRIVATE_VALUE"
+CAPTCHA = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAgAAAAECAIAAAA8r+mnAAAAFElEQVR4nGP8//8/AzbAhFWULAkAJt0DBd183KAAAAAASUVORK5CYII=")
 
 
 def wait_for(jobs, predicate, *, timeout=3):
@@ -214,6 +215,82 @@ def test_qr_is_private_svg_cleared_on_finish_and_not_an_input_prompt(app, monkey
         assert "data:image/" not in json.dumps(jobs.snapshot())
     finally:
         release.set()
+        jobs.close()
+
+
+def test_card_captcha_uses_private_one_time_input_without_exposing_credentials(app, monkeypatch):
+    observed = []
+
+    def core(_vault, service, *, interaction, check_cancelled, **_):
+        credentials = interaction.credentials()
+        observed.append((service, credentials.username, credentials.password))
+        code = interaction.captcha(CAPTCHA, media_type="image/png")
+        check_cancelled()
+        observed.append(code)
+        return {"ok": True, "status": "session_saved", "service": service}
+
+    monkeypatch.setattr("stu_mcp.auth_http.login_http", core)
+    jobs = SetupAuthJobs(app.vault)
+    try:
+        jobs.start("smartcard")
+        first = challenge(jobs, "credentials")
+        answer(jobs, first, username="synthetic-card-student", password=PRIVATE)
+        prompt = challenge(jobs, "captcha")
+        assert base64.b64decode(prompt["challenge"]["image"].split(",", 1)[1]) == CAPTCHA
+        assert PRIVATE not in json.dumps(jobs.snapshot())
+        for code in ("123456", "abcd", "１２３４"):
+            with pytest.raises(AppError) as invalid:
+                answer(jobs, prompt, code=code)
+            assert invalid.value.code == "invalid_authentication_input"
+        answer(jobs, prompt, code="0246")
+        assert finished(jobs)["result"]["service"] == "smartcard"
+        assert observed == [("smartcard", "synthetic-card-student", PRIVATE), "0246"]
+        assert "data:image/" not in json.dumps(jobs.snapshot()) and PRIVATE not in json.dumps(jobs.snapshot())
+        with pytest.raises(AppError) as duplicate:
+            answer(jobs, prompt, code="0246")
+        assert duplicate.value.code == "invalid_challenge"
+    finally:
+        jobs.close()
+
+
+def test_cancel_and_timeout_clear_card_captcha_and_prevent_protocol_continuation(app, monkeypatch):
+    continued = []
+    clock = [0.0]
+
+    def core(_vault, _service, *, interaction, **_):
+        continued.append(interaction.captcha(CAPTCHA, media_type="image/png"))
+        return {"ok": True, "status": "session_saved"}
+
+    monkeypatch.setattr("stu_mcp.auth_http.login_http", core)
+    jobs = SetupAuthJobs(app.vault, clock=lambda: clock[0], ttl=1)
+    try:
+        jobs.start("smartcard")
+        prompt = challenge(jobs, "captcha")
+        jobs.cancel(prompt["id"])
+        assert finished(jobs)["result"]["status"] == "operation_cancelled"
+        assert "data:image/" not in json.dumps(jobs.snapshot()) and not continued
+        jobs.start("smartcard")
+        challenge(jobs, "captcha")
+        clock[0] = 2
+        assert "data:image/" not in json.dumps(jobs.snapshot())
+        assert finished(jobs)["result"]["status"] == "login_timeout" and not continued
+    finally:
+        jobs.close()
+
+
+@pytest.mark.parametrize("image,media_type", [(b"", "image/png"), (b"x" * 65537, "image/png"),
+                                             (b"<svg/>", "image/svg+xml")], ids=["empty", "oversized", "svg"])
+def test_unsupported_captcha_never_enters_setup_snapshot(app, monkeypatch, image, media_type):
+    def core(_vault, _service, *, interaction, **_):
+        interaction.captcha(image, media_type=media_type)
+    monkeypatch.setattr("stu_mcp.auth_http.login_http", core)
+    jobs = SetupAuthJobs(app.vault)
+    try:
+        jobs.start("smartcard")
+        view = finished(jobs)
+        assert view["result"]["status"] == "captcha_display_unavailable"
+        assert "challenge" not in view
+    finally:
         jobs.close()
 
 

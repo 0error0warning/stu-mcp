@@ -37,6 +37,7 @@ from stu_mcp.features.mystu.parser import parse_assignment, payload_records
 from stu_mcp.features.jw.parser import jw_exam_semester, parse_jw
 from stu_mcp.features.jw.schema import JW_SCHEMA_VERSION
 from stu_mcp.features.jw.service import jw
+from stu_mcp.features.smartcard.service import card_overview, card_transactions
 from stu_mcp.features.yuketang.parser import parse_inventory, parse_activities, parse_announcements
 from stu_mcp.features.yuketang.service import yuketang
 from stu_mcp.charging import ChargingClient, ChargingService
@@ -67,7 +68,7 @@ assert collectors.Collection is Collection and collectors.Article is Article
 for decoder in (parse_public, parse_assignment, payload_records, parse_jw, jw_exam_semester, jw,
                 parse_inventory, parse_activities, parse_announcements, yuketang,
                 InstalledChargingClient, InstalledChargingService, discover_script, parse_envelope, parse_ports,
-                HuyouClient, post_record, merge_post):
+                HuyouClient, post_record, merge_post, card_overview, card_transactions):
     assert Path(sys.modules[decoder.__module__].__file__).is_relative_to(root / "tools")
 assert parsers.parse_public is parse_public and parsers.parse_assignment is parse_assignment
 assert parse_public('<li><a href="/info/1/2.htm">synthetic notice</a></li>',
@@ -199,6 +200,10 @@ async def check_stdio_tools(session) -> None:
     assert audit_tool.input_schema["properties"]["compare_public_dns"]["default"] is False
     invalid_audit = await session.call_tool("audit_campus_network", {"location_hint": "guess_from_ip"})
     assert invalid_audit.model_dump(by_alias=True)["structuredContent"]["status"] == "invalid_network_location"
+    for name, arguments in (("get_academic_timetable", {}), ("get_campus_card", {}),
+                            ("get_campus_card_transactions", {"start_date": "2026-10-01", "end_date": "2026-10-01"})):
+        missing = await session.call_tool(name, arguments)
+        assert missing.model_dump(by_alias=True)["structuredContent"]["status"] == "needs_login"
 
 
 async def check_checkin(config: dict, env: dict, cwd: Path) -> None:

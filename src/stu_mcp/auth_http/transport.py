@@ -54,7 +54,14 @@ class HTTPFlow:
         self.check()
         self.checked_url(url)
         method = method.upper()
-        if method not in {"GET", "POST"} or credential and urlsplit(url).scheme != "https":
+        # The card system has a separate query password and only an HTTP login.
+        # This fixed exception cannot be used for school SSO credentials.
+        card_login = (self.source == "smartcard" and method == "POST"
+                      and url == "http://smartcard.stu.edu.cn/loginstudent.action"
+                      and isinstance(data, dict) and json is None and content is None
+                      and set(data) == {"name", "passwd", "loginType", "userType", "rand", "imageField.x", "imageField.y"}
+                      and data["loginType"] == "2" and data["userType"] == "1")
+        if method not in {"GET", "POST"} or credential and urlsplit(url).scheme != "https" and not card_login:
             raise AppError("unsafe_authentication_request", "认证请求方式不受支持；密码只发送到 HTTPS。", self.source)
         self.requests += 1
         remaining = min(timeout or 12, self.deadline - time.monotonic())

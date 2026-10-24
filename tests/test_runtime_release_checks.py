@@ -31,9 +31,9 @@ def tools(payload):
     return [Tool.model_validate(value) for value in payload]
 
 
-def test_committed_contract_has_all_48_unique_public_interfaces():
+def test_committed_contract_has_all_50_unique_public_interfaces():
     baseline = contract()
-    assert len(baseline) == len({tool["name"] for tool in baseline}) == 48
+    assert len(baseline) == len({tool["name"] for tool in baseline}) == 50
     assert runtime.assert_tool_contract(tools(baseline)) == []
 
 
@@ -65,6 +65,31 @@ def test_missing_or_duplicate_tools_are_rejected(change):
         payload[-1] = deepcopy(payload[0])
     with pytest.raises(AssertionError):
         runtime.assert_tool_contract(tools(payload))
+
+
+def test_failure_summary_keeps_only_categories_and_own_check_locations():
+    secret = "SYNTHETIC_SECRET_HEADER_AND_PRIVATE_PATH"
+    errors = []
+    for source in (f"raise AssertionError({secret!r})", f"raise RuntimeError({secret!r})"):
+        try:
+            exec(compile(source, str(runtime.__file__), "exec"))
+        except Exception as error:
+            errors.append(error)
+    summary = runtime.safe_failure_summary(ExceptionGroup(secret, errors))
+    assert "assertion at check_http_runtime.py:1" in summary
+    assert "runtime at check_http_runtime.py:1" in summary
+    assert secret not in summary and str(Path(runtime.__file__).parent) not in summary
+
+
+def test_failure_summary_does_not_expose_external_filename_or_exception_class():
+    secret = "SYNTHETIC_PRIVATE_EXCEPTION"
+    private_error = type(secret, (Exception,), {})
+    try:
+        exec(compile("raise error_type(secret)", secret + "/private.py", "exec"),
+             {"error_type": private_error, "secret": secret})
+    except Exception as error:
+        summary = runtime.safe_failure_summary(error)
+    assert summary == "dependency"
 
 
 def port():

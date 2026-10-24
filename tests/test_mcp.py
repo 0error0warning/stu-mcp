@@ -1,4 +1,3 @@
-import json
 import os
 
 import pytest
@@ -25,7 +24,8 @@ async def test_real_stdio_handshake_schema_and_feature_gating(tmp_path):
         tools = await client.list_tools()
         names = {t.name for t in tools.tools}
         assert {"get_capabilities", "refresh_source", "get_grades", "get_tasks", "open_setup"}.issubset(names)
-        assert len(names) == 48
+        assert len(names) == 50
+        assert {"get_campus_card", "get_campus_card_transactions"} <= names
         assert "get_academic_timetable" in names
         assert {"search_takeout_shops", "get_takeout_shop", "get_takeout_menu", "prepare_takeout_selection"} <= names
         assert "get_takeout_product" in names
@@ -124,7 +124,16 @@ async def test_real_stdio_handshake_schema_and_feature_gating(tmp_path):
         cached_post = await client.call_tool("get_huyou_post", {"target": "101", "refresh": False})
         community = cached_post.model_dump(by_alias=True)["structuredContent"]
         assert community["item"]["body"] == "合成公开树洞内容" and community["item"]["official"] is False
-        assert "password" not in json.dumps(result).lower()
+        def no_credentials(value):
+            if isinstance(value, dict):
+                assert not {"password", "query_password", "username", "cookies", "cookie", "token"}.intersection(value)
+                for child in value.values():
+                    no_credentials(child)
+            elif isinstance(value, list):
+                for child in value:
+                    no_credentials(child)
+
+        no_credentials(result)
         charging = await client.call_tool("get_charging_overview", {"refresh": False})
         overview = charging.model_dump(by_alias=True)["structuredContent"]
         assert overview["source"] == "charging" and overview["coverage"]["catalog_device_count"] == 14

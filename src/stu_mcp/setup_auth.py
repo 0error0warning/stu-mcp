@@ -19,7 +19,7 @@ from .auth_http import Credentials
 from .auth_http.school import SCHOOL_SERVICES
 from .runtime import AppError, key_lock, reject_symlinks
 
-_PROFILES = frozenset({"school", "yuketang", "webvpn", "duifene"})
+_PROFILES = frozenset({"school", "yuketang", "webvpn", "duifene", "smartcard"})
 _SERVICES = _PROFILES | frozenset(SCHOOL_SERVICES) | {"oa"}
 _MESSAGES = {
     "session_saved": "登录会话已加密保存；实际功能按业务分别读取核验。",
@@ -47,12 +47,14 @@ _MESSAGES = {
     "not_attempted": "请先解决上面的登录问题，再继续配置。",
     "invalid_callback": "回调链接无效，请重新完成原微信授权。",
     "invalid_authentication_input": "认证输入格式无效。", "local_state_busy": "本地状态正在变更，请稍后再试。",
+    "captcha_display_unavailable": "验证码暂时无法显示，请重新配置。",
+    "captcha_rejected": "验证码未通过验证，请重新配置。",
     "unsafe_path": "本地安全路径检查失败，已停止。",
     "invalid_totp": "令牌密钥无效，请填写已绑定令牌的密钥，不是当前六位动态口令。",
     "auto_login_config_invalid": "自动登录配置无法读取，请重新配置。",
     "auto_login_failed": "WebVPN 未接受账号或动态口令，请检查配置。",
     "auto_login_interaction_required": "WebVPN 要求额外验证，本次登录已停止。",
-    "source_unavailable": "WebVPN 暂时无法访问，请稍后重试。",
+    "source_unavailable": "学校服务暂时无法访问，请稍后重试。",
     "operation_failed": "登录未完成，请查看当前配置后再试。",
     "paused": "微信连接状态已读取；没有创建新的监听计划。",
     "monitoring": "已有授权监听计划的状态已读取。",
@@ -190,7 +192,7 @@ class _LoginTask:
                     or self.input is not None):
                 raise AppError("invalid_challenge", "该输入请求已失效或已使用。")
             kind = self.challenge["kind"]
-            expected = {"credentials": {"username", "password"}, "code": {"code"}, "callback": {"callback"},
+            expected = {"credentials": {"username", "password"}, "code": {"code"}, "captcha": {"code"}, "callback": {"callback"},
                         "webvpn_credentials": {"username", "password", "totp"}}
             if kind not in expected or set(values) != expected[kind]:
                 raise AppError("invalid_request", "输入字段与当前验证步骤不匹配。")
@@ -207,6 +209,9 @@ class _LoginTask:
             elif kind == "code":
                 if not isinstance(values["code"], str) or re.fullmatch(r"[0-9]{6}", values["code"]) is None:
                     raise AppError("invalid_authentication_input", "动态码须为六位数字。")
+            elif kind == "captcha":
+                if not isinstance(values["code"], str) or re.fullmatch(r"[0-9]{4}", values["code"]) is None:
+                    raise AppError("invalid_authentication_input", "验证码须为四位数字。")
             elif not isinstance(values["callback"], str) or not 1 <= len(values["callback"]) <= 8192:
                 raise AppError("invalid_callback", _MESSAGES["invalid_callback"])
             self.input = dict(values)
@@ -270,6 +275,17 @@ class _WebInteraction:
 
     def show_qr(self, content: str):
         self.task.show_qr(content)
+
+    def captcha(self, image: bytes, *, media_type: str = "image/jpeg") -> str:
+        if (not isinstance(image, bytes) or not 1 <= len(image) <= 65536
+                or media_type not in {"image/png", "image/jpeg"}):
+            raise AppError("captcha_display_unavailable", _MESSAGES["captcha_display_unavailable"], self.task.service)
+        encoded = "data:" + media_type + ";base64," + base64.b64encode(image).decode("ascii")
+        value = self.task.ask("captcha", image=encoded)
+        try:
+            return value["code"]
+        finally:
+            value.clear()
 
 
 class SetupAuthJobs:
