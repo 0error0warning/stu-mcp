@@ -13,6 +13,8 @@
 
 | 内容 | 记录 |
 | --- | --- |
+| 10/24 后续：学校 Outlook 中国云、邮件 API 与授权前提（未接入） | [campus-mail.md](campus-mail.md) |
+| 后续功能接入方案（本轮只规划；研究生／医学院暂缓） | [feature-expansion-plan.md](../../feature-expansion-plan.md) |
 | 当前已知范围、第二轮成功读取、真实阻碍与不执行边界 | [round2-completion.md](round2-completion.md)、[业务协议台账](business-protocol-ledger.csv) |
 | 学工 17 应用实际查询、本人字段、模型／分页与消息 | [student-affairs-round2.md](student-affairs-round2.md) |
 | 本人学期课表／选课／评教读取及 NetMS 实时流量边界 | [academic-network-round2.md](academic-network-round2.md) |
