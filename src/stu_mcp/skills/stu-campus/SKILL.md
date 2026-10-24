@@ -47,7 +47,7 @@ CLI 返回 JSON，读取 `ok`、`status`、`coverage`、`limited`、`errors` 和
 
 ## 学期课表导出
 
-完整学期课表转 WakeUp 或日历文件使用随包的独立 `stu-timetable-export` 技能。需要时可用本机命令前缀执行 `skill-export --skill stu-timetable-export --apply` 导出，再按当前 agent 的技能方式加载；不自动修改客户端配置。它每次核对目标学期最新有效官方校历，OA专项调课检索默认关闭，用户明确开启才查询。这里的课程库存、考试缓存和短期个人日程不能当完整学期课表，不从课程名猜周次/节次。
+本人理论课表用 `get_academic_timetable(semester="…")`，CLI 对应 `timetable --semester …`；它复用教务会话，按需读取全周次，返回未排课及待核实项。转 WakeUp 或日历文件继续使用随包的 `stu-timetable-export` 技能及同一转换核心。需要时可用本机命令前缀执行 `skill-export --skill stu-timetable-export --apply` 导出，再按当前 agent 的技能方式加载；不自动修改客户端配置。该技能每次核对目标学期最新有效校历和作息，OA专项调课检索默认关闭；理论课表查询不自动证明实验课及校历已覆盖。旧版没有该入口时可使用用户提供的课表，课程库存、考试缓存和短期个人日程仍不能代替完整学期课表。
 
 ## 校园服务与网络故障
 

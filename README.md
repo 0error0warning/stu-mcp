@@ -59,7 +59,7 @@ stu-mcp connect codex --apply
 
 第二行换成你用的客户端，比如 `claude-code` 或 `cursor`。其他客户端、豆包工作和 Skill 的接法放在[这里](docs/clients.md)。v0.6.1 起，运行 `stu-mcp update` 即可检查并升级；只想看有无新版用 `stu-mcp update --check`，也可以让 agent 调用对应更新工具。升级后，本机 stdio 重新加载 MCP；私有 HTTP 须重启宿主 MCP 服务。旧版首次升级见[安装说明](docs/install.md#从旧版升级)，支持范围见[更新说明](docs/updates.md)。
 
-MCP 接入和技能安装分别处理。随包的[课表导出技能](docs/timetable.md)组织校历核对和文件转换，完整学期课表仍需另行取得和核实。技能 ZIP 是可选资源包，生成后仍需按客户端支持的方式安装，不会自动让当前 agent 加载技能。
+MCP 接入和技能安装分别处理。随包的[课表导出技能](docs/timetable.md)组织校历核对和文件转换。当前开发源码新增教务本人理论课表读取（尚未发布），继续复用该技能和同一转换器；实验课、校历及作息另行核对。技能 ZIP 是可选资源包，生成后仍需按客户端支持的方式安装，不会自动让当前 agent 加载技能。
 
 需要登录时，让 agent 打开设置页，或自己运行 `stu-mcp setup`。在自己的浏览器里配置学校统一账号、雨课堂、对分易或 WebVPN，认证信息不经过 agent。WebVPN 可填写已有令牌密钥，由程序生成动态码并自动登录；不配置密钥也能手动输入当前动态码。喜欢终端可用 `stu-mcp login school` 等命令，完整用法见[认证说明](docs/authentication.md)。
 

@@ -2,7 +2,7 @@
 
 日期：**2026-10-23**。对象是开源 `stu-mcp`，源码基线 `c8db73ea5f4b6c54ae207b58cc41bd496a09df68`（v0.7.0）。Hermes 上的私有 `school_hub` 不在本次改造范围内。
 
-本轮先调查业务、认证、接口与访问条件，没有实现新 MCP 功能，没有扩充认证白名单，没有修改运行时能力目录、工具签名、README 安装说明或发布版本。凭据、个人页面和临时会话不进入仓库。
+本目录最初阶段只调查业务、认证、接口与访问条件；后续各记录保留自己的时间与范围。当前源码的本人理论课表开始接入，见[逐项计划](../../feature-expansion-plan.md)；其余研究成功不自动表示已成为 MCP 功能。凭据、个人页面和临时会话不进入仓库。
 
 ## 阅读入口
 
@@ -13,8 +13,9 @@
 
 | 内容 | 记录 |
 | --- | --- |
+| 后续：一卡通本人正常验证码登录、基本信息与流水（未接入） | [smartcard-personal.md](smartcard-personal.md) |
 | 10/24 后续：学校 Outlook 中国云、邮件 API 与授权前提（未接入） | [campus-mail.md](campus-mail.md) |
-| 后续功能接入方案（本轮只规划；研究生／医学院暂缓） | [feature-expansion-plan.md](../../feature-expansion-plan.md) |
+| 后续逐项接入：先复用课表导出；wpay、研究生／医学院等暂缓 | [feature-expansion-plan.md](../../feature-expansion-plan.md) |
 | 当前已知范围、第二轮成功读取、真实阻碍与不执行边界 | [round2-completion.md](round2-completion.md)、[业务协议台账](business-protocol-ledger.csv) |
 | 学工 17 应用实际查询、本人字段、模型／分页与消息 | [student-affairs-round2.md](student-affairs-round2.md) |
 | 本人学期课表／选课／评教读取及 NetMS 实时流量边界 | [academic-network-round2.md](academic-network-round2.md) |

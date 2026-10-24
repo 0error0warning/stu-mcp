@@ -17,12 +17,12 @@ v0.7.0 提供统一账号 `login school`、配置分组能力目录和私密网�
 | 模块职责、现有登录、成功证明与状态归属 | [当前认证与会话边界](authentication.md) |
 | 学校网页改版、依赖方向与缓存完整性 | [来源维护](source-adapters.md) |
 | 充电/狐友专属契约与后续审查 | [第三方适配](third-party-adapters.md) |
-| 学期课表、技能资源分发与后续取数条件 | [使用与范围](timetable.md) |
-| 教务成绩/考试表格与学期选择 | [教务适配](academic.md) |
+| 本人理论课表读取、既有导出技能与资源分发 | [使用与范围](timetable.md) |
+| 教务成绩／考试／课表解析与学期选择 | [教务适配](academic.md) |
 | 雨课堂课程、活动/公告与字段变化 | [雨课堂适配](yuketang.md) |
 | 配置登录能用什么、学校服务入口与接入缺口 | [配置与服务总表](campus-services.md)、[导航与官方入口普查](verification/2026-10-22-campus-entries.md) |
 | 未接入入口的功能、认证、接口与调查缺口 | [10/23 协议调查索引](investigation/2026-10-23/README.md) |
-| 馆藏／本人课表的分批接入及邮箱授权方案（未实施） | [功能接入方案](feature-expansion-plan.md) |
+| 逐项接入进度、后续馆藏及邮箱授权方案 | [功能接入方案](feature-expansion-plan.md) |
 | 桑浦山宿舍报修预览、确认和提交 | [报修流程](repair.md) |
 | 网络访问与排障 | [单服务连接诊断](network.md)、[学校入口批量检测](network-audit.md) |
 | 数据和代码来源 | [安全与隐私](../SECURITY.md)、[来源清单](provenance.json) |

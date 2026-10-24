@@ -212,6 +212,8 @@ service，也不能用来证明当前客户端激活或个人订阅。没有打�
 
 ## 5. 校园卡：精确表单和身份适用条件已核对，不拿 CAS 密码代替
 
+后续更新：用户指出首页将同一 FAQ 标为 **2026/05/06**，详情内部仍保留 2012/03/23；两个日期应分别记录。正文确实说明学工号与正式卡初始查询密码规则。随后已用用户明确提供的本人查询凭据完成正常图片验证码与纯 HTTP 登录、本人资料及流水核验，详见[一卡通本人查询记录](smartcard-personal.md)。下文“不执行登录”的描述保留为本阶段历史范围。
+
 本轮当前[登录页](http://smartcard.stu.edu.cn/homeLogin.action) 200，表单 `method=post`、
 `onsubmit="return doSummit();"`，校验成功后 JS 把 action 设为 `loginstudent.action`。
 

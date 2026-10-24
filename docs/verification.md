@@ -10,6 +10,7 @@ v0.6.0 默认 HTTP CLI 的实现边界见[认证说明](authentication.md)。下
 
 | 范围 | 归档 |
 | --- | --- |
+| 2026-10-23 本人理论课表与原导出流程（未发布） | [HTTP 实读、CLI／MCP、解析完整性与原工具兼容](verification/2026-10-23-academic-timetable.md) |
 | v0.7.0 统一配置与私密设置页发行 | [版本、离线升级、安装包与发布收尾](verification/2026-10-23-v0.7.0.md) |
 | 2026-10-23 本人浏览器中的 HTTP 配置（未发布） | [CLI 与页面共用核心、私密交互及安装检查](verification/2026-10-23-private-setup.md) |
 | 2026-10-23 配置引导与统一账号组合登录（未发布） | [能力目录、独立会话、兼容与隔离安装验证](verification/2026-10-23-configuration-catalog.md) |
