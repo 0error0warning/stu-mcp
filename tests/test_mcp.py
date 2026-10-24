@@ -25,7 +25,8 @@ async def test_real_stdio_handshake_schema_and_feature_gating(tmp_path):
         tools = await client.list_tools()
         names = {t.name for t in tools.tools}
         assert {"get_capabilities", "refresh_source", "get_grades", "get_tasks", "open_setup"}.issubset(names)
-        assert len(names) == 47
+        assert len(names) == 48
+        assert "get_academic_timetable" in names
         assert {"search_takeout_shops", "get_takeout_shop", "get_takeout_menu", "prepare_takeout_selection"} <= names
         assert "get_takeout_product" in names
         assert "get_takeout_delivery_slots" in names
@@ -102,6 +103,8 @@ async def test_real_stdio_handshake_schema_and_feature_gating(tmp_path):
         assert unavailable.model_dump(by_alias=True)["structuredContent"]["status"] == "needs_login"
         grade = await client.call_tool("get_grades", {})
         assert grade.model_dump(by_alias=True)["structuredContent"]["status"] == "needs_login"
+        timetable = await client.call_tool("get_academic_timetable", {})
+        assert timetable.model_dump(by_alias=True)["structuredContent"]["status"] == "needs_login"
         unknown = await client.call_tool("refresh_source", {"source": "nonexistent"})
         assert unknown.model_dump(by_alias=True)["structuredContent"]["status"] == "invalid_source"
         public = await client.call_tool("search_notices", {"source": "public"})

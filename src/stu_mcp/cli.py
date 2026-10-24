@@ -99,6 +99,8 @@ def parser() -> argparse.ArgumentParser:
     attachment.add_argument("--index", type=int, default=0)
     summary = sub.add_parser("academic-summary", help="计算已缓存成绩的学分加权统计")
     summary.add_argument("--semester", default="")
+    timetable = sub.add_parser("timetable", help="读取本人教务理论课表；复用学校登录，不写入日程缓存")
+    timetable.add_argument("--semester", default="", help="学期；留空使用学校当前选定学期，并返回可选学期")
     task = sub.add_parser("task-status", help="更新本机待办状态，不提交学校作业")
     task.add_argument("item_id")
     task.add_argument("status", choices=("todo", "done", "ignored"))
@@ -408,6 +410,8 @@ def _dispatch(args) -> int:
             return emit(app.attachment(args.item_id, args.index))
         if args.command == "academic-summary":
             return emit(app.academic_summary(args.semester))
+        if args.command == "timetable":
+            return emit(app.academic_timetable(args.semester))
         if args.command == "task-status":
             return emit(app.store.set_task_status(args.item_id, args.status))
         if args.command == "profile":

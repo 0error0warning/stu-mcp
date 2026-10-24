@@ -276,6 +276,14 @@ def build_server(app: App | None = None, *, checkin: CheckinClient | None = None
         """读取本人考试安排缓存，包含考场/时间等信息；以学校页面为准。"""
         return app.query("exam", query, limit, offset, "jw")
 
+    @tool(world=True)
+    def get_academic_timetable(semester: str = "") -> dict[str, Any]:
+        """按需读取本人教务理论课表，复用 jw 登录；留空使用学校当前选定学期。
+        返回可选学期、课程周次与节次、未排课和解析待核对项，不进入课程或个人日程缓存。
+        日历导出继续使用随包课表技能；生成日期前须核对最新校历、作息与调课安排。
+        """
+        return app.academic_timetable(semester)
+
     @tool()
     def get_courses(source: str = "all", query: str = "", limit: int = 20, offset: int = 0) -> dict[str, Any]:
         """读取 MySTU/雨课堂课程缓存；各来源独立登录，使用最新可用学期。"""

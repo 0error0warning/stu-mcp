@@ -1,6 +1,6 @@
 {
   "baseline": "v0.6.1",
-  "tool_count": 47,
+  "tool_count": 48,
   "tools": [
     {
       "name": "academic_summary",
@@ -1726,6 +1726,32 @@
         "readOnlyHint": false,
         "destructiveHint": true,
         "idempotentHint": false,
+        "openWorldHint": true
+      }
+    },
+    {
+      "name": "get_academic_timetable",
+      "description": "按需读取本人教务理论课表，复用 jw 登录；留空使用学校当前选定学期。\n        返回可选学期、课程周次与节次、未排课和解析待核对项，不进入课程或个人日程缓存。\n        日历导出继续使用随包课表技能；生成日期前须核对最新校历、作息与调课安排。\n        ",
+      "inputSchema": {
+        "properties": {
+          "semester": {
+            "default": "",
+            "title": "Semester",
+            "type": "string"
+          }
+        },
+        "title": "get_academic_timetableArguments",
+        "type": "object"
+      },
+      "outputSchema": {
+        "additionalProperties": true,
+        "title": "get_academic_timetableDictOutput",
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
         "openWorldHint": true
       }
     }

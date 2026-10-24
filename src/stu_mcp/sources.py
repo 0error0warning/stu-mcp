@@ -23,7 +23,7 @@ SOURCES = {
     "oa": Source("oa", "OA 通知", ("通知列表", "正文", "附件文字"),
                  "https://webvpn.stu.edu.cn/portal/#!/service",
                  ("oa.stu.edu.cn", "webvpn.stu.edu.cn", "oa-stu-edu-cn.webvpn.stu.edu.cn"), "webvpn"),
-    "jw": Source("jw", "教务系统", ("成绩", "加权统计", "考试安排"),
+    "jw": Source("jw", "教务系统", ("成绩", "加权统计", "考试安排", "本人理论课表"),
                  JW_LOGIN_URL, ("jw.stu.edu.cn", "sso.stu.edu.cn"), "jw"),
     "mystu": Source("mystu", "MySTU", ("课程", "作业", "Moodle / ELC 活动", "个人日程"),
                     "https://my.stu.edu.cn/discussion/my-courses",

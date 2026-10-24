@@ -77,7 +77,7 @@ def test_school_browser_setup_reuses_http_core_and_saves_each_session(setup_page
     fill_credentials(page)
     expect(page.locator("#login-status")).to_contain_text("配置完成", timeout=12000)
     expect(page.locator("#login-results li")).to_have_count(0)
-    expect(page.locator("#login-features")).to_contain_text("教务成绩与考试")
+    expect(page.locator("#login-features")).to_contain_text("教务成绩、考试与课表")
     assert [call[0] for call in calls] == ["jw", "mystu", "repair"]
     assert len(inputs) == 1 and inputs[0]["password"] == "SYNTHETIC_PRIVATE_PASSWORD"
     expect(page.locator("#login-pass")).to_have_value("")

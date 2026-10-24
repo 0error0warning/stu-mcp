@@ -313,6 +313,11 @@ class App:
         return {"ok": True, "name": attachments[index]["name"], "text": text,
                 "url": url, "content_trust": "untrusted_source_data", "truncated": len(text) >= 60000}
 
+    def academic_timetable(self, semester: str = "") -> dict:
+        from .features.jw.service import academic_timetable
+
+        return academic_timetable(self.vault, semester)
+
     def academic_summary(self, semester: str = "") -> dict:
         # One internal scan; the MCP response contains aggregates, not an unbounded grade list.
         page = self.store.list(sources=("jw",), kind="grade", _all_items=True)
