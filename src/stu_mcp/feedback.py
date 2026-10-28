@@ -46,9 +46,14 @@ def report_feedback(message: str, tool_name: str = "", category: str = "bug", *,
             confirmation_id = str(uuid.uuid4())
             payload = {"report_id": str(uuid.uuid4()), **fields}
             _previews[confirmation_id] = (now + 600, endpoint, payload)
+            privacy_notice = (
+                "接收方为 STU MCP 维护者；内容用于排查，保存在其私有数据库，未设置自动删除。服务器能看到网络出口IP，反馈表不记录IP。"
+                if endpoint == DEFAULT_FEEDBACK_URL else
+                "接收方为宿主配置的自定义服务；其身份、用途、存储及删除策略未经本工具核实，请先向操作者核实并告知用户。服务器能看到网络出口IP。"
+            )
             return {"status": "needs_user_confirmation", "confirmation_id": confirmation_id,
                     "destination": endpoint, "payload": dict(payload), "expires_in_seconds": 600,
-                    "privacy_notice": "将完整展示的内容发给维护者，保存在其私有数据库中用于排查，未设置自动删除。接收服务器会看到网络出口IP，反馈表不记录IP。",
+                    "privacy_notice": privacy_notice,
                     "next_action": "向用户完整展示接收地址、全部 payload 和隐私说明，询问是否允许发送；等待本轮明确同意。拒绝或未回复均不得提交。"}
         preview = _previews.get(confirmation_id)
         if not preview or preview[1] != endpoint or any(preview[2].get(k) != v for k, v in fields.items()):
