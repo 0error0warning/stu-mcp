@@ -29,9 +29,15 @@ def inbox_server(tmp_path):
     thread.join()
 
 
+def approved_feedback(message, tool_name="", category="bug"):
+    preview = feedback.report_feedback(message, tool_name, category)
+    return feedback.report_feedback(message, tool_name, category,
+                                    confirmation_id=preview["confirmation_id"], user_confirmed=True)
+
+
 def payload():
     return {"report_id": str(uuid.uuid4()), "message": "Synthetic: date parser disagrees with source.",
-            "category": "data_error", "tool_name": "get_notice", "client_version": "0.7.1"}
+            "category": "data_error", "tool_name": "get_notice", "client_version": "0.7.3"}
 
 
 def test_receiver_persistence_idempotency_and_no_public_read(inbox_server):
@@ -82,7 +88,7 @@ def test_client_sends_only_explicit_fields_and_checks_receipt(monkeypatch):
         return original(transport=httpx.MockTransport(handle), **options)
     monkeypatch.setattr(httpx, "Client", client)
     monkeypatch.setenv("STU_MCP_FEEDBACK_URL", "https://example.test/api/feedback")
-    assert feedback.report_feedback("Synthetic issue")["status"] == "received"
+    assert approved_feedback("Synthetic issue")["status"] == "received"
     assert len(seen) == 1
 
 
@@ -95,10 +101,60 @@ def test_client_rejects_unsafe_endpoint(monkeypatch, url):
 
 
 @pytest.mark.parametrize("message", ["", " " * 2, "x" * 4001, "Cookie: synthetic_session",
-                                     "password=synthetic", "Bearer synthetic"])
+                                     "password=synthetic", "Bearer synthetic", "验证码：123456",
+                                     "totp=synthetic", "otpauth://totp/synthetic",
+                                     "https://example.test/callback?code=synthetic"])
 def test_client_rejects_empty_oversize_and_credential_pastes(message):
     with pytest.raises(AppError):
         feedback.report_feedback(message)
+
+
+def test_preview_and_missing_consent_never_connect(monkeypatch):
+    monkeypatch.setattr(httpx, "Client", lambda **_: pytest.fail("no consent: no network"))
+    preview = feedback.report_feedback("Synthetic issue", user_confirmed=True)
+    assert preview["status"] == "needs_user_confirmation"
+    assert preview["payload"]["message"] == "Synthetic issue"
+    with pytest.raises(AppError) as error:
+        feedback.report_feedback("Synthetic issue", confirmation_id=preview["confirmation_id"])
+    assert error.value.code == "feedback_consent_required"
+    with pytest.raises(AppError) as error:
+        feedback.report_feedback("changed", confirmation_id=preview["confirmation_id"], user_confirmed=True)
+    assert error.value.code == "feedback_preview_changed"
+    monkeypatch.setenv("STU_MCP_FEEDBACK_URL", "https://changed.test/feedback")
+    with pytest.raises(AppError) as error:
+        feedback.report_feedback("Synthetic issue", confirmation_id=preview["confirmation_id"], user_confirmed=True)
+    assert error.value.code == "feedback_preview_changed"
+
+
+def test_expired_preview_never_connects(monkeypatch):
+    monkeypatch.setattr(httpx, "Client", lambda **_: pytest.fail("expired: no network"))
+    preview = feedback.report_feedback("Synthetic issue")
+    moment = feedback.time.monotonic()
+    monkeypatch.setattr(feedback.time, "monotonic", lambda: moment + 601)
+    with pytest.raises(AppError) as error:
+        feedback.report_feedback("Synthetic issue", confirmation_id=preview["confirmation_id"], user_confirmed=True)
+    assert error.value.code == "feedback_preview_changed"
+
+
+def test_confirmation_is_consumed_before_unknown_send(monkeypatch):
+    preview = feedback.report_feedback("Synthetic issue")
+    def failed(**_):
+        raise httpx.ConnectTimeout("synthetic")
+    monkeypatch.setattr(httpx, "Client", failed)
+    with pytest.raises(AppError) as error:
+        feedback.report_feedback("Synthetic issue", confirmation_id=preview["confirmation_id"], user_confirmed=True)
+    assert error.value.code == "feedback_outcome_unknown"
+    with pytest.raises(AppError) as error:
+        feedback.report_feedback("Synthetic issue", confirmation_id=preview["confirmation_id"], user_confirmed=True)
+    assert error.value.code == "feedback_preview_changed"
+
+
+def test_receiver_rejects_old_clients_without_saving(inbox_server):
+    _, inbox, url = inbox_server
+    with httpx.Client(trust_env=False) as client:
+        assert client.post(url, json={**payload(), "client_version": "0.7.2"}).status_code == 426
+    with inbox.connect() as db:
+        assert db.execute("SELECT count(*) FROM feedback").fetchone()[0] == 0
 
 
 @pytest.mark.parametrize("status,receipt,code", [(302, {}, "feedback_unavailable"),
@@ -112,7 +168,7 @@ def test_client_does_not_follow_redirects_or_claim_false_success(monkeypatch, st
         return httpx.Response(status, json=receipt, headers={"Location": "https://other.test/"})
     monkeypatch.setattr(httpx, "Client", lambda **kw: original(transport=httpx.MockTransport(handle), **kw))
     with pytest.raises(AppError) as error:
-        feedback.report_feedback("Synthetic issue")
+        approved_feedback("Synthetic issue")
     assert error.value.code == code
     assert len(calls) == 1
 
