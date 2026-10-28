@@ -64,7 +64,8 @@ async def test_real_sdk_http_session_disconnect_keeps_peer_and_shared_repair_dra
                           "arguments": {"draft_id": draft["draft_id"]}}, session=sessions[1])
         assert peer.json()["result"]["structuredContent"]["preview"]["title"] == "合成故障"
         tools = await _rpc(client, "tools/list", session=sessions[1])
-        assert len(tools.json()["result"]["tools"]) == 50
+        assert len(tools.json()["result"]["tools"]) == 51
+        assert "report_feedback" in {tool["name"] for tool in tools.json()["result"]["tools"]}
     assert host._closed
     shutdown.assert_called_once()
     host.close()

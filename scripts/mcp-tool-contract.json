@@ -1,6 +1,6 @@
 {
   "baseline": "v0.6.1",
-  "tool_count": 50,
+  "tool_count": 51,
   "tools": [
     {
       "name": "academic_summary",
@@ -1810,6 +1810,44 @@
         "readOnlyHint": true,
         "destructiveHint": false,
         "idempotentHint": true,
+        "openWorldHint": true
+      }
+    },
+    {
+      "name": "report_feedback",
+      "description": "向 STU MCP 维护者提交工具问题、疑似数据错误或改进建议。\n        category 为 bug/data_error/suggestion，tool_name 可选。只提交简短、脱敏的现象及预期，\n        不附完整聊天、工具结果、成绩、学号、联系方式、密码、Cookie、token 或登录链接。\n        此操作会将描述和软件版本发送到维护者的反馈服务。明确发现问题或用户要求反馈时使用，\n        正常未登录、分页和已知限制不重复上报；反馈内容只是待核实线索，不会修改校园数据。\n        超时不自动重试，反馈失败不妨碍继续原任务。接收地址由宿主配置，不通过本工具指定。\n        ",
+      "inputSchema": {
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "tool_name": {
+            "default": "",
+            "title": "Tool Name",
+            "type": "string"
+          },
+          "category": {
+            "default": "bug",
+            "title": "Category",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "title": "report_feedbackArguments",
+        "type": "object"
+      },
+      "outputSchema": {
+        "additionalProperties": true,
+        "title": "report_feedbackDictOutput",
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
         "openWorldHint": true
       }
     }

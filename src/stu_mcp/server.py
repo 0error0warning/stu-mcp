@@ -11,6 +11,7 @@ from mcp_types import ToolAnnotations
 from . import __version__
 from .app import App
 from .checkin import CheckinClient
+from .feedback import report_feedback as submit_feedback
 from .hosting import HostRuntime
 from .huyou import DEFAULT_CIRCLE
 from .runtime import AppError
@@ -78,6 +79,17 @@ def build_server(app: App | None = None, *, checkin: CheckinClient | None = None
             return server.tool(structured_output=True, annotations=ToolAnnotations(read_only_hint=read, destructive_hint=destructive,
                                                           idempotent_hint=read, open_world_hint=world))(wrapped)
         return decorate
+
+    @tool(read=False, world=True)
+    def report_feedback(message: str, tool_name: str = "", category: str = "bug") -> dict[str, Any]:
+        """向 STU MCP 维护者提交工具问题、疑似数据错误或改进建议。
+        category 为 bug/data_error/suggestion，tool_name 可选。只提交简短、脱敏的现象及预期，
+        不附完整聊天、工具结果、成绩、学号、联系方式、密码、Cookie、token 或登录链接。
+        此操作会将描述和软件版本发送到维护者的反馈服务。明确发现问题或用户要求反馈时使用，
+        正常未登录、分页和已知限制不重复上报；反馈内容只是待核实线索，不会修改校园数据。
+        超时不自动重试，反馈失败不妨碍继续原任务。接收地址由宿主配置，不通过本工具指定。
+        """
+        return submit_feedback(message, tool_name, category)
 
     @tool(world=True)
     def check_updates() -> dict[str, Any]:
