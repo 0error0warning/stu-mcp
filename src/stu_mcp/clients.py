@@ -5,6 +5,7 @@ import hashlib
 import io
 import json
 import os
+import re
 import sys
 import time
 from dataclasses import dataclass
@@ -69,14 +70,20 @@ def server_config(client: str = "generic") -> dict:
     return {"type": "stdio", **config} if client == "workbuddy" else config
 
 
-def target(client: str, home: Path | None = None) -> Path:
+def target(client: str, home: Path | None = None, *, profile: str | None = None) -> Path:
+    client = "deepseek-harness" if client == "dsh" else client
     spec = CLIENTS.get(client)
     if spec is None or not spec.parts:
         raise AppError("unknown_client", "请选择受支持的本地客户端，或使用 generic / generic-cli 导出接入说明。")
+    if profile is not None and (client != "deepseek-harness" or
+                                not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,63}", profile)):
+        raise AppError("invalid_client_profile", "--profile 仅用于 DSH，名称须为字母数字、下划线或短横线。")
     user_home = home or Path.home()
     if home is None and spec.home_env and os.environ.get(spec.home_env):
-        return Path(os.environ[spec.home_env]).expanduser().joinpath(*spec.parts[1:])
-    return user_home.joinpath(*spec.parts)
+        path = Path(os.environ[spec.home_env]).expanduser().joinpath(*spec.parts[1:])
+    else:
+        path = user_home.joinpath(*spec.parts)
+    return path.parent.parent / profile / path.name if profile else path
 
 
 def catalog(home: Path | None = None) -> list[dict]:
@@ -181,7 +188,10 @@ def _read(path: Path) -> bytes:
 
 
 def connect(client: str, runtime: Runtime, *, apply: bool = False, replace: bool = False,
-            home: Path | None = None) -> dict:
+            home: Path | None = None, profile: str | None = None) -> dict:
+    client = "deepseek-harness" if client == "dsh" else client
+    if profile is not None:
+        target(client, home, profile=profile)
     spec = CLIENTS.get(client)
     if spec is None:
         raise AppError("unknown_client", "客户端未知；使用 stu-mcp clients 查看接入方式。")
@@ -193,11 +203,15 @@ def connect(client: str, runtime: Runtime, *, apply: bool = False, replace: bool
                 "mcpServers": {"stu-mcp": config}}
     if spec.format == "skill":
         return {**base, **export_skill(runtime, apply=apply), "verification": "local_execution_required"}
-    path = target(client, home)
+    path = target(client, home, profile=profile)
     base["path"] = str(path)
+    if spec.format == "cordis":
+        base["profile"] = profile or "desktop"
+        base["next_step"] = ("在所选 DSH 环境重新加载 MCP；先调用 get_capabilities 验证实际接通。"
+                             "本机缺登录时用 open_setup 打开共用私密设置页，或由本人使用 CLI。")
     if spec.format == "cordis" and not (path.parent / "package.json").is_file():
         return {**base, "ok": False, "status": "client_initialization_required",
-                "message": "请先安装并打开一次 DeepSeek Harness 桌面端，再保存接入；不会代建它的桌面 profile。"}
+                "message": "请先在 DeepSeek Harness 中初始化所选 profile，再保存接入；桌面端须先打开一次。"}
     raw = _read(path)
     watched = {path: raw}
     migrated = 0

@@ -7,6 +7,7 @@ v0.7.1 提供统一账号 `login school`、配置分组能力目录和私密网�
 | 用途 | 文档 |
 | --- | --- |
 | 安装、升级、登录 | [安装说明](install.md)、[更新说明](updates.md)、[客户端接入](clients.md) |
+| DeepSeek Harness（DSH）接入与跨 agent 兼容 | [已确定的低维护成本方案](deepseek-harness.md) |
 | 个人服务器、私有 HTTP 与无桌面登录 | [服务器说明](server.md)、[容器模板](server-container.md) |
 | 狐友公开讨论 | [狐友查询](huyou.md) |
 | 微信公众号公开文章（源码新增） | [免登录文章读取与失败状态](wechat-articles.md) |

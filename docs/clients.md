@@ -49,11 +49,48 @@ Python 启动路径必须保留 uv 虚拟环境的入口，即使它是符号链
 
 ## DeepSeek Harness 桌面端
 
+DeepSeek Harness（DSH）通过它的官方 MCP 桥接使用同一 STU MCP，实现与设置流程均与其他 agent 共用。
+`dsh` 是 `deepseek-harness` 的接入命令别名，默认仍选择桌面 profile：
+
+```sh
+stu-mcp connect dsh
+stu-mcp verify
+stu-mcp connect dsh --apply
+```
+
+第一条只预览，第三条保存配置。`verify` 在 30 秒总预算内启动当前安装的 MCP，
+验证握手、工具发现和 `get_capabilities`，只输出版本、工具数量及检查结果，不返回个人状态或子进程日志。
+它不读取或执行 agent 配置，返回 `verification: installed_mcp_only` 和 `agent_connection_verified: false`；
+已有配置中的自定义环境、启动项以及 DSH 是否加载成功，仍需在 DSH 内实际调用核实。
+
+使用 DSH 的其他已初始化环境时可显式选择，例如 `stu-mcp connect dsh --profile web --apply`。
+该选项只适用于 DSH，不创建 profile，也不改写桌面 profile、依赖清单或模型设置。
+CLI profile 与桌面 profile 应按实际运行环境选择；没有 `--profile` 时保留既有桌面行为。
+
 依据 [Desktop 官方说明](https://github.com/deepseek-ai/deepseek-harness/blob/master/apps/desktop/README.md)、[profile / patch 官方说明](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/boot/app-boot/README.zh.md) 和 [MCP 客户端官方说明](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/mcp/mcp-client/README.zh.md)，每个服务器作为 Cordis 插件条目插入桌面 profile，配置 `serverName`、`transport: stdio`、`command` 与 `args`。
 
-先安装并打开一次桌面端。缺少 profile 清单时返回 `client_initialization_required`，不代建目录或安装另一份 CLI runtime。CLI 的 `web` 等 profile 不作为桌面配置目标。
+先安装并打开一次桌面端。所选 profile 缺少清单时返回 `client_initialization_required`，不代建目录或安装另一份 CLI runtime。CLI 的 `web` 等 profile 不作为默认桌面配置目标。
 
 只写桌面 patch 文件，保留注释与自定义 YAML 标签；`!!js` 等表达式不在安装器中执行。更高优先级的 `DSH_HOME/cordis.patch.yml` 已有同名服务时报告冲突。依赖清单、包选择和全局 patch 不变。退出并重开桌面端后验证工具发现；热重载是否即时生效取决于当前 profile。
+
+指定其他 profile 时只写对应的 patch；已有禁用状态、调用超时等自定义选项在升级启动路径时保留。
+接通后先调用 `get_capabilities`。本机缺登录可调用 `open_setup` 打开共用私密设置页，也可由本人选择 CLI；
+远程按返回的宿主信息配置。不要在聊天中索取凭据，也不要把工具调用完成当作业务成功，需检查 `ok` 和 `status`。
+
+2026-10-28 已用本机 DSH `0.2.1-rc.3` 随附的真实 Cordis、工具注册表和 MCP 桥接验证 52 项工具发现、
+状态调用、缺登录、无效来源和空缓存结果，以及释放后重建连接。脚本为 `scripts/check_dsh_runtime.cjs`，
+使用独立空目录与合成数据，不加载用户 profile 或模型。此项不代表桌面 UI、模型选工具或真人登录已验收。
+
+同日随后完成 DSH 桌面四轮真实对话验收：能力查询、公开通知刷新、缺登录及共用设置页、
+正文失败识别和修复后重启读取。当前桌面 profile 已通过上述接入命令配置并备份。
+这次没有完成真人登录或个人业务数据读取；详细版本、调用和覆盖边界见
+[桌面验收记录](verification/2026-10-28-dsh-desktop.md)。
+
+需要安装管理条目和侧栏时，另外安装可选的 `dsh-stu-mcp` 薄插件，见
+[本地安装与移除说明](../integrations/dsh/README.md)。`connect dsh` 本身只连接 MCP，不安装 UI 包。
+薄插件与官方桥接共用一个服务连接，显示状态和功能目录，并提供共用设置入口。
+当前只实测 DSH `0.2.1-rc.3`，尚未发布到公共插件市场；在本机“插件 → 已安装插件”中显示包名。
+停用或移除 UI 包不移除独立配置的 MCP 连接。验收见[侧栏记录](verification/2026-10-28-dsh-plugin.md)。
 
 ## 豆包工作与通用 Skill
 

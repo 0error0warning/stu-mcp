@@ -62,7 +62,10 @@ def build_server(app: App | None = None, *, checkin: CheckinClient | None = None
                        "不是多用户服务；不要把宿主回环地址或文件路径当作客户端可直接访问的资源。"
                        "对分易现有认证为微信回调；远程缺登录时由本人在宿主终端运行stu-mcp login duifene。"
                        "WebVPN可用stu-mcp webvpn-auto configure配置原有无头自动重登。"
-                       "回调、密码和TOTP密钥都不通过MCP接收；学校认证默认在宿主CLI完成，HTTP为默认后端。",
+                       "回调、密码和TOTP密钥都不通过MCP接收。HTTP为默认认证后端；"
+                       "本机可用open_setup打开本人浏览器中的共用私密设置页，也可由本人选择CLI；"
+                       "远程按hosting和login_flows引导本人在MCP宿主配置。配置后重新读取get_capabilities。"
+                       "每次检查结果的ok、status、覆盖范围和错误；工具调用完成不代表业务成功。",
                        log_level="ERROR")
 
     def tool(*, read: bool = True, world: bool = False, destructive: bool = False):

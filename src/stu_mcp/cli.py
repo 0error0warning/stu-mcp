@@ -33,6 +33,7 @@ def parser() -> argparse.ArgumentParser:
     update = sub.add_parser("update", help="立即检查并升级当前 stu-mcp，保留用户配置")
     update.add_argument("--check", action="store_true", help="只检查官方新版本，不执行安装")
     sub.add_parser("clients", help="查看客户端接入方式与官方说明")
+    sub.add_parser("verify", help="验证当前安装的 MCP 握手和状态调用；不代表 agent 内已加载")
     skill = sub.add_parser("skill-export", help="预览或导出随包技能，不修改 agent 配置")
     skill.add_argument("--skill", choices=SKILL_NAMES, default="stu-campus")
     skill.add_argument("--apply", action="store_true", help="生成 ZIP；默认只预览")
@@ -78,7 +79,8 @@ def parser() -> argparse.ArgumentParser:
     logout = sub.add_parser("logout", help="移除指定来源的会话和缓存")
     logout.add_argument("service", choices=("jw", "mystu", "yuketang", "webvpn", "repair", "smartcard"))
     client = sub.add_parser("connect", help="预览或保存客户端接入，保留其他配置")
-    client.add_argument("client", choices=tuple(CLIENTS))
+    client.add_argument("client", choices=(*CLIENTS, "dsh"))
+    client.add_argument("--profile", help="仅 DSH：已初始化的 profile，默认 desktop")
     client.add_argument("--apply", action="store_true", help="实际写入；默认只预览")
     client.add_argument("--replace", action="store_true", help="明确替换其他同名配置")
     refresh = sub.add_parser("refresh", help="按需更新一个来源")
@@ -244,6 +246,11 @@ def _dispatch(args) -> int:
             return emit(initialize_secrets(args.directory))
         if args.command == "clients":
             return emit({"ok": True, "clients": catalog()})
+        if args.command == "verify":
+            import asyncio
+
+            from .verification import verify_server
+            return emit(asyncio.run(verify_server(Runtime.default())))
         if args.command == "skill-export":
             return emit(export_skill(Runtime.default(), apply=args.apply, name=args.skill))
         if args.command == "network":
@@ -406,7 +413,8 @@ def _dispatch(args) -> int:
         if args.command == "logout":
             return emit(app.logout(args.service))
         if args.command == "connect":
-            return emit(connect(args.client, app.runtime, apply=args.apply, replace=args.replace))
+            return emit(connect(args.client, app.runtime, apply=args.apply, replace=args.replace,
+                                profile=args.profile))
         if args.command == "refresh":
             return emit(app.refresh(args.source, args.limit, args.semester))
         if args.command == "query":
