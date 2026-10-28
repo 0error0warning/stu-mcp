@@ -193,3 +193,44 @@ def test_connect_upgrade_keeps_user_settings_on_owned_server(app, tmp_path):
     assert saved["disabled"] is True
     assert saved["env"] == {"STU_MCP_HOME": "custom-path"}
     assert saved["command"] == server_config()["command"]
+
+
+def test_dsh_alias_and_explicit_profile_preserve_desktop(app, tmp_path):
+    desktop = desktop_profile(tmp_path)
+    desktop.write_text("[]\n")
+    web = target("dsh", tmp_path, profile="web")
+    web.parent.mkdir()
+    (web.parent / "package.json").write_text("{}")
+    result = connect("dsh", app.runtime, home=tmp_path, profile="web", apply=True)
+    assert result["profile"] == "web"
+    assert result["client"] == "deepseek-harness"
+    assert result["verification"] == "configuration_only"
+    assert desktop.read_text() == "[]\n"
+    assert "@deepseek-ai/dsh-mcp-client" in web.read_text()
+    assert connect("dsh", app.runtime, home=tmp_path, profile="web", apply=True)["status"] == "already_connected"
+
+
+@pytest.mark.parametrize("profile", ["../web", "a/b", "a\\b", "", ".", "C:foo", "a" * 65])
+def test_dsh_rejects_unsafe_profile_without_writing(app, tmp_path, profile):
+    with pytest.raises(AppError) as error:
+        connect("dsh", app.runtime, home=tmp_path, profile=profile, apply=True)
+    assert error.value.code == "invalid_client_profile"
+    assert not (tmp_path / ".dsh").exists()
+
+
+def test_profile_option_is_not_accepted_for_other_agents(app, tmp_path):
+    with pytest.raises(AppError):
+        connect("codex", app.runtime, home=tmp_path, profile="web", apply=True)
+    assert not (tmp_path / ".codex").exists()
+
+
+def test_dsh_upgrade_preserves_disabled_and_custom_timeout(app, tmp_path):
+    path = desktop_profile(tmp_path)
+    path.write_text("- insert:\n  - id: mcp-stu-mcp\n    name: '@deepseek-ai/dsh-mcp-client'\n"
+                    "    disabled: true\n    config:\n      serverName: stu-mcp\n      transport: stdio\n"
+                    "      command: old-python\n      args: [-m, stu_mcp, serve]\n      toolCallTimeoutMs: 90000\n")
+    connect("dsh", app.runtime, home=tmp_path, apply=True)
+    row = YAML(typ="rt").load(path.read_text(encoding="utf-8"))[0]["insert"][0]
+    assert row["disabled"] is True
+    assert row["config"]["toolCallTimeoutMs"] == 90000
+    assert row["config"]["command"] == server_config()["command"]

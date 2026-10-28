@@ -200,7 +200,21 @@ def _body_root(soup: BeautifulSoup, source: str, base: str, *, has_attachments: 
                         r"Internal Server Error|Service Unavailable|Access Denied|Not Found)",
                         clean(node.get_text(" ", strip=True)), re.I):
             raise AppError("source_unavailable", "学校返回错误或维护页面，未保存为通知正文。", source)
-    for selector in OA_BODY_SELECTORS if source == "oa" else BODY_SELECTORS:
+    selectors = OA_BODY_SELECTORS if source == "oa" else BODY_SELECTORS
+    parsed = urlparse(base)
+    if (source == "public" and parsed.hostname == "xsc.stu.edu.cn"
+            and parsed.path.lower() == "/news.aspx" and soup.select("#cont")):
+        # Student Affairs' observed article template (2026-10-28): title/date
+        # are siblings of the body. Never accept the surrounding page/sidebar.
+        titles = soup.select("#cont > h2")
+        dates = soup.select("#cont > div.tc.p10")
+        if (len(soup.select("#cont")) != 1 or len(titles) != 1
+                or not clean(titles[0].get_text(" ", strip=True)) or len(dates) != 1
+                or not re.fullmatch(r"发布时间[：:]\s*20\d{2}-\d{2}-\d{2}",
+                                    clean(dates[0].get_text(" ", strip=True)))):
+            raise _changed(source, "学生处通知缺少唯一标题或发布日期。")
+        selectors = ("#cont > div.lh200.pl10.pr10",)
+    for selector in selectors:
         candidates = soup.select(selector)
         if candidates:
             if len(candidates) != 1:
@@ -244,8 +258,10 @@ def parse_public_article(html: str, base: str) -> dict:
     soup = BeautifulSoup(html, "html.parser")
     root = _body_root(soup, "public", base)
     attachments = []
+    excluded = {id(link) for container in root.select("nav, header, footer, form")
+                for link in container.select("a")}
     for link in root.select("a[href]"):
-        if not link.find_parent(["nav", "header", "footer", "form"]) and _download_url(base, link, "public"):
+        if id(link) not in excluded and _download_url(base, link, "public"):
             attachments.append({"name": clean(link.get_text(" ", strip=True)) or "附件", "url": str(link["href"])})
         if len(attachments) == 30:
             break

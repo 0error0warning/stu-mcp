@@ -239,3 +239,51 @@ def test_attachment_navigation_alone_does_not_make_an_article():
 def test_public_article_does_not_include_attachment_links_from_nested_navigation():
     html = '<article><p>合成正文</p><nav><a href="/files/navigation.pdf">导航附件</a></nav><a href="/files/article.pdf">正文附件</a></article>'
     assert parse_public_article(html, PUBLIC)["attachments"] == [{"name": "正文附件", "url": "/files/article.pdf"}]
+
+
+XSC_ARTICLE = "https://xsc.stu.edu.cn/News.aspx?ID=123"
+XSC_TITLE = '<h2 class="f14 fb tc">合成学生通知</h2>'
+XSC_DATE = '<div class="tc p10">发布时间：2026-10-28</div>'
+XSC_BODY = '<div class="lh200 pl10 pr10"><p>合成正文</p><a href="/files/article.docx">正文附件</a></div>'
+
+
+def test_student_affairs_article_extracts_only_body_and_its_attachments():
+    html = ('<nav>导航</nav><div id="cont">' + XSC_TITLE + XSC_DATE + XSC_BODY
+            + '</div><div id="aside"><a href="/files/sidebar.pdf">侧栏附件</a></div><footer>页脚</footer>')
+    assert parse_public_article(html, XSC_ARTICLE) == {
+        "body": "合成正文 正文附件",
+        "attachments": [{"name": "正文附件", "url": "/files/article.docx"}],
+    }
+
+
+def test_student_affairs_webforms_wrapper_preserves_article_attachments_only():
+    body = XSC_BODY.replace('</div>', '<form><a href="/form.pdf">表单附件</a></form></div>')
+    html = ('<form id="form1"><input type="hidden" name="__VIEWSTATE" value="SYNTHETIC">'
+            '<div id="cont">' + XSC_TITLE + XSC_DATE + body + '</div>'
+            '<a href="/outside.pdf">外部附件</a></form>')
+    assert parse_public_article(html, XSC_ARTICLE)["attachments"] == [
+        {"name": "正文附件", "url": "/files/article.docx"}]
+
+
+@pytest.mark.parametrize("title,date,body", [
+    ("", XSC_DATE, XSC_BODY),
+    ("<h2></h2>", XSC_DATE, XSC_BODY),
+    (XSC_TITLE * 2, XSC_DATE, XSC_BODY),
+    (XSC_TITLE, "", XSC_BODY),
+    (XSC_TITLE, '<div class="tc p10">未知时间</div>', XSC_BODY),
+    (XSC_TITLE, XSC_DATE * 2, XSC_BODY),
+    (XSC_TITLE, XSC_DATE, ""),
+    (XSC_TITLE, XSC_DATE, XSC_BODY * 2),
+    (XSC_TITLE, XSC_DATE, '<div class="lh200 pl10 pr10"><nav>导航</nav></div>'),
+])
+def test_student_affairs_article_rejects_missing_or_ambiguous_fields(title, date, body):
+    with pytest.raises(AppError) as error:
+        parse_public_article('<div id="cont">' + title + date + body + '</div>', XSC_ARTICLE)
+    assert error.value.code == "schema_changed"
+
+
+@pytest.mark.parametrize("base", [PUBLIC, "https://xsc.stu.edu.cn/NoticeList.aspx?NewsTypeID=3"])
+def test_student_affairs_body_contract_is_not_applied_to_other_pages(base):
+    with pytest.raises(AppError) as error:
+        parse_public_article('<div id="cont">' + XSC_TITLE + XSC_DATE + XSC_BODY + '</div>', base)
+    assert error.value.code == "schema_changed"

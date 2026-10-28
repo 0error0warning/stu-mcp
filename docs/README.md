@@ -1,12 +1,13 @@
 # 文档目录
 
-发行安装说明对应 **v0.7.3 学生预览版**，包括默认纯 HTTP CLI、个人服务器接入、HTTP 报修与按需更新。新增 agent 反馈工具，见[反馈说明](feedback.md)。安装见[安装说明](install.md)，单命令升级见[更新说明](updates.md)；版本功能和真实验收范围分别记录在更新记录与验证索引中，发布版本不表示全部学校业务或客户端均已完成实测。
+发行安装说明对应 **v0.7.4 学生预览版**，新增 DSH 薄插件和免登录公众号文章读取，沿用共用认证、个人服务器接入与按需更新。安装见[安装说明](install.md)，DSH 界面见[插件安装](../integrations/dsh/README.md)，单命令升级见[更新说明](updates.md)；版本功能和真实验收范围分别记录在发行说明与验证索引中。
 
 v0.7.1 提供统一账号 `login school`、配置分组能力目录和私密网页 HTTP 认证。本人可在自己的浏览器或真实终端完成交互，两者共用认证核心，MCP 不接收认证输入；用法见[配置与服务总表](campus-services.md)，检查范围见[本轮记录](verification/2026-10-23-private-setup.md)。
 
 | 用途 | 文档 |
 | --- | --- |
 | 安装、升级、登录 | [安装说明](install.md)、[更新说明](updates.md)、[客户端接入](clients.md) |
+| DeepSeek Harness（DSH）接入与跨 agent 兼容 | [已确定的低维护成本方案](deepseek-harness.md) |
 | 个人服务器、私有 HTTP 与无桌面登录 | [服务器说明](server.md)、[容器模板](server-container.md) |
 | 狐友公开讨论 | [狐友查询](huyou.md) |
 | 微信公众号公开文章（源码新增） | [免登录文章读取与失败状态](wechat-articles.md) |
