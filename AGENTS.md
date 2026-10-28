@@ -18,7 +18,10 @@ The source baseline is School Hub commit `13f1b216ac35269d9840b6854ccff64c1e25e5
   meal labels, inferred delivery-time meal labels, business hours and checkout eligibility distinct.
   Provider lunch/dinner categories do not cover the main-campus catalog. Actual meal searches must
   scan bounded pages of an explicit area and report unknowns/partial coverage; never silently change campuses.
-- Public WeChat article integration is undecided and is not included in this release.
+- Public WeChat article reading is anonymous and on demand from a known HTTPS article URL.
+  Prefer bounded HTTP; browser rendering is an explicit optional fresh headless context, never an
+  automatic fallback or existing-profile/CDP attachment. Validate article identity and body before
+  success, report challenges/deletion/limits distinctly, and keep search/subscriptions out of this scope.
 - Public tools work without accounts. Configure only the credentials a requested feature needs.
 - Huyou is an independent public community source, not an official school notice source. Read anonymously;
   no account cookies or private posts. The caller's agent supplies literal search terms. No model calls or background sync.
