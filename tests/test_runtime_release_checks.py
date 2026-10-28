@@ -31,9 +31,9 @@ def tools(payload):
     return [Tool.model_validate(value) for value in payload]
 
 
-def test_committed_contract_has_all_50_unique_public_interfaces():
+def test_committed_contract_has_all_51_unique_public_interfaces():
     baseline = contract()
-    assert len(baseline) == len({tool["name"] for tool in baseline}) == 50
+    assert len(baseline) == len({tool["name"] for tool in baseline}) == 51
     assert runtime.assert_tool_contract(tools(baseline)) == []
 
 

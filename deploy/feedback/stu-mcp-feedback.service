@@ -1,0 +1,24 @@
+[Unit]
+Description=STU MCP minimal feedback receiver
+After=network.target stu-site-guard.service
+Requires=stu-site-guard.service
+ConditionPathExists=!/var/lib/stu-site-cost-watch/hold.json
+
+[Service]
+DynamicUser=yes
+StateDirectory=stu-mcp-feedback
+StateDirectoryMode=0700
+ExecStart=/usr/bin/python3 /opt/stu-mcp-feedback/receiver.py serve
+Restart=on-failure
+RestartSec=5
+UMask=0077
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+RestrictAddressFamilies=AF_UNIX AF_INET
+MemoryMax=64M
+TasksMax=24
+
+[Install]
+WantedBy=multi-user.target

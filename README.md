@@ -1,5 +1,8 @@
 # STU MCP
 
+Agent 可通过 `report_feedback` 向维护者提交简短、脱敏的工具问题、数据疑点和改进建议。
+反馈集中保存在服务器 SQLite，不自动上传聊天、校园数据或日志；详见[反馈说明](docs/feedback.md)。
+
 这个项目的前身，是我在「养」Hermes agent 时，从零搭起来的一个自用信息聚合器。学校通知、课程、作业，散在不同地方的信息，我都想慢慢接进去。自己用的版本里，甚至还接入了微信聊天记录。
 
 我折腾它的原因，是希望 agent 在帮我做事时，能拿到足够的个人上下文：我最近在忙什么、有什么通知要看、哪些事情还没做完。和我有关的信息，如果它能在需要时自己查到，我就能少重复一些背景，也不用总在几个网站和聊天窗口之间来回复制粘贴。
@@ -54,7 +57,7 @@
 先装好 [uv](https://docs.astral.sh/uv/getting-started/installation/)，然后运行。这里以 Codex 为例：
 
 ```sh
-uv tool install --python 3.12 https://github.com/0error0warning/stu-mcp/releases/download/v0.7.1/stu_mcp-0.7.1-py3-none-any.whl
+uv tool install --python 3.12 https://github.com/0error0warning/stu-mcp/releases/download/v0.7.2/stu_mcp-0.7.2-py3-none-any.whl
 stu-mcp connect codex --apply
 ```
 
@@ -80,7 +83,7 @@ stu-mcp huyou search 选课
 
 ## 还在慢慢补
 
-本轮准备 **[v0.7.1 学生预览版](docs/releases/v0.7.1.md)**，发布状态以 GitHub 发行页为准。本版加入本人理论课表与一卡通只读查询，共 50 项 MCP 工具；已有接口保持兼容，继续以 GitHub prerelease 发布。[发行说明](docs/releases/v0.7.1.md) · [最近更新](CHANGELOG.md)
+当前版本为 **[v0.7.2 学生预览版](docs/releases/v0.7.2.md)**，发布状态以 GitHub 发行页为准。本版新增 agent 反馈，共 51 项 MCP 工具；已有接口保持兼容，继续以 GitHub prerelease 发布。[发行说明](docs/releases/v0.7.2.md) · [最近更新](CHANGELOG.md)
 
 正式 HTTP 适配器已实测教务、MySTU 的身份与课程、ELC/Campus 的部分业务、雨课堂课程活动，以及报修登录和完整预览。WebVPN 的密码、动态口令和资源目录通过；受保护 OA 正文及自然过期续登尚未通过本轮验收。发行 CI 包含跨平台测试和默认镜像离线检查，容器内学校业务、跨机接入、更多账号和真实新报修提交仍分别待验，详见[验证记录](docs/verification.md)。
 
