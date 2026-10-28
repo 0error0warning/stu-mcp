@@ -109,8 +109,8 @@ def test_original_48_complete_tool_definitions_stay_identical():
     root = Path(__file__).resolve().parents[1]
     current = json.loads((root / "scripts/mcp-tool-contract.json").read_text(encoding="utf-8"))
     original = sorted((tool for tool in current["tools"] if tool["name"] not in {
-        "get_campus_card", "get_campus_card_transactions", "report_feedback"}), key=lambda tool: tool["name"])
+        "get_campus_card", "get_campus_card_transactions", "report_feedback", "get_wechat_article"}), key=lambda tool: tool["name"])
     encoded = json.dumps(original, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()
     # Captured from the complete committed 48-tool contract before this additive change.
-    assert len(original) == 48 and current["tool_count"] == len(current["tools"]) == 51
+    assert len(original) == 48 and current["tool_count"] == len(current["tools"]) == 52
     assert hashlib.sha256(encoded).hexdigest() == "aa905835ed26078095b2c5f4e216b26fb1d3775dd0b1015e5a24e03569070dac"

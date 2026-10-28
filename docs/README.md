@@ -9,6 +9,7 @@ v0.7.1 提供统一账号 `login school`、配置分组能力目录和私密网�
 | 安装、升级、登录 | [安装说明](install.md)、[更新说明](updates.md)、[客户端接入](clients.md) |
 | 个人服务器、私有 HTTP 与无桌面登录 | [服务器说明](server.md)、[容器模板](server-container.md) |
 | 狐友公开讨论 | [狐友查询](huyou.md) |
+| 微信公众号公开文章（源码新增） | [免登录文章读取与失败状态](wechat-articles.md) |
 | 充电设备状态 | [充电查询](charging.md)、[平台接口证据](charging-platform.md) |
 | 外卖目录、配送批次与选餐（实验） | [外卖查询](takeout.md) |
 | 对分易网页、监听与 MCP | [对分易后台](checkin.md) |

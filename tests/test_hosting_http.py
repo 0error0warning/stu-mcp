@@ -87,8 +87,10 @@ async def test_real_http_two_clients_share_state_and_disconnect_does_not_close_h
     url, host, closed = http_server
     async with client_for(url) as first:
         tools = await first.list_tools()
-        assert len(tools.tools) == 51
+        assert len(tools.tools) == 52
         assert "report_feedback" in {tool.name for tool in tools.tools}
+        article = structured(await first.call_tool("get_wechat_article", {"url": "https://127.0.0.1/s/synthetic"}))
+        assert article["status"] == "invalid_article_url" and not article["content_ready"]
         capabilities = structured(await first.call_tool("get_capabilities", {}))
         assert capabilities["hosting"]["transport"] == "streamable-http"
         assert capabilities["hosting"]["identity_scope"] == "single_user_instance"

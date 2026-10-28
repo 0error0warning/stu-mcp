@@ -35,6 +35,7 @@ flowchart LR
 | 功能与服务目录 | `sources` 声明八个已适配来源、目标地址和认证依赖；`services` 区分业务用途、校区与来源证据。`capability_catalog` 维护配置组、现有工具和具体业务接入范围，投影已读取本地状态，供 App、宿主与设置页共用；不扩展来源、网络或认证白名单 |
 | 来源功能包 | `features/repair`、`notices`、`mystu`、`jw`、`yuketang`、`charging`、`huyou`、`takeout` 分别拥有该领域的契约、纯解析、访问与业务编排 |
 | 课表文件生成 | `features/timetable/export.py` 是已核对输入到课次及 CSV/ICS 的唯一核心；技能脚本只选择并调用该核心，不请求学校或外部日历 |
+| 公开公众号文章 | `features/wechat` 的 service 负责单篇读取和分页，adapter 限制匿名 HTTP 与跳转，parser 纯解析并验证正文；browser 是显式可选的匿名渲染后端。无需新数据库、来源缓存或认证服务，两种后端共用解析与状态契约 |
 | 共用采集类型 | `parsing`、`collection`、`pagination` 提供纯函数、结果类型和保守完整性判定，不依赖来源功能包 |
 | 兼容入口 | `parsers`、`collectors`、旧 `repair*`、`charging`、`huyou` 等保留 Python 导入与原注入点，转发功能包；功能包不反向依赖这些门面 |
 | 网络传输 | `network` 负责业务来源范围、HTTPS、各自显式的教务/OA HTTP 兼容与固定一卡通 HTTP 范围、读取预算和脱敏错误；`auth_http/transport` 负责认证直连、一次提交及独立预算。策略见[访问说明](network.md) |
