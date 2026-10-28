@@ -16,6 +16,10 @@ from pathlib import Path
 MAX_BODY = 20000
 
 
+class ConsentUpgradeRequired(ValueError):
+    pass
+
+
 class Inbox:
     def __init__(self, path: str):
         self.path = path
@@ -41,6 +45,9 @@ class Inbox:
                 or not 1 <= len(data["message"].strip()) <= 4000
                 or not re.fullmatch(r"[a-zA-Z0-9.+_-]{1,40}", data["client_version"])):
             raise ValueError("invalid values")
+        version = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)", data["client_version"])
+        if not version or tuple(map(int, version.groups())) < (0, 7, 3):
+            raise ConsentUpgradeRequired("client must support consent previews")
         values = tuple(data[k] for k in ("category", "tool_name", "message", "client_version"))
         with self.connect() as db:
             db.execute("BEGIN IMMEDIATE")
@@ -122,6 +129,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self.reply(415, {"error": "json_required"})
             data = json.loads(body)
             self.server.inbox.save(data)
+        except ConsentUpgradeRequired:
+            return self.reply(426, {"error": "feedback_consent_upgrade_required", "minimum_version": "0.7.3"})
         except (ValueError, UnicodeError):
             return self.reply(400, {"error": "invalid_feedback"})
         except (sqlite3.Error, OSError, OverflowError):
