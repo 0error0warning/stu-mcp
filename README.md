@@ -57,7 +57,7 @@ Agent 可通过 `report_feedback` 向维护者提交简短、脱敏的工具问�
 先装好 [uv](https://docs.astral.sh/uv/getting-started/installation/)，然后运行。这里以 Codex 为例：
 
 ```sh
-uv tool install --python 3.12 https://github.com/0error0warning/stu-mcp/releases/download/v0.7.1/stu_mcp-0.7.1-py3-none-any.whl
+uv tool install --python 3.12 https://github.com/0error0warning/stu-mcp/releases/download/v0.7.2/stu_mcp-0.7.2-py3-none-any.whl
 stu-mcp connect codex --apply
 ```
 
@@ -83,7 +83,7 @@ stu-mcp huyou search 选课
 
 ## 还在慢慢补
 
-本轮准备 **[v0.7.1 学生预览版](docs/releases/v0.7.1.md)**，发布状态以 GitHub 发行页为准。本版加入本人理论课表与一卡通只读查询，共 50 项 MCP 工具；已有接口保持兼容，继续以 GitHub prerelease 发布。[发行说明](docs/releases/v0.7.1.md) · [最近更新](CHANGELOG.md)
+当前版本为 **[v0.7.2 学生预览版](docs/releases/v0.7.2.md)**，发布状态以 GitHub 发行页为准。本版新增 agent 反馈，共 51 项 MCP 工具；已有接口保持兼容，继续以 GitHub prerelease 发布。[发行说明](docs/releases/v0.7.2.md) · [最近更新](CHANGELOG.md)
 
 正式 HTTP 适配器已实测教务、MySTU 的身份与课程、ELC/Campus 的部分业务、雨课堂课程活动，以及报修登录和完整预览。WebVPN 的密码、动态口令和资源目录通过；受保护 OA 正文及自然过期续登尚未通过本轮验收。发行 CI 包含跨平台测试和默认镜像离线检查，容器内学校业务、跨机接入、更多账号和真实新报修提交仍分别待验，详见[验证记录](docs/verification.md)。
 
