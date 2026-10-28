@@ -58,13 +58,15 @@ Agent 可通过 `report_feedback` 向维护者提交简短、脱敏的工具问�
 先装好 [uv](https://docs.astral.sh/uv/getting-started/installation/)，然后运行。这里以 Codex 为例：
 
 ```sh
-uv tool install --python 3.12 https://github.com/0error0warning/stu-mcp/releases/download/v0.7.3/stu_mcp-0.7.3-py3-none-any.whl
+uv tool install --python 3.12 https://github.com/0error0warning/stu-mcp/releases/download/v0.7.4/stu_mcp-0.7.4-py3-none-any.whl
 stu-mcp connect codex --apply
 ```
 
 第二行换成你用的客户端，比如 `claude-code` 或 `cursor`。其他客户端、豆包工作和 Skill 的接法放在[这里](docs/clients.md)。v0.6.1 起，运行 `stu-mcp update` 即可检查并升级；只想看有无新版用 `stu-mcp update --check`，也可以让 agent 调用对应更新工具。升级后，本机 stdio 重新加载 MCP；私有 HTTP 须重启宿主 MCP 服务。旧版首次升级见[安装说明](docs/install.md#从旧版升级)，支持范围见[更新说明](docs/updates.md)。
 
 MCP 接入和技能安装分别处理。随包的[课表导出技能](docs/timetable.md)组织校历核对和文件转换。v0.7.1 加入教务本人理论课表读取，继续复用该技能和同一转换器；实验课、校历及作息另行核对。技能 ZIP 是可选资源包，生成后仍需按客户端支持的方式安装，不会自动让当前 agent 加载技能。
+
+DeepSeek Harness 用户可另装发行页中的 `dsh-stu-mcp-0.1.0.tgz`，获得侧栏和登录设置入口；它复用同一个 MCP。安装步骤见[DSH 插件说明](integrations/dsh/README.md)，当前支持已实测的 DSH `0.2.1-rc.3`。
 
 需要登录时，让 agent 打开设置页，或自己运行 `stu-mcp setup`。在自己的浏览器里配置学校统一账号、雨课堂、对分易、WebVPN 或一卡通，认证信息不经过 agent。WebVPN 可填写已有令牌密钥，由程序生成动态码并自动登录；不配置密钥也能手动输入当前动态码。喜欢终端可用 `stu-mcp login school` 等命令，完整用法见[认证说明](docs/authentication.md)。
 
@@ -84,9 +86,9 @@ stu-mcp huyou search 选课
 
 ## 还在慢慢补
 
-当前版本为 **[v0.7.3 学生预览版](docs/releases/v0.7.3.md)**，发布状态以 GitHub 发行页为准。本版新增 agent 反馈，共 51 项 MCP 工具；已有接口保持兼容，继续以 GitHub prerelease 发布。[发行说明](docs/releases/v0.7.3.md) · [最近更新](CHANGELOG.md)
+当前版本为 **[v0.7.4 学生预览版](docs/releases/v0.7.4.md)**，发布状态以 GitHub 发行页为准。本版增加 DSH 薄插件和免登录公众号文章读取，共 52 项 MCP 工具；已有接口保持兼容，继续以 GitHub prerelease 发布。[发行说明](docs/releases/v0.7.4.md) · [最近更新](CHANGELOG.md)
 
-源码新增免登录公众号文章读取 `get_wechat_article`，工具总数为 52；尚未发布为新版。
+免登录公众号文章读取使用 `get_wechat_article`。
 已知公开链接优先匿名 HTTP，浏览器为显式可选增强，正文与失败状态分别校验。
 不包含公众号搜索、订阅追更或私聊内容。[用法与范围](docs/wechat-articles.md)
 

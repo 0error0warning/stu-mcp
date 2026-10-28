@@ -1,6 +1,6 @@
 # 微信公众号文章读取
 
-源码已接入 `get_wechat_article`；尚未发布为新版。stdio 与个人服务器 Streamable HTTP
+v0.7.4 提供 `get_wechat_article`。stdio 与个人服务器 Streamable HTTP
 共用同一实现。无需微信账号，不依赖 Hermes、私有 School Hub 或接收服务器。
 
 ```json

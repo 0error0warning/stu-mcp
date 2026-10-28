@@ -5,15 +5,19 @@ sidebar entry, a right sidebar tab, and a bundle configuration view. No build
 step, extra React copy, school adapter, credential form or MCP process is added.
 
 First connect the common STU MCP service with `stu-mcp connect dsh --apply`.
-Then use the CLI belonging to the same DSH desktop installation:
+Download `dsh-stu-mcp-0.1.0.tgz` from the
+[v0.7.4 release](https://github.com/0error0warning/stu-mcp/releases/tag/v0.7.4).
+Then use the CLI belonging to the same DSH desktop installation, passing the
+absolute path to the downloaded file:
 
 ```powershell
-& '<DSH installation>/resources/runtime/cli/bin/dsh.cmd' plugin --profile desktop add '<absolute path>/integrations/dsh'
+& '<DSH installation>/resources/runtime/cli/bin/dsh.cmd' plugin --profile desktop add '<download directory>/dsh-stu-mcp-0.1.0.tgz'
 ```
 
 Restart DSH. Open **STU MCP** in the left sidebar, or choose **STU MCP** from
 the right sidebar's new-tab guide. The installed package is `dsh-stu-mcp`.
-It is a local bundle, not a published marketplace listing.
+It is distributed as a GitHub release asset; it is not listed in the DSH marketplace.
+Developers may instead pass an absolute checkout path ending in `integrations/dsh`.
 
 The panel starts with a short public-query summary, four common account rows,
 and **登录与设置** / **刷新** buttons. WebVPN, takeout and utility features are

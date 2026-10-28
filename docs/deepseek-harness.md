@@ -123,6 +123,6 @@ flowchart LR
 - Host 通过既有工具注册表调用官方 MCP 桥接，不注册重复工具、不启动第二份 MCP。
 - 两个固定操作通过 DSH 自带认证 Connection/Gateway 的 source-mode Remote 接口传输。
 - 停用或卸载这个 UI 包只移除界面；由 `connect dsh` 单独配置的 MCP 连接仍可供对话使用。
-- 这是本地安装包，尚未发布到 npm 或 DSH 公共插件目录。
+- v0.7.4 通过 GitHub Release 分发插件安装包，尚未上架 npm 或 DSH 公共插件目录；早期本机安装验收保留原时点说明。
 
 具体检查与边界见[插件侧栏验收](verification/2026-10-28-dsh-plugin.md)。
