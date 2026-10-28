@@ -65,7 +65,7 @@ class CheckinClient:
         self.transport = transport
         self.startup_timeout = startup_timeout
         self._mutex = threading.Lock()
-        self._last_login_open = 0.0
+        self._last_login_open = None
 
     @staticmethod
     def _state(status, reason, message="", *, running=None):
@@ -237,7 +237,8 @@ class CheckinClient:
     def _open(self, info, *, login=False, force=False):
         if not info:
             return {"browser_opened": False}
-        if login and not force and time.monotonic() - self._last_login_open < 30:
+        if (login and not force and self._last_login_open is not None
+                and time.monotonic() - self._last_login_open < 30):
             return {"browser_opened": False, "login_page_already_requested": True}
         try:
             opened = bool(self.opener(info["url"] + ("#login" if login else "")))

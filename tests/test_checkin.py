@@ -108,6 +108,21 @@ def test_open_failure_is_reported_truthfully(local):
     assert not result["browser_opened"] and result["next_action"] == "open_local_browser"
 
 
+@pytest.mark.parametrize("uptime", [0.0, 1.0, 29.0])
+def test_first_login_page_opens_on_new_hosts_and_only_repeats_are_throttled(local, monkeypatch, uptime):
+    client, raw, _, info = local
+    raw.update(status="not_logged_in", needs_login=True, logged_in=False)
+    clock = [uptime]
+    monkeypatch.setattr("stu_mcp.checkin.time.monotonic", lambda: clock[0])
+    assert client.start(["a"])["browser_opened"] is True
+    client.opener.assert_called_once_with(info["url"] + "#login")
+    assert client.courses()["login_page_already_requested"] is True
+    assert client.opener.call_count == 1
+    clock[0] += 30
+    assert client.courses()["browser_opened"] is True
+    assert client.opener.call_count == 2
+
+
 def test_select_start_pause_and_stop_use_same_backend(local):
     client, raw, calls, _ = local
     assert client.select(all_courses=True)["selected_courses"] == ["a", "b"]
