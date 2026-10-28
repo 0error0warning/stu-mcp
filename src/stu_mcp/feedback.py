@@ -26,7 +26,7 @@ def report_feedback(message: str, tool_name: str = "", category: str = "bug", *,
     if category not in CATEGORIES or not re.fullmatch(r"[a-zA-Z0-9_]{0,80}", tool_name):
         raise AppError("invalid_feedback", "请使用有效的反馈类别和工具名。")
     # Catch common accidental credential pastes. This is not a complete PII detector.
-    if re.search(r"(?i)(?:bearer\s+\S+|(?:password|cookie|token|secret|密码|密钥)\s*[:=：]\s*\S+|-----BEGIN .*PRIVATE KEY|otpauth://|https?://\S*[?&](?:ticket|access_token|code|state)=\S+)", message):
+    if re.search(r"(?i)(?:bearer\s+\S+|(?:password|cookie|token|secret|totp|otp|captcha|verification_code|密码|密钥|私钥|验证码|动态口令)\s*[:=：]\s*\S+|-----BEGIN .*PRIVATE KEY|otpauth://|https?://\S*[?&](?:ticket|access_token|code|state)=\S+)", message):
         raise AppError("sensitive_feedback", "请删除凭据，只提交简短问题描述。")
     endpoint = os.environ.get("STU_MCP_FEEDBACK_URL", DEFAULT_FEEDBACK_URL).strip()
     parsed = urlsplit(endpoint)

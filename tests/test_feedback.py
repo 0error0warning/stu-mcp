@@ -101,7 +101,9 @@ def test_client_rejects_unsafe_endpoint(monkeypatch, url):
 
 
 @pytest.mark.parametrize("message", ["", " " * 2, "x" * 4001, "Cookie: synthetic_session",
-                                     "password=synthetic", "Bearer synthetic"])
+                                     "password=synthetic", "Bearer synthetic", "验证码：123456",
+                                     "totp=synthetic", "otpauth://totp/synthetic",
+                                     "https://example.test/callback?code=synthetic"])
 def test_client_rejects_empty_oversize_and_credential_pastes(message):
     with pytest.raises(AppError):
         feedback.report_feedback(message)
