@@ -45,7 +45,7 @@
 
 查到的信息会带来源和缓存时间。想看最新消息时，让 agent 先刷新；没查到也可能只是这次没取全。狐友里是同学们的讨论，学校的正式要求还是要看 OA 或学校原文。[狐友怎么查](docs/huyou.md)
 
-本版包含充电查询，由本机 MCP 直接请求充电平台，按设备缓存，没有网站或自建服务器依赖。现有清单包含 14 台已核验设备，不代表全校完整清单；离线和旧数据会单独标记。[充电查询用法](docs/charging.md)
+本版包含充电查询，由本机 MCP 直接请求充电平台，按设备缓存，没有网站或自建服务器依赖。现有清单包含 15 台已核验设备，不代表全校完整清单；离线和旧数据会单独标记。[充电查询用法](docs/charging.md)
 
 校园连接按服务处理：r和一网通办先查自身入口，宿舍报修需要时核实校园接入，SSO和ITS各协议独立判断。同属网络排障的两个工具保留各自范围：单服务诊断定位一个入口及其依赖，批量检测比较固定目录；校园入口普查并不会自动扩充运行时探测清单。普通读取复用连接，同批次暂时跳过连接失败的主机，继续读取其他来源，不自动改代理或接入远程隧道。[单服务诊断](docs/network.md) · [批量检测](docs/network-audit.md)
 
@@ -54,7 +54,7 @@
 先装好 [uv](https://docs.astral.sh/uv/getting-started/installation/)，然后运行。这里以 Codex 为例：
 
 ```sh
-uv tool install --python 3.12 https://github.com/0error0warning/stu-mcp/releases/download/v0.7.4/stu_mcp-0.7.4-py3-none-any.whl
+uv tool install --python 3.12 https://github.com/0error0warning/stu-mcp/releases/download/v0.7.5/stu_mcp-0.7.5-py3-none-any.whl
 stu-mcp connect codex --apply
 ```
 
@@ -82,7 +82,7 @@ stu-mcp huyou search 选课
 
 ## 还在慢慢补
 
-当前版本为 **[v0.7.4 学生预览版](docs/releases/v0.7.4.md)**，发布状态以 GitHub 发行页为准。[发行说明](docs/releases/v0.7.4.md) · [最近更新](CHANGELOG.md)
+当前版本为 **[v0.7.5 学生预览版](docs/releases/v0.7.5.md)**，发布状态以 GitHub 发行页为准。[发行说明](docs/releases/v0.7.5.md) · [最近更新](CHANGELOG.md)
 
 正式 HTTP 适配器已实测教务、MySTU 的身份与课程、ELC/Campus 的部分业务、雨课堂课程活动，以及报修登录和完整预览。WebVPN 的密码、动态口令和资源目录通过；受保护 OA 正文及自然过期续登尚未通过本轮验收。发行 CI 包含跨平台测试和默认镜像离线检查，容器内学校业务、跨机接入、更多账号和真实新报修提交仍分别待验，详见[验证记录](docs/verification.md)。
 
