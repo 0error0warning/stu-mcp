@@ -141,7 +141,14 @@ async def test_real_stdio_handshake_schema_and_feature_gating(tmp_path):
         no_credentials(result)
         charging = await client.call_tool("get_charging_overview", {"refresh": False})
         overview = charging.model_dump(by_alias=True)["structuredContent"]
-        assert overview["source"] == "charging" and overview["coverage"]["catalog_device_count"] == 14
+        assert overview["source"] == "charging" and overview["coverage"]["catalog_device_count"] == 15
         assert len(overview["items"]) == 4 and overview["has_more"] and overview["counts"] is None
+        teacher = await client.call_tool("get_charging_device", {"device_code": "4GR00006723", "refresh": False})
+        teacher_device = teacher.model_dump(by_alias=True)["structuredContent"]["device"]
+        assert teacher_device["name"] == "教师宿舍" and teacher_device["counts"] is None
+        xiuyuan = await client.call_tool("get_charging_overview", {"location": "修远书院", "refresh": False})
+        xiuyuan_device = xiuyuan.model_dump(by_alias=True)["structuredContent"]["items"][0]
+        assert xiuyuan_device["device_code"] == "4GR00008480"
+        assert xiuyuan_device["provider_name"] == "明德书院 MD-1"
         invalid_device = await client.call_tool("get_charging_device", {"device_code": "SYNTHETIC_UNKNOWN"})
         assert invalid_device.model_dump(by_alias=True)["structuredContent"]["status"] == "unknown_device"

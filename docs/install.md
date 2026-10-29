@@ -1,17 +1,17 @@
 # 给 agent 的安装操作说明
 
-本页对应 v0.7.4 学生预览版。本人可选择浏览器设置页或完整 CLI，两者共用 HTTP 认证核心；本机 stdio 与个人服务器私有 HTTP 共用同一包。服务器接入见[服务器说明](server.md)，各来源的人工步骤和成功证明见[认证说明](authentication.md)。旧版行为保留在历史发行记录，不套用到新版。
+本页对应 v0.7.5 学生预览版。本人可选择浏览器设置页或完整 CLI，两者共用 HTTP 认证核心；本机 stdio 与个人服务器私有 HTTP 共用同一包。服务器接入见[服务器说明](server.md)，各来源的人工步骤和成功证明见[认证说明](authentication.md)。旧版行为保留在历史发行记录，不套用到新版。
 
 用户复制安装 prompt 后，可以直接完成下列安装、诊断和接入步骤。只配置用户当前使用的客户端，不默认给所有已安装客户端写配置。
 
 ## 1. 环境与发行包
 
-使用 `https://github.com/0error0warning/stu-mcp` 的 `v0.7.4` 学生预览版。[发行页](https://github.com/0error0warning/stu-mcp/releases/tag/v0.7.4) 提供 wheel、源码包与 SHA256 校验文件。不要安装未知 PyPI 同名包；当前未发布到 PyPI。
+使用 `https://github.com/0error0warning/stu-mcp` 的 `v0.7.5` 学生预览版。[发行页](https://github.com/0error0warning/stu-mcp/releases/tag/v0.7.5) 提供 wheel、源码包与 SHA256 校验文件。不要安装未知 PyPI 同名包；当前未发布到 PyPI。
 
 检查 `uv`。缺少时参考 [uv 官方安装文档](https://docs.astral.sh/uv/getting-started/installation/)，使用官方安装器或系统已有的软件包管理器。优先用户目录安装；不需要管理员权限、不改全局 Python、不修改其他项目依赖。若终端还未刷新 PATH，使用安装好的 `uv` 绝对路径。
 
 ```sh
-uv tool install --python 3.12 https://github.com/0error0warning/stu-mcp/releases/download/v0.7.4/stu_mcp-0.7.4-py3-none-any.whl
+uv tool install --python 3.12 https://github.com/0error0warning/stu-mcp/releases/download/v0.7.5/stu_mcp-0.7.5-py3-none-any.whl
 ```
 
 Python 3.12 缺失时，uv 可以按自己的受管理 Python 流程准备。安装后找到 `stu-mcp` 的用户级可执行文件；如果 PATH 未刷新，使用绝对路径执行接下来的命令。不要为了“修复安装”删除用户已有工具或配置。
@@ -21,7 +21,7 @@ Python 3.12 缺失时，uv 可以按自己的受管理 Python 流程准备。安
 ### 从旧版升级
 
 1. 先完成或关闭尚未发送的报修草稿；提交结果未知时先只读查单。停止同一安装的签到后台。手动安装前还须关闭旧设置页并让旧 MCP 宿主进程退出：stdio 在客户端禁用或关闭该 MCP，HTTP 停止宿主 MCP 服务；不能仅关闭网页或断开 HTTP 客户端。
-2. v0.6.0 及更旧版本需在上面的安装命令加入 `--force`，安装明确的 `v0.7.4` wheel，且仅在步骤 1 的旧进程已退出后执行。v0.6.1 及以后正常使用 `stu-mcp update`，不用 `--force`；若 v0.6.1 的更新检查受 GitHub 匿名 API 限流影响，按上述手动方式安装当前 wheel。不要删除 STU MCP 或对分易用户数据目录，也不要清空客户端配置或更换密钥库后端。
+2. v0.6.0 及更旧版本需在上面的安装命令加入 `--force`，安装明确的 `v0.7.5` wheel，且仅在步骤 1 的旧进程已退出后执行。v0.6.1 及以后正常使用 `stu-mcp update`，不用 `--force`；若 v0.6.1 的更新检查受 GitHub 匿名 API 限流影响，按上述手动方式安装当前 wheel。不要删除 STU MCP 或对分易用户数据目录，也不要清空客户端配置或更换密钥库后端。
 3. 运行 `stu-mcp --version` 确认已安装版本。stdio 接入重新加载 MCP，使客户端启动新进程；私有 HTTP 接入须在宿主重启 MCP 服务，仅重连客户端无效。随后调用 `get_capabilities` 核实当前连接的运行版本。手动重建安装环境或启动路径改变时，重新执行当前客户端的 `stu-mcp connect CLIENT --apply`。
 4. 需要设置页时重新运行 `stu-mcp setup`。升级保留用户数据；缓存仍遵守当前解析契约，会话可能已过期，不能保证所有来源立即可读。WebVPN 自动重登仍由本人主动配置。
 5. 使用通用 JSON 或技能接入时，按需重新导出并替换客户端中的旧副本；课表技能使用 `stu-mcp skill-export --skill stu-timetable-export --apply`。资源中的 `runtime.json` 是本机 Python 路径，换机器或重建安装环境后需重新生成。ZIP 不会自动安装技能或注册 MCP。对分易用户可重新打开网页，核对登录和已选课程，再按需要恢复监听。
@@ -32,7 +32,7 @@ Python 3.12 缺失时，uv 可以按自己的受管理 Python 流程准备。安
 
 ## 2. 连接当前客户端
 
-`v0.7.4` 包含 52 项 MCP 工具：新增免登录公众号文章读取与可选 DSH 薄插件，保留本人课表、一卡通、反馈、默认 HTTP 认证、个人服务器接入和更新入口。各项验证边界见[验证索引](verification.md)，对分易用法见[后台说明](checkin.md)。从源码构建时，在明确版本或 revision 的仓库根目录运行 `uv build`，再安装对应 wheel，不把分支名当作可复现版本。
+`v0.7.5` 包含 52 项 MCP 工具，本次修正充电设备清单和位置映射，保留既有功能与工具接口。各项验证边界见[验证索引](verification.md)，对分易用法见[后台说明](checkin.md)。从源码构建时，在明确版本或 revision 的仓库根目录运行 `uv build`，再安装对应 wheel，不把分支名当作可复现版本。
 
 先运行 `stu-mcp clients`，按当前客户端选择 `stu-mcp connect CLIENT --apply`。自动合并配置支持 `codex`、`claude-code`、`cursor`、`workbuddy`、`zcode`、`grok-build` 和 `deepseek-harness`。官方路径、特殊合并规则和验收状态见 [客户端适配说明](clients.md)。程序负责保留其他设置、备份和生成不含凭据的启动项，不输出完整已有配置。
 
