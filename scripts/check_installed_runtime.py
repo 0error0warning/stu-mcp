@@ -200,7 +200,7 @@ async def check_stdio_tools(session) -> None:
     assert audit_tool.input_schema["properties"]["compare_public_dns"]["default"] is False
     invalid_audit = await session.call_tool("audit_campus_network", {"location_hint": "guess_from_ip"})
     assert invalid_audit.model_dump(by_alias=True)["structuredContent"]["status"] == "invalid_network_location"
-    for name, arguments in (("get_academic_timetable", {}), ("get_campus_card", {}),
+    for name, arguments in (("get_academic_timetable", {}), ("get_medical_timetable", {}), ("get_campus_card", {}),
                             ("get_campus_card_transactions", {"start_date": "2026-10-01", "end_date": "2026-10-01"})):
         missing = await session.call_tool(name, arguments)
         assert missing.model_dump(by_alias=True)["structuredContent"]["status"] == "needs_login"

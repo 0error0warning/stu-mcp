@@ -310,6 +310,15 @@ def build_server(app: App | None = None, *, checkin: CheckinClient | None = None
         return app.academic_timetable(semester)
 
     @tool(world=True)
+    def get_medical_timetable() -> dict[str, Any]:
+        """按需读取医学院教务本人当前学期课表，使用独立 med_jw 会话。
+        本人先在私有设置页或宿主 CLI 使用教务本地口令及人工验证码登录，工具不接收凭据。
+        保留学校原生学期、周次、时间与解析待核对项；无缓存，不支持任意历史学期或成绩考试。
+        适配器通过合成测试，尚待真实医学院账号验收；日期导出须另外核对校历和调课。
+        """
+        return app.medical_timetable()
+
+    @tool(world=True)
     def get_wechat_article(url: str, backend: str = "http", offset: int = 0,
                            max_chars: int = 8000) -> dict[str, Any]:
         """免登录读取已知微信公众号公开文章链接，默认匿名 HTTP，不进入持久缓存。

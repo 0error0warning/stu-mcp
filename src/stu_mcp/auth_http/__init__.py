@@ -25,10 +25,16 @@ class TerminalInteraction:
             print("一卡通使用普通连接；仅填写独立的一卡通查询密码。", file=sys.stderr)
             return Credentials(secret_input("学（工）号（隐藏输入）：").strip(),
                                secret_input("一卡通查询密码（隐藏输入）："))
+        if self.service == "med_jw":
+            print("医学院教务使用本地口令，可能与医学院统一认证密码不同。", file=sys.stderr)
+            return Credentials(secret_input("医学院教务账号（隐藏输入）：").strip(),
+                               secret_input("医学院教务本地口令（隐藏输入）："))
         return Credentials(secret_input("学校账号（隐藏输入）：").strip(), secret_input("学校密码（隐藏输入）："))
 
     def captcha(self, image: bytes, *, media_type: str = "image/jpeg") -> str:
         from ..terminal import captcha_input
+        if self.service == "med_jw":
+            return captcha_input(image, media_type=media_type, source="med_jw")
         return captcha_input(image, media_type=media_type)
 
     def code(self) -> str:
@@ -78,8 +84,8 @@ def login_http(vault: Vault, service: str, *, credentials: Credentials | None = 
                use_saved_credentials: bool = True) -> dict:
     source = "oa" if service in {"oa", "webvpn"} else service
     session = "webvpn" if source == "oa" else source
-    if source not in {"jw", "mystu", "repair", "yuketang", "oa", "smartcard"}:
-        raise AppError("unknown_service", "请选择教务、MySTU、雨课堂、WebVPN 或宿舍报修。")
+    if source not in {"jw", "mystu", "repair", "yuketang", "oa", "smartcard", "med_jw"}:
+        raise AppError("unknown_service", "请选择已适配的登录来源。")
     interaction = TerminalInteraction(service) if interaction is None else interaction
     if expected_revision is None:
         with key_lock(vault.runtime.home, session):
@@ -109,7 +115,13 @@ def login_http(vault: Vault, service: str, *, credentials: Credentials | None = 
     check()
     if on_phase:
         on_phase("http_authentication")
-    if source == "smartcard":
+    if source == "med_jw":
+        from .med_jw import acquire_state
+        credentials = credentials or interaction.credentials()
+        check()
+        candidate = acquire_state(credentials.username, credentials.password, captcha=interaction.captcha,
+                                  check=check, transport=transport)
+    elif source == "smartcard":
         from .smartcard import acquire_state
         credentials = credentials or interaction.credentials()
         check()

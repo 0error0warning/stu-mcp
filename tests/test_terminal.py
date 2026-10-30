@@ -116,3 +116,23 @@ def test_captcha_requires_human_tty_and_valid_four_digit_answer(tty, monkeypatch
     with pytest.raises(AppError) as error:
         terminal.captcha_input(b"not inspected", media_type="image/png")
     assert error.value.code == "terminal_required"
+
+
+@pytest.mark.parametrize("answer", ["aB12", "Z9c2D"])
+def test_medical_captcha_uses_shared_tty_renderer_with_source_specific_answer(tty, monkeypatch, answer):
+    from stu_mcp.auth_http import TerminalInteraction
+
+    monkeypatch.setattr(terminal.getpass, "getpass", lambda *_args, **_: answer)
+    assert TerminalInteraction("med_jw").captcha(captcha_image(), media_type="image/png") == answer
+    assert answer not in tty[1].getvalue() and not tty[0].getvalue()
+    with pytest.raises(AppError) as error:
+        TerminalInteraction("smartcard").captcha(captcha_image(), media_type="image/png")
+    assert error.value.code == "invalid_authentication_input" and error.value.source == "smartcard"
+
+
+def test_medical_captcha_errors_keep_the_correct_source(tty):
+    from stu_mcp.auth_http import TerminalInteraction
+
+    with pytest.raises(AppError) as error:
+        TerminalInteraction("med_jw").captcha(b"not an image", media_type="image/png")
+    assert error.value.code == "captcha_display_unavailable" and error.value.source == "med_jw"

@@ -51,9 +51,9 @@ class App:
         for name, source in SOURCES.items():
             auth = self.vault.status(source.session) if source.session else {"status": "not_required"}
             features.append({"source": name, "label": source.label, "features": list(source.features),
-                             "auth": auth, "login_required": name in {"jw", "mystu", "yuketang", "smartcard"},
+                             "auth": auth, "login_required": name in {"jw", "mystu", "yuketang", "smartcard", "med_jw"},
                              "login_available": bool(source.session),
-                             "refresh_requires_query": name in {"huyou", "charging", "smartcard"},
+                             "refresh_requires_query": name in {"huyou", "charging", "smartcard", "med_jw"},
                              "access": "anonymous_first" if name == "oa" else "community_public" if name == "huyou"
                              else "third_party_public" if name == "charging"
                              else "public" if name == "public" else "personal"})
@@ -74,6 +74,8 @@ class App:
         return result
 
     def refresh(self, source: str, limit: int = 20, semester: str = "") -> dict:
+        if source == "med_jw":
+            raise AppError("query_required", "医学院课表请使用 get_medical_timetable 或 stu-mcp timetable --source med_jw。", source)
         if source == "huyou":
             raise AppError("query_required", "狐友需要关键词；请使用 search_huyou_posts 或 stu-mcp huyou search。", source)
         if source == "charging":
@@ -325,6 +327,11 @@ class App:
         from .features.smartcard.service import card_overview
 
         return card_overview(self.vault)
+
+    def medical_timetable(self, semester: str = "") -> dict:
+        from .features.med_jw.service import academic_timetable
+
+        return academic_timetable(self.vault, semester)
 
     def campus_card_transactions(self, start_date: str, end_date: str, transaction_type: str = "") -> dict:
         from .features.smartcard.service import card_transactions

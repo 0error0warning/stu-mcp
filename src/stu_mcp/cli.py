@@ -60,7 +60,7 @@ def parser() -> argparse.ArgumentParser:
     setup.add_argument("--no-browser", action="store_true", help="仅在终端输出本机设置地址")
     setup.add_argument("--port", type=int, default=0, help="本机设置端口，默认随机；远程转发可指定8766")
     login = sub.add_parser("login", help="默认纯HTTP登录；认证输入只在本人终端输入")
-    login.add_argument("service", choices=("school", "jw", "mystu", "yuketang", "webvpn", "duifene", "repair", "smartcard"))
+    login.add_argument("service", choices=("school", "jw", "mystu", "yuketang", "webvpn", "duifene", "repair", "smartcard", "med_jw"))
     login.add_argument("--services", nargs="+", choices=("jw", "mystu", "repair"),
                        help="仅 login school：选择本次建立会话的业务；默认教务、MySTU、宿舍报修")
     login.add_argument("--reauthenticate", action="store_true",
@@ -77,7 +77,7 @@ def parser() -> argparse.ArgumentParser:
     auto_actions.add_parser("status", help="仅查看开关和失败状态，不读取或输出凭据")
     auto_actions.add_parser("remove", help="关闭自动重登并移除所存凭据")
     logout = sub.add_parser("logout", help="移除指定来源的会话和缓存")
-    logout.add_argument("service", choices=("jw", "mystu", "yuketang", "webvpn", "repair", "smartcard"))
+    logout.add_argument("service", choices=("jw", "mystu", "yuketang", "webvpn", "repair", "smartcard", "med_jw"))
     client = sub.add_parser("connect", help="预览或保存客户端接入，保留其他配置")
     client.add_argument("client", choices=(*CLIENTS, "dsh"))
     client.add_argument("--profile", help="仅 DSH：已初始化的 profile，默认 desktop")
@@ -103,6 +103,7 @@ def parser() -> argparse.ArgumentParser:
     summary.add_argument("--semester", default="")
     timetable = sub.add_parser("timetable", help="读取本人教务理论课表；复用学校登录，不写入日程缓存")
     timetable.add_argument("--semester", default="", help="学期；留空使用学校当前选定学期，并返回可选学期")
+    timetable.add_argument("--source", choices=("jw", "med_jw"), default="jw", help="教务来源；医学院仅支持当前学期")
     sub.add_parser("card", help="按需读取本人一卡通余额与卡状态，不进入缓存")
     card_transactions = sub.add_parser("card-transactions", help="读取本人一卡通历史流水，单次最多30天")
     card_transactions.add_argument("--start-date", required=True, help="学校时间 YYYY-MM-DD")
@@ -336,6 +337,8 @@ def _dispatch(args) -> int:
                 raise AppError("invalid_login_options", "报修CLI使用独立HTTP登录，请运行 login repair。")
             if args.browser and args.service == "smartcard":
                 raise AppError("invalid_login_options", "一卡通使用独立 HTTP 登录，请运行 login smartcard。", "smartcard")
+            if args.browser and args.service == "med_jw":
+                raise AppError("invalid_login_options", "医学院教务使用独立 HTTP 登录，请运行 login med_jw。", "med_jw")
             if not args.browser:
                 from .terminal import require_terminal
                 require_terminal()
@@ -426,6 +429,8 @@ def _dispatch(args) -> int:
         if args.command == "academic-summary":
             return emit(app.academic_summary(args.semester))
         if args.command == "timetable":
+            if args.source == "med_jw":
+                return emit(app.medical_timetable(args.semester))
             return emit(app.academic_timetable(args.semester))
         if args.command == "card":
             return emit(app.campus_card())

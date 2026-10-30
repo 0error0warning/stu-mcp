@@ -54,6 +54,10 @@ flowchart LR
 
 目录是纯元数据与状态投影：保存会话、本地后台事实、历史刷新与当前访问分别呈现；当前网络和业务读取保持 `not_checked`，用途证据保留原日期。`implemented` 不等于当前在线可用，`navigation_only` 或 `not_integrated` 不因账号配置而解锁。同一主机的课程/预约、公开馆藏/个人借阅分别登记；发现入口不会注册为登录来源、探测目标或请求许可。
 
+## 医学院课表的分层
+
+`features/med_jw` 按 schema/parser/adapter/service 分层，认证在 `auth_http/med_jw.py`；复用共同的私有交互、HTTP 预算、Vault 与会话代次保护。它是独立来源，不加入主校区统一账号组；不引入 APP 数据库、后台同步或界面依赖。具体范围见[医学院教务](medical-jw.md)。
+
 ## 报修模块的分层
 
 七项报修 MCP 工具和旧 Python 入口保持兼容。`RepairService` 通过 `RepairSession` 接口默认使用直连 HTTP WebForms；CLI 也可展示预览并在本人确认后提交一次。旧工具名中的 form/window 保留兼容语义，不代表默认创建浏览器。业务服务不操作 DOM 或导入 Playwright。

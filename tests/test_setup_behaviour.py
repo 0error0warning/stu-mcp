@@ -152,7 +152,8 @@ def test_qr_stays_in_private_page_and_disappears_after_authorization(setup_page,
         complete.set()
 
 
-def test_card_query_password_and_image_challenge_use_same_private_setup_core(setup_page, monkeypatch):
+@pytest.mark.parametrize("service,answer", [("smartcard", "0246"), ("med_jw", "aB2c3")])
+def test_query_password_and_image_challenge_use_same_private_setup_core(setup_page, monkeypatch, service, answer):
     page, ui = setup_page
     image = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAgAAAAECAIAAAA8r+mnAAAAFElEQVR4nGP8//8/AzbAhFWULAkAJt0DBd183KAAAAAASUVORK5CYII=")
     observed = []
@@ -166,10 +167,11 @@ def test_card_query_password_and_image_challenge_use_same_private_setup_core(set
 
     monkeypatch.setattr("stu_mcp.auth_http.login_http", core)
     page.goto(ui.url)
-    page.locator('[data-login="smartcard"]').click()
-    expect(page.locator("#login-user-label")).to_have_text("学（工）号")
-    expect(page.locator("#login-pass-label")).to_have_text("一卡通查询密码")
-    expect(page.locator("#login-status")).to_contain_text("独立的一卡通查询密码")
+    page.locator(f'[data-login="{service}"]').click()
+    expect(page.locator("#login-user-label")).to_have_text("学（工）号" if service == "smartcard" else "学校账号")
+    label = "一卡通查询密码" if service == "smartcard" else "医学院教务本地口令"
+    expect(page.locator("#login-pass-label")).to_have_text(label)
+    expect(page.locator("#login-status")).to_contain_text(label)
     fill_credentials(page)
     expect(page.locator("#captcha-form")).to_be_visible()
     page.wait_for_function("""() => {
@@ -177,10 +179,10 @@ def test_card_query_password_and_image_challenge_use_same_private_setup_core(set
         return image.complete && image.naturalWidth > 0;
     }""")
     expect(page.locator("#login-pass")).to_have_value("")
-    page.locator("#login-captcha").fill("0246")
+    page.locator("#login-captcha").fill(answer)
     page.locator("#captcha-form button").click()
     expect(page.locator("#login-status")).to_contain_text("配置完成")
-    assert observed == [("smartcard", "synthetic-student", "SYNTHETIC_PRIVATE_PASSWORD"), "0246"]
+    assert observed == [(service, "synthetic-student", "SYNTHETIC_PRIVATE_PASSWORD"), answer]
     expect(page.locator("#login-captcha")).to_have_value("")
     assert page.locator("#login-captcha-image").get_attribute("src") is None
 

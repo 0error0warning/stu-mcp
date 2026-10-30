@@ -20,9 +20,12 @@ def test_app_and_host_publish_additive_catalog_without_authentication(app, monke
             assert old_key in local and old_key in remote
         source_ids = {source["source"] for source in local["sources"]}
         assert source_ids == set(SOURCES)
-        assert {"public", "oa", "jw", "mystu", "yuketang", "huyou", "charging", "smartcard"} == source_ids
+        assert {"public", "oa", "jw", "mystu", "yuketang", "huyou", "charging", "smartcard", "med_jw"} == source_ids
         assert remote["hosting"]["login_flows"]["school"]["input"] == "host_tty_once"
         assert not remote["hosting"]["login_flows"]["school"]["sessions_shared"]
+        medical = remote["hosting"]["login_flows"]["med_jw"]
+        assert medical["method"] == "http_image_captcha" and not medical["credentials_persisted"]
+        assert medical["real_account_verified"] is False
         catalog = remote["capability_catalog"]
         school = next(p for p in catalog["profiles"] if p["configuration_id"] == "school")
         assert len(school["service_ids"]) == 3

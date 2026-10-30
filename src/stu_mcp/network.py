@@ -118,6 +118,17 @@ def scoped_state(state: dict, source: str) -> dict:
                and urlparse(str(o.get("origin", ""))).hostname in hosts
                and urlparse(str(o.get("origin", ""))).scheme == "https"]
     result = {"cookies": cookies, "origins": origins}
+    if source == "med_jw":
+        # This source uses only a separately proved business token, never an
+        # inherited school/SSO cookie jar or arbitrary browser local storage.
+        result = {"cookies": [], "origins": []}
+        token = state.get("med_jw_token")
+        if (not isinstance(token, str) or not 1 <= len(token) <= 8192
+                or any(not 33 <= ord(char) <= 126 for char in token)):
+            if state:
+                raise AppError("session_invalid", "医学院教务会话无效，请重新登录。", source)
+        else:
+            result["med_jw_token"] = token
     if source == "smartcard":
         account = state.get("smartcard_account")
         if not isinstance(account, str) or not re.fullmatch(r"[0-9]{4,20}", account):

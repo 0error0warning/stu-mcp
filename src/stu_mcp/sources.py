@@ -26,6 +26,8 @@ SOURCES = {
                  ("oa.stu.edu.cn", "webvpn.stu.edu.cn", "oa-stu-edu-cn.webvpn.stu.edu.cn"), "webvpn"),
     "jw": Source("jw", "教务系统", ("成绩", "加权统计", "考试安排", "本人理论课表"),
                  JW_LOGIN_URL, ("jw.stu.edu.cn", "sso.stu.edu.cn"), "jw"),
+    "med_jw": Source("med_jw", "医学院教务", ("本人当前学期课表（待真实账号验收）",),
+                     "https://jwgl.med.stu.edu.cn/app/", ("jwgl.med.stu.edu.cn",), "med_jw"),
     "mystu": Source("mystu", "MySTU", ("课程", "作业", "Moodle / ELC 活动", "个人日程"),
                     "https://my.stu.edu.cn/discussion/my-courses",
                     ("my.stu.edu.cn", "sso.stu.edu.cn"), "mystu"),

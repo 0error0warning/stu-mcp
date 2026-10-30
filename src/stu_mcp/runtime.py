@@ -109,7 +109,7 @@ def reject_symlinks(path: Path) -> None:
 @contextmanager
 def key_lock(home: Path, name: str = "key"):
     """Serialize key creation / short session mutations across MCP processes."""
-    if name not in {"key", "webvpn", "webvpn-login", "jw", "mystu", "yuketang", "repair", "takeout", "smartcard"}:
+    if name not in {"key", "webvpn", "webvpn-login", "jw", "mystu", "yuketang", "repair", "takeout", "smartcard", "med_jw"}:
         raise AppError("unknown_lock", "不支持此本地状态锁。")
     path = home / f".{name}-lock"
     reject_symlinks(path)
@@ -168,7 +168,7 @@ class Runtime:
         return self.home / "cache.sqlite3"
 
     def session_file(self, service: str) -> Path:
-        if service not in ("webvpn", "mystu", "jw", "yuketang", "repair", "takeout", "smartcard"):
+        if service not in ("webvpn", "mystu", "jw", "yuketang", "repair", "takeout", "smartcard", "med_jw"):
             raise AppError("unknown_service", "不支持此登录服务。")
         return self.home / "sessions" / f"{service}.enc"
 

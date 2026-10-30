@@ -140,7 +140,11 @@ class HostRuntime:
                                        "input": "host_tty"},
                             "smartcard": {"method": "http_image_captcha", "requires_display": False,
                                           "input_options": ["host_tty", "private_setup_page"],
-                                          "independent_query_password": True, "credentials_persisted": False}},
+                                          "independent_query_password": True, "credentials_persisted": False},
+                            "med_jw": {"method": "http_image_captcha", "requires_display": False,
+                                       "input_options": ["host_tty", "private_setup_page"],
+                                       "independent_local_password": True, "credentials_persisted": False,
+                                       "real_account_verified": False}},
                         "repair_state": "process_memory", "repair_survives_restart": False,
                         "downloads_on": "mcp_host"}}
 

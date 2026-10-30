@@ -175,7 +175,7 @@ class SetupServer:
 
     def logout(self, service: str) -> dict:
         """Remove a page configuration as a unit; source-specific CLI stays separate."""
-        if not isinstance(service, str) or service not in {"school", "webvpn", "yuketang", "smartcard"}:
+        if not isinstance(service, str) or service not in {"school", "webvpn", "yuketang", "smartcard", "med_jw"}:
             raise AppError("unknown_service", "请选择已配置的账号。")
         # Cancellation and generation fences stop in-flight logins from restoring it.
         for task in self.jobs.snapshot():

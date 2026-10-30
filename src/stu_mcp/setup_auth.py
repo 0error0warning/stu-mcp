@@ -19,7 +19,7 @@ from .auth_http import Credentials
 from .auth_http.school import SCHOOL_SERVICES
 from .runtime import AppError, key_lock, reject_symlinks
 
-_PROFILES = frozenset({"school", "yuketang", "webvpn", "duifene", "smartcard"})
+_PROFILES = frozenset({"school", "yuketang", "webvpn", "duifene", "smartcard", "med_jw"})
 _SERVICES = _PROFILES | frozenset(SCHOOL_SERVICES) | {"oa"}
 _MESSAGES = {
     "session_saved": "登录会话已加密保存；实际功能按业务分别读取核验。",
@@ -210,8 +210,9 @@ class _LoginTask:
                 if not isinstance(values["code"], str) or re.fullmatch(r"[0-9]{6}", values["code"]) is None:
                     raise AppError("invalid_authentication_input", "动态码须为六位数字。")
             elif kind == "captcha":
-                if not isinstance(values["code"], str) or re.fullmatch(r"[0-9]{4}", values["code"]) is None:
-                    raise AppError("invalid_authentication_input", "验证码须为四位数字。")
+                pattern = r"[A-Za-z0-9]{4,5}" if self.service == "med_jw" else r"[0-9]{4}"
+                if not isinstance(values["code"], str) or re.fullmatch(pattern, values["code"]) is None:
+                    raise AppError("invalid_authentication_input", "请按图片填写验证码。")
             elif not isinstance(values["callback"], str) or not 1 <= len(values["callback"]) <= 8192:
                 raise AppError("invalid_callback", _MESSAGES["invalid_callback"])
             self.input = dict(values)

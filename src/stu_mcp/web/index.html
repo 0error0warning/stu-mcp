@@ -39,6 +39,11 @@
         <div class="info"><strong>WebVPN</strong><span class="desc" id="webvpn-features"></span><span class="meta" id="webvpn-state">正在读取…</span></div>
         <div class="row-actions"><button class="act" type="button" data-login="webvpn">配置</button><button class="ghost danger" type="button" data-logout="webvpn" hidden>退出账号</button></div>
       </div>
+      <div class="row" data-profile="med_jw">
+        <span class="ico jw" aria-hidden="true">医</span>
+        <div class="info"><strong>医学院教务</strong><span class="desc" id="med_jw-features"></span><span class="meta" id="med_jw-state">正在读取…</span></div>
+        <div class="row-actions"><button class="act" type="button" data-login="med_jw">配置</button><button class="ghost danger" type="button" data-logout="med_jw" hidden>退出账号</button></div>
+      </div>
       <div class="row" data-profile="smartcard">
         <span class="ico card-account" aria-hidden="true">卡</span>
         <div class="info"><strong>校园一卡通</strong><span class="desc" id="smartcard-features"></span><span class="meta" id="smartcard-state">正在读取…</span></div>
@@ -61,8 +66,8 @@
       <div class="actions"><button id="login-submit" class="primary" type="submit">登录</button></div>
     </form>
     <form id="captcha-form" hidden autocomplete="off">
-      <img id="login-captcha-image" alt="一卡通登录验证码">
-      <label>图片中的四位数字<input id="login-captcha" inputmode="numeric" autocomplete="off" pattern="[0-9]{4}" maxlength="4" required></label>
+      <img id="login-captcha-image" alt="登录验证码">
+      <label><span id="captcha-label">图片中的四位数字</span><input id="login-captcha" inputmode="numeric" autocomplete="off" pattern="[0-9]{4}" maxlength="4" required></label>
       <div class="actions"><button class="primary" type="submit">验证</button></div>
     </form>
     <form id="code-form" hidden autocomplete="off">

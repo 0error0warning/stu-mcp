@@ -46,6 +46,13 @@ def _service(service_id: str, label: str, configuration_id: str, auth_family: st
 
 
 _SERVICES = (
+    _service("medical_timetable", "医学院当前学期课表", "med_jw", "medical_local_password_captcha",
+             source_id="med_jw", login_id="med_jw", scope="医学院教务本人当前学期课表",
+             entries=("https://jwgl.med.stu.edu.cn/app/",),
+             features=(_feature("medical_timetable", "当前学期课表（待真实账号验收）", "get_medical_timetable"),),
+             limits=("使用医学院教务本地口令和人工验证码，与主校区会话分开。",
+                     "不支持历史学期、成绩考试或医学院 SSO；本版通过合成测试，尚待真实账号验收。"),
+             evidence_level="implementation", evidence_on="2026-10-30", evidence_document="docs/medical-jw.md"),
     _service("public_notices", "官网与学生处通知", "anonymous", "anonymous", source_id="public",
              scope="学校官网、学生处已适配栏目及本地通知缓存",
              entries=("https://www.stu.edu.cn/", "https://xsc.stu.edu.cn/"),
@@ -221,6 +228,8 @@ _GAPS = (
 )
 
 _PROFILES = (
+    ("med_jw", "医学院教务", "medical_local_password_captcha", "stu-mcp login med_jw",
+     "本人输入医学院教务本地口令并填写图片验证码；口令可能与医学院 SSO 不同，不保存口令。"),
     ("anonymous", "无需学校登录", "anonymous", None,
      "公开查询仍取决于宿主网络、目标内容权限和实际读取结果。"),
     ("school", "学校统一账号", "school_cas", "stu-mcp login school",
@@ -352,7 +361,7 @@ def build_capability_catalog(source_statuses: Iterable[Mapping] | Mapping = (), 
             state.update(status="not_required", message="无需学校登录，实际可读范围须分别核实。")
         profiles.append({"configuration_id": profile_id, "label": label, "auth_family": auth_family,
                          "setup_command": command, "setup_on": "mcp_host", "note": note,
-                         "setup_ui": {"available": profile_id in {"school", "webvpn", "yuketang", "duifene", "smartcard"},
+                         "setup_ui": {"available": profile_id in {"school", "webvpn", "yuketang", "duifene", "smartcard", "med_jw"},
                                       "tool": "open_setup", "backend": "http"},
                          "service_ids": [item["service_id"] for item in supported],
                          "not_integrated_service_ids": [item["service_id"] for item in gaps],

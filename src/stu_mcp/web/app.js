@@ -193,15 +193,22 @@
     errorMessage(null);
     if (next.kind === "credentials" || next.kind === "webvpn_credentials") {
       $("login-status").textContent = job.service === "school" ? "一次登录，连接已接入的学校服务。"
+        : job.service === "med_jw" ? "请填写医学院教务本地口令，可能与医学院统一认证密码不同。"
         : job.service === "smartcard" ? "此站使用普通连接，请填写独立的一卡通查询密码。" : "";
       $("login-user-label").textContent = job.service === "smartcard" ? "学（工）号" : "学校账号";
-      $("login-pass-label").textContent = job.service === "smartcard" ? "一卡通查询密码" : "密码";
+      $("login-pass-label").textContent = job.service === "smartcard" ? "一卡通查询密码"
+        : job.service === "med_jw" ? "医学院教务本地口令" : "密码";
       $("token-field").hidden = next.kind !== "webvpn_credentials";
       $("login-submit").textContent = "登录";
       $("credentials-form").hidden = false;
       $("login-user").focus();
     } else if (next.kind === "captcha") {
       $("login-status").textContent = "输入图片中的验证码";
+      const medical = job.service === "med_jw";
+      $("captcha-label").textContent = medical ? "图片中的字母和数字" : "图片中的四位数字";
+      $("login-captcha").inputMode = medical ? "text" : "numeric";
+      $("login-captcha").pattern = medical ? "[A-Za-z0-9]{4,5}" : "[0-9]{4}";
+      $("login-captcha").maxLength = medical ? 5 : 4;
       if (typeof next.image === "string" && /^data:image\/(png|jpeg);base64,[A-Za-z0-9+/=]+$/.test(next.image)) {
         $("login-captcha-image").src = next.image;
         $("captcha-form").hidden = false;

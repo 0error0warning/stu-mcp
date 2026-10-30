@@ -44,6 +44,19 @@
       "commit": "3986c4ae49d2ffed4e41582a4f40a2fdd8ef31fa",
       "path": "docs/HUYOU_HTTP_API.md",
       "sha256": "f83d83aa12fc61539d6aa871e400e607f38d377c7cc9de15336618d910a38dc9"
+    },
+    {
+      "repository": "csensicrigley-netizen/stu-assistant",
+      "commit": "a8d2023504c7bb47228fb52270418a3805726aec",
+      "paths": [
+        "backend/app/med_jw.py",
+        "backend/app/med_parse.py",
+        "docs/医学院教务接口.md"
+      ],
+      "destination": "src/stu_mcp/features/med_jw and src/stu_mcp/auth_http/med_jw.py",
+      "method": "Adapted observed HTTP contracts and timetable parsing into source-isolated STU MCP services; no APP database, UI, scheduler or password storage copied. Synthetic fixtures only.",
+      "license": "MIT",
+      "notice": "src/stu_mcp/features/med_jw/NOTICE.txt"
     }
   ],
   "inputs": [

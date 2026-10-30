@@ -1,6 +1,7 @@
 """Offline release-check boundaries, including owned child-tree cleanup."""
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import json
 import os
@@ -31,10 +32,18 @@ def tools(payload):
     return [Tool.model_validate(value) for value in payload]
 
 
-def test_committed_contract_has_all_52_unique_public_interfaces():
+def test_committed_contract_has_all_53_unique_public_interfaces():
     baseline = contract()
-    assert len(baseline) == len({tool["name"] for tool in baseline}) == 52
+    assert len(baseline) == len({tool["name"] for tool in baseline}) == 53
     assert runtime.assert_tool_contract(tools(baseline)) == []
+
+
+def test_medical_addition_preserves_all_52_existing_complete_tool_definitions():
+    previous = sorted((tool for tool in contract() if tool["name"] != "get_medical_timetable"),
+                      key=lambda tool: tool["name"])
+    encoded = json.dumps(previous, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()
+    assert len(previous) == 52
+    assert hashlib.sha256(encoded).hexdigest() == "1fc03645dab1d1a00b6f2c904e91e9881acdfb179e301da9800db78f2e20b69a"
 
 
 def test_description_changes_are_reported_without_breaking_tool_interfaces():

@@ -1,6 +1,6 @@
 {
   "baseline": "v0.6.1",
-  "tool_count": 52,
+  "tool_count": 53,
   "tools": [
     {
       "name": "academic_summary",
@@ -1895,6 +1895,26 @@
       "outputSchema": {
         "additionalProperties": true,
         "title": "get_wechat_articleDictOutput",
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": true
+      }
+    },
+    {
+      "name": "get_medical_timetable",
+      "description": "按需读取医学院教务本人当前学期课表，使用独立 med_jw 会话。\n        本人先在私有设置页或宿主 CLI 使用教务本地口令及人工验证码登录，工具不接收凭据。\n        保留学校原生学期、周次、时间与解析待核对项；无缓存，不支持任意历史学期或成绩考试。\n        适配器通过合成测试，尚待真实医学院账号验收；日期导出须另外核对校历和调课。\n        ",
+      "inputSchema": {
+        "properties": {},
+        "title": "get_medical_timetableArguments",
+        "type": "object"
+      },
+      "outputSchema": {
+        "additionalProperties": true,
+        "title": "get_medical_timetableDictOutput",
         "type": "object"
       },
       "annotations": {

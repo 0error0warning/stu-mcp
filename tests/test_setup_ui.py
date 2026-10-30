@@ -25,7 +25,7 @@ def test_setup_page_is_local_and_csp_compatible():
 
 def test_setup_page_exposes_user_choice_without_nested_configuration_cards():
     _, script, page = load()
-    assert [row["data-profile"] for row in page.select(".row[data-profile]")] == ["school", "yuketang", "duifene", "webvpn", "smartcard"]
+    assert [row["data-profile"] for row in page.select(".row[data-profile]")] == ["school", "yuketang", "duifene", "webvpn", "med_jw", "smartcard"]
     assert len(page.select(".card")) == 1
     assert page.find(id="login-panel").has_attr("hidden")
     assert page.find(id="unintegrated-services")
