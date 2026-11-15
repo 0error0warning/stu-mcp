@@ -6,6 +6,7 @@ from ...runtime import AppError
 
 BODY_PAGE_CHARS = 8000
 PREVIEW_CHARS = 1200
+PUBLIC_SOURCE_ACCESS = {"login_required": False, "user_network_checked": False}
 
 
 def validate_body_page(offset: int, max_chars: int) -> None:
@@ -47,6 +48,8 @@ def notice_page(record: dict, *, cached: bool, offset: int, max_chars: int) -> d
               "cached": cached, "detail_available": available, "content_ready": bool(body),
               "offset": offset, "total_chars": len(body), "has_more": end < len(body),
               "next_offset": end if end < len(body) else None, "content_trust": "untrusted_source_data"}
+    if record.get("source") == "public":
+        result["source_access"] = dict(PUBLIC_SOURCE_ACCESS)
     if "attachments" in item:
         result["attachment_options"] = [{"index": index, "name": attachment["name"]}
                                         for index, attachment in enumerate(item["attachments"])]
@@ -63,9 +66,16 @@ def notice_page(record: dict, *, cached: bool, offset: int, max_chars: int) -> d
 
 def source_link_result(record: dict, error: AppError, *, attachment: dict | None = None) -> dict:
     """Share only the validated notice URL, never an authentication/download challenge URL."""
-    result = {**error.result(), "next_action": "show_source_link", "content_ready": False,
+    result = {**error.result(), "next_action": "show_source_link", "handoff_required": True, "content_ready": False,
               "source_url": checked_url(record["source"], record["url"]), "title": record["title"],
+              "user_message": error.message,
               "content_trust": "untrusted_source_data"}
+    result["message"] += (" 当前附件的全文自动获取已经结束。立即用 title、source_url 和 user_message 交接给用户；"
+                          "不得为补齐此附件继续调用工具，包括重试下载、刷新 OA、遍历缓存、换来源或借其他工具取全文。"
+                          "尚未整理出完整条款不是继续调用的理由；用户要求总结条款不等于授权寻找替代版本。"
+                          "只有用户已明确要求找替代公开版本时，才按该授权继续检索。")
+    if record["source"] == "public":
+        result["source_access"] = dict(PUBLIC_SOURCE_ACCESS)
     if attachment:
         result["name"] = attachment["name"]
     return result

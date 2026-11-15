@@ -21,9 +21,13 @@ description: 通过本机 STU MCP 查询汕头大学校园信息，或填写桑�
 
 CLI 返回 JSON，读取 `ok`、`status`、`coverage`、`limited`、`errors` 和缓存时间。先检查 `status`，按问题刷新一个来源，再查询；空缓存不能证明学校没有信息。
 
+缓存查询与来源刷新支持每次1–100条，默认20条；分页沿返回的 `next_offset` 继续。刷新仍受各来源已有页数和请求预算限制，实际覆盖以 `coverage`、`limited` 和 `errors` 为准。
+
 通知搜索返回正文预览，`body_truncated=true` 表示仍有正文。`get_notice` 或 CLI `notice` 返回 `metadata_only` 时按 `next_call` 补正文；已有正文默认每页8000字符，沿 `next_offset` 续读，CLI 使用 `--offset` / `--max-chars`，续页不加 `--refresh`。附件名称与序号见 `attachment_options`。`attachment_not_cached` 表示尚未取附件列表；`no_attachments` 表示详情已读但未列附件，不重复刷新。
 
 读不到附件文字、遇学校验证码，或公众号返回需要原站查看的状态时，按 `next_action=show_source_link` 把 `source_url` 作为可点击的通知/文章原文链接发给用户自行查看。保留“正文已读、附件未读”的区别，不把下载网页或空文本当作附件内容，也不索要验证码或要求用户验证后回来续调。查询分页使用返回的 `next_offset`；空结果按 `empty_reason` 与 `next_calls` 判断缺缓存、未配置或范围不足。
+
+`show_source_link` / `handoff_required=true` 表示当前附件的全文自动获取已经结束：立即交付 `title`、可点击的 `source_url` 和 `user_message`，不得为补齐此附件继续调用工具，包括重试下载、刷新 OA、遍历缓存、换来源或借其他工具取全文。尚未整理出完整条款不是继续调用的理由；用户要求总结条款不等于授权寻找替代版本。只有用户已明确要求寻找替代公开版本时，才按该授权继续检索；用户提供内容后可继续分析。`source=public` 是匿名公开入口，不因学校域名附加“必须校园网或 WebVPN”的条件；`source_access.user_network_checked=false` 表示用户网络未核实，不能推断访问限制。
 
 更新学生资料只传本次修改项，其他字段保留；原生 MCP 明确清空字段时使用 `clear_fields`。登录错误中的 `host_command` 是本人在 MCP 宿主执行的命令；远程实例按 `login_on_host_cli` 引导，不能把宿主回环链接当作用户设备可打开的页面。
 

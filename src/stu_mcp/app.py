@@ -94,8 +94,8 @@ class App:
             raise AppError("query_required", "一卡通请使用 get_campus_card/get_campus_card_transactions 或 stu-mcp card。", source)
         if source not in SOURCES:
             raise AppError("invalid_source", "请选择 public、oa、jw、mystu 或 yuketang。")
-        if type(limit) is not int or not 1 <= limit <= 50:
-            raise AppError("invalid_limit", "每次刷新数量为 1–50 的整数。", source)
+        if type(limit) is not int or not 1 <= limit <= 100:
+            raise AppError("invalid_limit", "每次刷新数量为 1–100 的整数。", source)
         if semester and not re.fullmatch(r"20\d{2}-20\d{2}-[123]", semester):
             raise AppError("invalid_semester", "学期格式为 2026-2027-1，支持 1/2/3 学期；留空时考试使用学校选定学期。")
         if not self._refresh_lock.acquire(blocking=False):

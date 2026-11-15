@@ -58,6 +58,10 @@ def test_usability_contract_preserves_existing_calls_outputs_and_annotations():
              "get_courses": "source", "get_tasks": "source", "get_course_resources": "source",
              "get_wechat_article": "backend", "refresh_source": "source", "search_notices": "source",
              "set_task_status": "status"}
+    page_bounds = {"limit": (1, 100), "offset": (0, 10000)}
+    bounds = dict.fromkeys(("search_notices", "get_grades", "get_exams", "get_courses", "get_tasks",
+                            "get_course_resources", "get_schedule", "get_service_links"), page_bounds)
+    bounds.update(refresh_source={"limit": (1, 100)}, read_attachment={"index": (0, None)})
     for name, original in before.items():
         current = after[name]
         assert current["outputSchema"] == original["outputSchema"]
@@ -68,6 +72,10 @@ def test_usability_contract_preserves_existing_calls_outputs_and_annotations():
             assert field not in schema.get("required", [])
         if name in enums:
             assert schema["properties"][enums[name]].pop("enum")
+        for field, (minimum, maximum) in bounds.get(name, {}).items():
+            assert schema["properties"][field].pop("minimum") == minimum
+            if maximum is not None:
+                assert schema["properties"][field].pop("maximum") == maximum
         assert schema == original["inputSchema"], name
 
 

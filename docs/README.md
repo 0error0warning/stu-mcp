@@ -1,6 +1,6 @@
 # 文档目录
 
-发行安装说明对应 **v0.7.7 学生预览版**，新增校团委公开解析与 Agent 调用改进，保留医学院课表试验能力，沿用共用认证、个人服务器接入与按需更新。安装见[安装说明](install.md)，DSH 界面见[插件安装](../integrations/dsh/README.md)，单命令升级见[更新说明](updates.md)；版本功能和真实验收范围分别记录在发行说明与验证索引中。
+发行安装说明对应 **v0.7.8 学生预览版**，明确验证码附件交接、将缓存查询与刷新上限提高到100，并支持 DSH 0.2.2；沿用共用认证、个人服务器接入与按需更新。安装见[安装说明](install.md)，DSH 界面见[插件安装](../integrations/dsh/README.md)，单命令升级见[更新说明](updates.md)；版本功能和真实验收范围分别记录在发行说明与验证索引中。
 
 v0.7.1 提供统一账号 `login school`、配置分组能力目录和私密网页 HTTP 认证。本人可在自己的浏览器或真实终端完成交互，两者共用认证核心，MCP 不接收认证输入；用法见[配置与服务总表](campus-services.md)，检查范围见[本轮记录](verification/2026-10-23-private-setup.md)。
 
@@ -9,6 +9,8 @@ v0.7.1 提供统一账号 `login school`、配置分组能力目录和私密网�
 | 安装、升级、登录 | [安装说明](install.md)、[更新说明](updates.md)、[客户端接入](clients.md) |
 | Agent 如何处理缓存、正文分页、失败及下一步 | [调用与结果约定](agent-usage.md) |
 | DeepSeek Harness（DSH）接入与跨 agent 兼容 | [已确定的低维护成本方案](deepseek-harness.md) |
+| DSH 0.2.2 本机升级、插件兼容与模型调用 | [v0.7.7 安装及可见工具轨迹验证](verification/2026-11-15-dsh-local.md) |
+| DeepSeek 如何理解 MCP 提示、参数及附件交接 | [思考日志与真实页面对照](verification/2026-11-15-dsh-thinking-study.md) |
 | 个人服务器、私有 HTTP 与无桌面登录 | [服务器说明](server.md)、[容器模板](server-container.md) |
 | 狐友公开讨论 | [狐友查询](huyou.md) |
 | 校团委通知、竞赛与规章制度 | [公开栏目与附件读取](xtw.md) |

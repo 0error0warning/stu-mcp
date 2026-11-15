@@ -553,11 +553,15 @@
           },
           "limit": {
             "default": 20,
+            "maximum": 100,
+            "minimum": 1,
             "title": "Limit",
             "type": "integer"
           },
           "offset": {
             "default": 0,
+            "maximum": 10000,
+            "minimum": 0,
             "title": "Offset",
             "type": "integer"
           }
@@ -599,11 +603,15 @@
           },
           "limit": {
             "default": 20,
+            "maximum": 100,
+            "minimum": 1,
             "title": "Limit",
             "type": "integer"
           },
           "offset": {
             "default": 0,
+            "maximum": 10000,
+            "minimum": 0,
             "title": "Offset",
             "type": "integer"
           }
@@ -635,11 +643,15 @@
           },
           "limit": {
             "default": 20,
+            "maximum": 100,
+            "minimum": 1,
             "title": "Limit",
             "type": "integer"
           },
           "offset": {
             "default": 0,
+            "maximum": 10000,
+            "minimum": 0,
             "title": "Offset",
             "type": "integer"
           }
@@ -671,11 +683,15 @@
           },
           "limit": {
             "default": 20,
+            "maximum": 100,
+            "minimum": 1,
             "title": "Limit",
             "type": "integer"
           },
           "offset": {
             "default": 0,
+            "maximum": 10000,
+            "minimum": 0,
             "title": "Offset",
             "type": "integer"
           }
@@ -765,7 +781,7 @@
     },
     {
       "name": "get_notice",
-      "description": "读取通知正文及附件列表；默认读缓存，refresh=true 从已缓存的学校链接获取正文。\n        metadata_only 表示只有列表资料，按 next_call 补正文。每次默认8000、最多20000字符；\n        按 next_offset/next_call 继续，续页 refresh=false 使用已取回的完整缓存，不重复抓取。\n        attachment_options 给出附件名称和从0开始的序号；不接受任意 URL。\n        ",
+      "description": "读取通知正文及附件列表；默认读缓存，refresh=true 从已缓存的学校链接获取正文。\n        metadata_only 表示只有列表资料，按 next_call 补正文。每次默认8000、最多20000字符；\n        按 next_offset/next_call 继续，续页 refresh=false 使用已取回的完整缓存，不重复抓取。\n        attachment_options 给出附件名称和从0开始的序号；不接受任意 URL。\n        public 的 source_access.login_required=false；user_network_checked=false 不代表用户需要校园网或 WebVPN。\n        ",
       "inputSchema": {
         "properties": {
           "item_id": {
@@ -779,11 +795,15 @@
           },
           "offset": {
             "default": 0,
+            "maximum": 60000,
+            "minimum": 0,
             "title": "Offset",
             "type": "integer"
           },
           "max_chars": {
             "default": 8000,
+            "maximum": 20000,
+            "minimum": 1,
             "title": "Max Chars",
             "type": "integer"
           }
@@ -846,11 +866,15 @@
           },
           "limit": {
             "default": 20,
+            "maximum": 100,
+            "minimum": 1,
             "title": "Limit",
             "type": "integer"
           },
           "offset": {
             "default": 0,
+            "maximum": 10000,
+            "minimum": 0,
             "title": "Offset",
             "type": "integer"
           }
@@ -882,11 +906,15 @@
           },
           "limit": {
             "default": 20,
+            "maximum": 100,
+            "minimum": 1,
             "title": "Limit",
             "type": "integer"
           },
           "offset": {
             "default": 0,
+            "maximum": 10000,
+            "minimum": 0,
             "title": "Offset",
             "type": "integer"
           }
@@ -1100,11 +1128,15 @@
           },
           "limit": {
             "default": 20,
+            "maximum": 100,
+            "minimum": 1,
             "title": "Limit",
             "type": "integer"
           },
           "offset": {
             "default": 0,
+            "maximum": 10000,
+            "minimum": 0,
             "title": "Offset",
             "type": "integer"
           }
@@ -1409,7 +1441,7 @@
     },
     {
       "name": "read_attachment",
-      "description": "提取已缓存通知的 PDF/文本附件，序号从 0 开始。最多 8 MiB、100 页，扫描件不做 OCR。\n        next_action=show_source_link 时，将 title 和 source_url 组成可点击的通知正文链接发给用户自行查看附件；\n        此附件未读到内容，不索要验证码、不重复重试，也不要求用户验证后回来继续调用。\n        attachment_not_cached 按 next_call 先取附件列表；no_attachments 表示已读详情但未列附件，不重复刷新。\n        ",
+      "description": "提取已缓存通知的 PDF/文本附件，序号从 0 开始。最多 8 MiB、100 页，扫描件不做 OCR。\n        next_action=show_source_link / handoff_required=true 表示当前附件的全文自动获取已经结束：\n        立即交付 title、可点击的 source_url 和 user_message，不得为补齐此附件继续调用工具，\n        包括重试下载、刷新 OA、遍历缓存、换来源或借其他工具取全文。\n        尚未整理出完整条款不是继续调用的理由；用户要求总结条款不等于授权寻找替代版本。\n        只有用户已明确要求找替代公开版本时，才按该授权继续检索；用户提供内容后可继续分析。\n        不索要验证码、不重复重试，也不要求用户验证后回来续调。public 原文不预设校园网/WebVPN要求。\n        attachment_not_cached 按 next_call 先取附件列表；no_attachments 表示已读详情但未列附件，不重复刷新。\n        ",
       "inputSchema": {
         "properties": {
           "item_id": {
@@ -1418,6 +1450,7 @@
           },
           "index": {
             "default": 0,
+            "minimum": 0,
             "title": "Index",
             "type": "integer"
           }
@@ -1442,7 +1475,7 @@
     },
     {
       "name": "refresh_source",
-      "description": "按需获取 public/oa/jw/mystu/yuketang；1–50 条/课程，报告范围和部分失败。教务学期可留空。\n        status=partial 也可能只是读取有界；看 errors 区分失败，看 limited 和 coverage 确认范围。\n        ",
+      "description": "按需获取 public/oa/jw/mystu/yuketang；1–100 条/课程，报告范围和部分失败。教务学期可留空。\n        status=partial 也可能只是读取有界；看 errors 区分失败，看 limited 和 coverage 确认范围。\n        ",
       "inputSchema": {
         "properties": {
           "source": {
@@ -1458,6 +1491,8 @@
           },
           "limit": {
             "default": 20,
+            "maximum": 100,
+            "minimum": 1,
             "title": "Limit",
             "type": "integer"
           },
@@ -1667,7 +1702,7 @@
     },
     {
       "name": "search_notices",
-      "description": "搜索本地通知缓存，返回有界正文预览、detail_call 和 next_offset。\n        空结果按 empty_reason/next_calls 处理；不能证明学校没有通知。完整正文使用 get_notice。\n        ",
+      "description": "搜索本地通知缓存，返回有界正文预览、detail_call 和 next_offset。\n        每页1–100条，默认20条；按 next_offset 继续。\n        空结果按 empty_reason/next_calls 处理；不能证明学校没有通知。完整正文使用 get_notice。\n        ",
       "inputSchema": {
         "properties": {
           "query": {
@@ -1688,11 +1723,15 @@
           },
           "limit": {
             "default": 20,
+            "maximum": 100,
+            "minimum": 1,
             "title": "Limit",
             "type": "integer"
           },
           "offset": {
             "default": 0,
+            "maximum": 10000,
+            "minimum": 0,
             "title": "Offset",
             "type": "integer"
           }

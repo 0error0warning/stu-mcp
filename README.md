@@ -46,7 +46,7 @@
 
 查到的信息会带来源和缓存时间。想看最新消息时，让 agent 先刷新；没查到也可能只是这次没取全。狐友里是同学们的讨论，学校的正式要求还是要看 OA 或学校原文。[狐友怎么查](docs/huyou.md)
 
-v0.7.7 补充了精简功能状态、正文分页和更明确的下一步提示；附件遇验证码或无法提取文字时，agent 会给你通知原文链接，方便自行查看。具体约定见[Agent 使用说明](docs/agent-usage.md)。
+v0.7.8 明确了附件遇验证码后的交接：给你通知原文链接，结束这一附件的自动获取；缓存查询和来源刷新每次最多100条，默认仍为20条。具体约定见[Agent 使用说明](docs/agent-usage.md)。
 
 本版包含充电查询，由本机 MCP 直接请求充电平台，按设备缓存，没有网站或自建服务器依赖。现有清单包含 15 台已核验设备，不代表全校完整清单；离线和旧数据会单独标记。[充电查询用法](docs/charging.md)
 
@@ -57,13 +57,13 @@ v0.7.7 补充了精简功能状态、正文分页和更明确的下一步提示�
 先装好 [uv](https://docs.astral.sh/uv/getting-started/installation/)，然后运行。这里以 Codex 为例：
 
 ```sh
-uv tool install --python 3.12 https://github.com/0error0warning/stu-mcp/releases/download/v0.7.7/stu_mcp-0.7.7-py3-none-any.whl
+uv tool install --python 3.12 https://github.com/0error0warning/stu-mcp/releases/download/v0.7.8/stu_mcp-0.7.8-py3-none-any.whl
 stu-mcp connect codex --apply
 ```
 
 第二行换成你用的客户端，比如 `claude-code` 或 `cursor`。其他客户端、豆包工作和 Skill 的接法放在[这里](docs/clients.md)。v0.6.1 起，运行 `stu-mcp update` 即可检查并升级；只想看有无新版用 `stu-mcp update --check`，也可以让 agent 调用对应更新工具。升级后，本机 stdio 重新加载 MCP；私有 HTTP 须重启宿主 MCP 服务。旧版首次升级见[安装说明](docs/install.md#从旧版升级)，支持范围见[更新说明](docs/updates.md)。
 
-使用 DeepSeek Harness（DSH）时，可另装 [STU MCP 插件](https://github.com/0error0warning/stu-mcp/releases/download/v0.7.7/dsh-stu-mcp-0.1.0.tgz)，在左右侧栏查看账号状态、打开登录设置。校园查询照常在对话里完成，安装方法见 [DSH 说明](integrations/dsh/README.md)。
+使用 DeepSeek Harness（DSH）时，可另装 [STU MCP 插件](https://github.com/0error0warning/stu-mcp/releases/download/v0.7.8/dsh-stu-mcp-0.1.1.tgz)，在左右侧栏查看账号状态、打开登录设置。校园查询照常在对话里完成，安装方法见 [DSH 说明](integrations/dsh/README.md)。
 
 MCP 接入和技能安装分别处理。随包的[课表导出技能](docs/timetable.md)组织校历核对和文件转换。v0.7.1 加入教务本人理论课表读取，继续复用该技能和同一转换器；实验课、校历及作息另行核对。技能 ZIP 是可选资源包，生成后仍需按客户端支持的方式安装，不会自动让当前 agent 加载技能。
 
@@ -85,7 +85,7 @@ stu-mcp huyou search 选课
 
 ## 还在慢慢补
 
-当前版本为 **[v0.7.7 学生预览版](docs/releases/v0.7.7.md)**，发布状态以 GitHub 发行页为准。[发行说明](docs/releases/v0.7.7.md) · [最近更新](CHANGELOG.md)
+当前版本为 **[v0.7.8 学生预览版](docs/releases/v0.7.8.md)**，发布状态以 GitHub 发行页为准。[发行说明](docs/releases/v0.7.8.md) · [最近更新](CHANGELOG.md)
 
 正式 HTTP 适配器已实测教务、MySTU 的身份与课程、ELC/Campus 的部分业务、雨课堂课程活动，以及报修登录和完整预览。WebVPN 的密码、动态口令和资源目录通过；受保护 OA 正文及自然过期续登尚未通过本轮验收。发行 CI 包含跨平台测试和默认镜像离线检查，容器内学校业务、跨机接入、更多账号和真实新报修提交仍分别待验，详见[验证记录](docs/verification.md)。
 

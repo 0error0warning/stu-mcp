@@ -56,6 +56,7 @@ def test_notice_body_pages_do_not_lose_the_full_cache_and_do_not_refetch(app, mo
     first = app.notice(NOTICE["id"])
     assert first["item"]["body"] == body[:8000] and first["next_offset"] == 8000
     assert first["total_chars"] == len(body) and first["has_more"] is True
+    assert first["source_access"] == {"login_required": False, "user_network_checked": False}
     assert first["attachment_options"][0] == {"index": 0, "name": "材料.pdf"}
     next_call = first["next_call"]
     assert next_call["tool"] == "get_notice" and next_call["arguments"]["refresh"] is False
@@ -125,6 +126,7 @@ def test_unreadable_private_attachment_honors_logout_generation_before_sharing_m
     record = {**NOTICE, "id": "oa:notice:synthetic", "url": "https://oa-stu-edu-cn.webvpn.stu.edu.cn/newstemplateprotal.jsp?docid=SYNTHETIC",
               "attachments": [{"name": "合成私人附件", "url": "/file.docx"}]}
     app.store.save_batch("oa", [record], private=True)
+    assert "source_access" not in app.notice(record["id"])
 
     def access(*_):
         app.vault.logout("webvpn")
@@ -152,6 +154,7 @@ def test_attachment_not_fetched_empty_list_and_bad_index_have_distinct_next_step
 
 
 @pytest.mark.parametrize("content_type,data,status", [
+    ("text/html", '<title>请输入验证码下载附件</title><input id="codeValue">'.encode(), "interaction_required"),
     ("application/vnd.openxmlformats-officedocument.wordprocessingml.document", b"PK synthetic", "unsupported_attachment"),
     ("text/html", b'<title>Login</title><form><input type="password"></form>', "attachment_unreadable"),
     ("text/html", b'<title>503 Service Unavailable</title>', "attachment_unreadable"),
@@ -164,6 +167,11 @@ def test_unreadable_attachment_returns_the_article_link_without_fabricating_text
     assert result["ok"] is False and result["status"] == status
     assert result["source_url"] == URL and result["next_action"] == "show_source_link"
     assert result["content_ready"] is False and "text" not in result
+    assert result["handoff_required"] is True
+    assert result["user_message"] and result["user_message"] in result["message"]
+    assert result["user_message"] != result["message"]
+    assert result["source_access"] == {"login_required": False, "user_network_checked": False}
+    assert "next_call" not in result and result["retryable"] is False
 
 
 def test_pdf_without_extractable_text_is_not_a_successful_empty_attachment(app, monkeypatch):
@@ -220,3 +228,60 @@ async def test_machine_readable_source_backend_and_status_choices(host):
     assert set(tools["get_courses"].input_schema["properties"]["source"]["enum"]) == {"all", "mystu", "yuketang"}
     assert set(tools["set_task_status"].input_schema["properties"]["status"]["enum"]) == {"todo", "done", "ignored"}
     assert set(tools["get_wechat_article"].input_schema["properties"]["backend"]["enum"]) == {"http", "browser"}
+
+
+@pytest.mark.asyncio
+async def test_notice_parameter_bounds_are_visible_before_the_agent_calls(host):
+    tools = {tool.name: tool for tool in await build_server(host=host).list_tools()}
+    bounds = {"search_notices": {"limit": (1, 100), "offset": (0, 10000)},
+              "refresh_source": {"limit": (1, 100)},
+              "get_notice": {"offset": (0, 60000), "max_chars": (1, 20000)},
+              "read_attachment": {"index": (0, None)}}
+    for name, fields in bounds.items():
+        for field, (minimum, maximum) in fields.items():
+            schema = tools[name].input_schema["properties"][field]
+            assert schema["type"] == "integer" and schema["minimum"] == minimum
+            assert schema.get("maximum") == maximum
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("name,arguments,status", [
+    ("search_notices", {"limit": 101}, "invalid_limit"),
+    ("refresh_source", {"source": "public", "limit": 101}, "invalid_limit"),
+    ("search_notices", {"offset": 10001}, "invalid_limit"),
+    ("get_notice", {"item_id": NOTICE["id"], "max_chars": 20001}, "invalid_limit"),
+    ("read_attachment", {"item_id": NOTICE["id"], "index": -1}, "invalid_attachment_index"),
+])
+async def test_advertised_bounds_keep_existing_structured_error_recovery(host, monkeypatch, name, arguments, status):
+    monkeypatch.setattr(collectors, "public", lambda *_: pytest.fail("invalid pagination must not start collection"))
+    result = structured(await build_server(host=host).call_tool(name, arguments))
+    assert result["ok"] is False and result["status"] == status
+    assert result["next_action"] in {"adjust_pagination", "choose_attachment"}
+
+
+@pytest.mark.asyncio
+async def test_native_notice_query_accepts_100_and_continues_without_losing_items(host):
+    host.app.store.save_batch("public", [{**NOTICE, "id": f"public:notice:{index}"} for index in range(105)])
+    server = build_server(host=host)
+    default = structured(await server.call_tool("search_notices", {"source": "public"}))
+    assert len(default["items"]) == 20
+    first = structured(await server.call_tool("search_notices", {"source": "public", "limit": 100}))
+    assert first["ok"] and len(first["items"]) == 100 and first["has_more"]
+    assert first["next_offset"] == 100
+    second = structured(await server.call_tool("search_notices", {
+        "source": "public", "limit": 100, "offset": first["next_offset"]}))
+    assert len(second["items"]) == 5 and not second["has_more"] and second["next_offset"] is None
+    assert len({item["id"] for item in [*first["items"], *second["items"]]}) == 105
+
+
+@pytest.mark.asyncio
+async def test_native_refresh_passes_the_100_item_limit_to_the_source(host, monkeypatch):
+    limits = []
+
+    def collect(limit):
+        limits.append(limit)
+        return collectors.Collection([NOTICE], limited=True, coverage={"per_listing": limit})
+
+    monkeypatch.setattr(collectors, "public", collect)
+    result = structured(await build_server(host=host).call_tool("refresh_source", {"source": "public", "limit": 100}))
+    assert result["ok"] and result["coverage"]["per_listing"] == 100 and limits == [100]

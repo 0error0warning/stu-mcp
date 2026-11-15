@@ -115,7 +115,7 @@ flowchart LR
 ## 可选原生薄插件
 
 源码与本地安装说明见 [integrations/dsh](../integrations/dsh/README.md)。包名 `dsh-stu-mcp`，
-本轮版本 `0.1.0`，兼容范围暂锁定已实测的 DSH `0.2.1-rc.3`。
+当前版本 `0.1.1`，明确兼容已实测的 DSH `0.2.1-rc.3` 与 `0.2.2-rc.3`，随 v0.7.8 分发。
 
 - 左侧 STU MCP 面板、右侧 STU MCP 标签、插件详情共用同一个组件。
 - 首页简要说明公开查询和四项常用账号；每行只显示用途与状态。WebVPN、外卖及维护工具默认折叠，版本、工具数量和连接说明收进“连接信息”。账号状态继续来自共同能力目录。
@@ -126,3 +126,4 @@ flowchart LR
 - v0.7.4 通过 GitHub Release 分发插件安装包，尚未上架 npm 或 DSH 公共插件目录；早期本机安装验收保留原时点说明。
 
 具体检查与边界见[插件侧栏验收](verification/2026-10-28-dsh-plugin.md)。
+2026-11-15 的0.2.2桥接、侧栏、本机安装及模型调用见[本机验证](verification/2026-11-15-dsh-local.md)；思考日志和附件交接复测见[后续研究](verification/2026-11-15-dsh-thinking-study.md)。

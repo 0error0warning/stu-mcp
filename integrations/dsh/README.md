@@ -1,23 +1,28 @@
 # STU MCP for DeepSeek Harness
 
-Optional thin UI bundle, verified against DSH **0.2.1-rc.3**. It adds a left
+The current bundle **0.1.1** supports DSH **0.2.1-rc.3** and **0.2.2-rc.3**. It adds a left
 sidebar entry, a right sidebar tab, and a bundle configuration view. No build
 step, extra React copy, school adapter, credential form or MCP process is added.
 
 First connect the common STU MCP service with `stu-mcp connect dsh --apply`.
-Download `dsh-stu-mcp-0.1.0.tgz` from the
-[v0.7.4 release](https://github.com/0error0warning/stu-mcp/releases/tag/v0.7.4).
+Download `dsh-stu-mcp-0.1.1.tgz` from the
+[v0.7.8 release](https://github.com/0error0warning/stu-mcp/releases/tag/v0.7.8).
+Developers can build the same package with `npm pack --ignore-scripts --offline` in this directory.
 Then use the CLI belonging to the same DSH desktop installation, passing the
 absolute path to the downloaded file:
 
 ```powershell
-& '<DSH installation>/resources/runtime/cli/bin/dsh.cmd' plugin --profile desktop add '<download directory>/dsh-stu-mcp-0.1.0.tgz'
+& '<DSH installation>/resources/runtime/cli/bin/dsh.cmd' plugin --profile desktop add '<package directory>/dsh-stu-mcp-0.1.1.tgz' --ignore-scripts
 ```
 
 Restart DSH. Open **STU MCP** in the left sidebar, or choose **STU MCP** from
 the right sidebar's new-tab guide. The installed package is `dsh-stu-mcp`.
 It is distributed as a GitHub release asset; it is not listed in the DSH marketplace.
-Developers may instead pass an absolute checkout path ending in `integrations/dsh`.
+For local development, prefer a packed archive kept outside the checkout. In the
+2026-11-15 Windows migration, removing the previous directory-linked package also
+cleared its source target; the pre-install archive restored all five files.
+Back up any existing linked source before replacing it, and verify that the final
+module resolves inside the DSH profile. See the [migration record](../../docs/verification/2026-11-15-dsh-local.md).
 
 The panel starts with a short public-query summary, four common account rows,
 and **登录与设置** / **刷新** buttons. WebVPN, takeout and utility features are
@@ -42,5 +47,5 @@ live school availability. HTTP-hosted MCP setup remains on the MCP host.
 
 `client.js` is the complete plain-JavaScript browser artifact. The host's React,
 Slots and lifecycle APIs are reused; client unload removes entries and aborts calls.
-The exact engine constraint is intentional: widen only after testing another
+The two-version engine constraint is intentional: widen only after testing another
 DSH release. Standard MCP clients do not depend on this bundle.

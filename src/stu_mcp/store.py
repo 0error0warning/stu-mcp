@@ -134,8 +134,8 @@ class Store:
 
     def list(self, *, sources: tuple[str, ...], kind: str | None = None, limit: int = 50,
              query: str = "", offset: int = 0, _all_items: bool = False) -> dict:
-        if type(limit) is not int or not 1 <= limit <= 50 or type(offset) is not int or not 0 <= offset <= 10000:
-            raise AppError("invalid_limit", "每页 1–50 条，偏移量最大 10000。")
+        if type(limit) is not int or not 1 <= limit <= 100 or type(offset) is not int or not 0 <= offset <= 10000:
+            raise AppError("invalid_limit", "每页 1–100 条，偏移量最大 10000。")
         clauses, params = ["source IN (" + ",".join("?" for _ in sources) + ")"], list(sources)
         if kind:
             clauses.append("kind=?")
