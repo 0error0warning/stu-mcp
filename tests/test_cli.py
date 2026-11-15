@@ -24,7 +24,7 @@ def test_cli_skill_reads_the_same_records_and_updates_only_local_status(app, mon
     assert code == 0
     assert result["item"]["body"] == "合成的通知正文"
     code, result = invoke(["attachment", "notice-one", "--index", "0"], monkeypatch, app, capsys)
-    assert code == 1 and result["status"] == "attachment_not_cached"
+    assert code == 1 and result["status"] == "no_attachments"
     code, result = invoke(["academic-summary"], monkeypatch, app, capsys)
     assert code == 1 and result["status"] == "needs_login"
     code, result = invoke(["profile", "--major", "合成专业"], monkeypatch, app, capsys)

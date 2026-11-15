@@ -89,7 +89,8 @@ async def test_medical_login_failure_is_actionable_through_cli_and_mcp(app, monk
     host = HostRuntime(app)
     try:
         result = await build_server(host=host).call_tool("get_medical_timetable", {})
-        assert result.model_dump(by_alias=True)["structuredContent"] == expected
+        assert result.model_dump(by_alias=True)["structuredContent"] == {
+            **expected, "host_command": "stu-mcp login med_jw", "credential_input": "user_on_mcp_host"}
     finally:
         host.close()
 

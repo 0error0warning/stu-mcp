@@ -134,7 +134,7 @@ class Store:
 
     def list(self, *, sources: tuple[str, ...], kind: str | None = None, limit: int = 50,
              query: str = "", offset: int = 0, _all_items: bool = False) -> dict:
-        if not 1 <= limit <= 50 or not 0 <= offset <= 10000:
+        if type(limit) is not int or not 1 <= limit <= 50 or type(offset) is not int or not 0 <= offset <= 10000:
             raise AppError("invalid_limit", "每页 1–50 条，偏移量最大 10000。")
         clauses, params = ["source IN (" + ",".join("?" for _ in sources) + ")"], list(sources)
         if kind:
@@ -188,12 +188,14 @@ class Store:
             items.append(item)
         return {"ok": True, "items": items if _all_items else items[offset:offset + limit], "total_count": len(items),
                 "offset": offset, "has_more": len(items) > offset + limit, "cached": True,
+                "next_offset": offset + limit if len(items) > offset + limit else None,
                 "unavailable": list({(r["source"], r["status"]): r for r in unavailable}.values()),
                 "unverified_count": unverified_count,
                 "scopes": [{"source": source, "semester": scope["semester"],
                             "course_count": len(scope["course_ids"]), "collected_at": scope["collected_at"]}
                            for source, scope in scopes.items()],
-                "scan_capped": len(rows) == 5000, "freshness": self.freshness()}
+                "scan_capped": len(rows) == 5000, "total_count_is_lower_bound": len(rows) == 5000,
+                "freshness": self.freshness()}
 
     def get(self, item_id: str) -> dict:
         with self.connect() as c:

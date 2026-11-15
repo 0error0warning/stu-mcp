@@ -1,16 +1,18 @@
 # 文档目录
 
-发行安装说明对应 **v0.7.6 学生预览版**，新增医学院当前学期课表试验能力，沿用共用认证、个人服务器接入与按需更新。安装见[安装说明](install.md)，DSH 界面见[插件安装](../integrations/dsh/README.md)，单命令升级见[更新说明](updates.md)；版本功能和真实验收范围分别记录在发行说明与验证索引中。
+发行安装说明对应 **v0.7.7 学生预览版**，新增校团委公开解析与 Agent 调用改进，保留医学院课表试验能力，沿用共用认证、个人服务器接入与按需更新。安装见[安装说明](install.md)，DSH 界面见[插件安装](../integrations/dsh/README.md)，单命令升级见[更新说明](updates.md)；版本功能和真实验收范围分别记录在发行说明与验证索引中。
 
 v0.7.1 提供统一账号 `login school`、配置分组能力目录和私密网页 HTTP 认证。本人可在自己的浏览器或真实终端完成交互，两者共用认证核心，MCP 不接收认证输入；用法见[配置与服务总表](campus-services.md)，检查范围见[本轮记录](verification/2026-10-23-private-setup.md)。
 
 | 用途 | 文档 |
 | --- | --- |
 | 安装、升级、登录 | [安装说明](install.md)、[更新说明](updates.md)、[客户端接入](clients.md) |
+| Agent 如何处理缓存、正文分页、失败及下一步 | [调用与结果约定](agent-usage.md) |
 | DeepSeek Harness（DSH）接入与跨 agent 兼容 | [已确定的低维护成本方案](deepseek-harness.md) |
 | 个人服务器、私有 HTTP 与无桌面登录 | [服务器说明](server.md)、[容器模板](server-container.md) |
 | 狐友公开讨论 | [狐友查询](huyou.md) |
-| 微信公众号公开文章（源码新增） | [免登录文章读取与失败状态](wechat-articles.md) |
+| 校团委通知、竞赛与规章制度 | [公开栏目与附件读取](xtw.md) |
+| 微信公众号公开文章 | [免登录文章读取与失败状态](wechat-articles.md) |
 | 充电设备状态 | [充电查询](charging.md)、[平台接口证据](charging-platform.md) |
 | 外卖目录、配送批次与选餐（实验） | [外卖查询](takeout.md) |
 | 对分易网页、监听与 MCP | [对分易后台](checkin.md) |

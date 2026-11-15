@@ -37,8 +37,10 @@ def read_article(url: str, backend: str = "http", offset: int = 0, max_chars: in
     except AppError as exc:
         result.update(exc.result())
         result["next_action"] = {
-            "captcha_required": "open_source_page", "article_unavailable": "check_source_url",
-            "insufficient_content": "open_source_page", "browser_unavailable": "install_optional_browser",
+            "captcha_required": "show_source_link", "article_unavailable": "show_source_link",
+            "insufficient_content": "show_source_link", "browser_unavailable": "install_optional_browser",
         }.get(exc.code, result["next_action"])
+        if result["next_action"] == "show_source_link":
+            result["message"] += " 请把原文链接发给用户自行查看。"
     result["checked_at"] = datetime.now(UTC).isoformat()
     return result

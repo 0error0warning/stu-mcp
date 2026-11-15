@@ -44,7 +44,11 @@ def factory(pages, calls):
 
 
 def public_pages():
-    return {**{url: f'<li><a href="/info/1001/{index}.htm">合成通知{index}</a>2026-10-20</li>'
+    xtw_row = ('<div class="text-list"><ul><li><a href="/info/1048/{index}.htm">'
+               '<div class="text-ldata"><p>10/20</p><span>2026</span></div>'
+               '<div class="text-linfo"><h3>合成校团委通知{index}</h3></div></a></li></ul></div>')
+    return {**{url: xtw_row.format(index=index) if "xtw.stu.edu.cn" in url else
+               f'<li><a href="/info/1001/{index}.htm">合成通知{index}</a>2026-10-20</li>'
                for index, (_, url) in enumerate(PUBLIC_LISTINGS)},
             QUICK_LINKS: '<div class="n_kuaisu"><div class="box"><a href="https://r.stu.edu.cn/">综合报修</a></div></div>'}
 
@@ -54,12 +58,13 @@ def test_public_partial_collection_keeps_other_columns_when_one_page_changes():
     pages[PUBLIC_LISTINGS[1][1]] = "<h1>新版未知页面</h1>"
     pages[QUICK_LINKS] = "<main>新版未知目录</main>"
     result = service.public(5, http_factory=factory(pages, calls))
-    assert result.status == "partial" and len(result.items) == 3
+    assert result.status == "partial" and len(result.items) == len(PUBLIC_LISTINGS) - 1
     assert [error["part"] for error in result.errors] == [PUBLIC_LISTINGS[1][0], "校园服务入口"]
     assert all(error["status"] == "schema_changed" for error in result.errors)
-    assert result.coverage == {"scope": "recent_listing_pages", "per_listing": 5}
+    assert result.coverage["scope"] == "recent_listing_pages" and result.coverage["per_listing"] == 5
+    assert len(result.coverage["listings"]) == len(PUBLIC_LISTINGS)
     assert all(source == "public" for source, _ in calls)
-    assert len(calls) == 6
+    assert len(calls) == len(PUBLIC_LISTINGS) + 2
 
 
 def test_public_all_pages_failed_is_not_a_successful_empty_collection():

@@ -39,11 +39,36 @@ def test_committed_contract_has_all_53_unique_public_interfaces():
 
 
 def test_medical_addition_preserves_all_52_existing_complete_tool_definitions():
-    previous = sorted((tool for tool in contract() if tool["name"] != "get_medical_timetable"),
+    historical = json.loads((Path(__file__).parent / "fixtures/mcp-tool-contract-before-agent-usability.json").read_text(encoding="utf-8"))
+    previous = sorted((tool for tool in historical["tools"] if tool["name"] != "get_medical_timetable"),
                       key=lambda tool: tool["name"])
     encoded = json.dumps(previous, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()
     assert len(previous) == 52
     assert hashlib.sha256(encoded).hexdigest() == "1fc03645dab1d1a00b6f2c904e91e9881acdfb179e301da9800db78f2e20b69a"
+
+
+def test_usability_contract_preserves_existing_calls_outputs_and_annotations():
+    historical = json.loads((Path(__file__).parent / "fixtures/mcp-tool-contract-before-agent-usability.json").read_text(encoding="utf-8"))
+    before = {tool["name"]: tool for tool in historical["tools"]}
+    after = {tool["name"]: tool for tool in contract()}
+    assert before.keys() == after.keys()
+    additions = {"get_capabilities": {"source", "compact"}, "get_notice": {"offset", "max_chars"},
+                 "set_student_profile": {"clear_fields"}}
+    enums = {"audit_campus_network": "location_hint", "diagnose_campus_network": "location_hint",
+             "get_courses": "source", "get_tasks": "source", "get_course_resources": "source",
+             "get_wechat_article": "backend", "refresh_source": "source", "search_notices": "source",
+             "set_task_status": "status"}
+    for name, original in before.items():
+        current = after[name]
+        assert current["outputSchema"] == original["outputSchema"]
+        assert current["annotations"] == original["annotations"]
+        schema = deepcopy(current["inputSchema"])
+        for field in additions.get(name, set()):
+            assert "default" in schema["properties"].pop(field)
+            assert field not in schema.get("required", [])
+        if name in enums:
+            assert schema["properties"][enums[name]].pop("enum")
+        assert schema == original["inputSchema"], name
 
 
 def test_description_changes_are_reported_without_breaking_tool_interfaces():

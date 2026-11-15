@@ -56,7 +56,8 @@ async def test_timetable_entry_points_preserve_actionable_failures(app, monkeypa
     host = HostRuntime(app)
     try:
         result = await build_server(host=host).call_tool("get_academic_timetable", {})
-        assert result.model_dump(by_alias=True)["structuredContent"] == expected
+        assert result.model_dump(by_alias=True)["structuredContent"] == {
+            **expected, "host_command": "stu-mcp login school --services jw", "credential_input": "user_on_mcp_host"}
     finally:
         host.close()
 

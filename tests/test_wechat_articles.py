@@ -194,7 +194,8 @@ def test_pagination_and_failure_never_auto_launch_browser(monkeypatch):
     monkeypatch.setattr(service, "fetch_http", lambda url: ("<p>环境异常</p>", url))
     blocked = service.read_article(URL)
     assert not blocked["ok"] and not blocked["content_ready"] and "text" not in blocked
-    assert blocked["status"] == "captcha_required" and blocked["next_action"] == "open_source_page"
+    assert blocked["status"] == "captcha_required" and blocked["next_action"] == "show_source_link"
+    assert blocked["source_url"] == URL
 
 
 @pytest.mark.parametrize("kwargs,code", [
@@ -230,7 +231,7 @@ async def test_tool_contract_and_catalog_are_additive_and_anonymous(app, monkeyp
 
 
 def test_all_51_existing_tool_definitions_stay_identical():
-    contract = json.loads((Path(__file__).parents[1] / "scripts/mcp-tool-contract.json").read_text(encoding="utf-8"))
+    contract = json.loads((Path(__file__).parent / "fixtures/mcp-tool-contract-before-agent-usability.json").read_text(encoding="utf-8"))
     previous = sorted((tool for tool in contract["tools"] if tool["name"] not in {"get_wechat_article", "get_medical_timetable"}),
                       key=lambda tool: tool["name"])
     encoded = json.dumps(previous, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()

@@ -3,10 +3,18 @@ from __future__ import annotations
 
 from urllib.parse import urlparse
 
-from ...collection import Article
+from ...collection import Article, Collection
 from ...network import CampusHTTP, checked_url
+from ...runtime import AppError
 from ...webvpn import protected_access
-from .parser import parse_links, parse_oa, parse_oa_article, parse_public, parse_public_article
+from .parser import (
+    parse_links,
+    parse_oa,
+    parse_oa_article,
+    parse_public,
+    parse_public_article,
+    public_next_page,
+)
 from .schema import OA_DIRECT, OA_LIST_PATH, OA_SECURE_PROXY, QUICK_LINKS
 
 
@@ -19,10 +27,20 @@ class NoticeAdapter:
         return self.http_factory("public")
 
     def public_listing(self, http, url: str, category: str, limit: int) -> list[dict]:
-        records = parse_public(http.text(url), url, category, limit)
+        return self.public_page(http, url, category, limit).items
+
+    def public_page(self, http, url: str, category: str, limit: int, *, root: str | None = None) -> Collection:
+        html = http.text(url)
+        records = parse_public(html, url, category, limit)
         for record in records:
             checked_url("public", record["url"])
-        return records
+        page = Collection(records, coverage={"next_url": None})
+        if root:
+            try:
+                page.coverage["next_url"] = public_next_page(html, url, root)
+            except AppError as exc:
+                page.fail(category, exc, stage="pagination")
+        return page
 
     def service_links(self, http) -> list[dict]:
         return parse_links(http.text(QUICK_LINKS), QUICK_LINKS)

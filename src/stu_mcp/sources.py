@@ -20,7 +20,7 @@ class Source:
 
 SOURCES = {
     "public": Source("public", "学校公开网站", ("通知", "活动", "校园服务入口"),
-                     hosts=("www.stu.edu.cn", "xsc.stu.edu.cn")),
+                     hosts=("www.stu.edu.cn", "xsc.stu.edu.cn", "xtw.stu.edu.cn")),
     "oa": Source("oa", "OA 通知", ("通知列表", "正文", "附件文字"),
                  "https://webvpn.stu.edu.cn/portal/#!/service",
                  ("oa.stu.edu.cn", "webvpn.stu.edu.cn", "oa-stu-edu-cn.webvpn.stu.edu.cn"), "webvpn"),
@@ -46,6 +46,14 @@ PUBLIC_LISTINGS = (
     ("综合新闻", "https://www.stu.edu.cn/xwzx/zhxw.htm"),
     ("活动预告", "https://www.stu.edu.cn/xwzx/hdyg.htm"),
     ("学生通知", "https://xsc.stu.edu.cn/NoticeList.aspx?NewsTypeID=3"),
+    ("校团委通知公告", "https://xtw.stu.edu.cn/index/tzgg.htm"),
+    ("校团委团学动态", "https://xtw.stu.edu.cn/index/txdt/xwzx.htm"),
+    ("校团委挑战杯", "https://xtw.stu.edu.cn/index17X/cxcz/tzb.htm"),
+    ("校团委创新大赛", "https://xtw.stu.edu.cn/index17X/cxcz/zggjdxscxds.htm"),
+    ("校团委攀登计划", "https://xtw.stu.edu.cn/index17X/cxcz/pdjh.htm"),
+    ("校团委规章制度", "https://xtw.stu.edu.cn/bszy/gzzd.htm"),
+    ("校团委办事流程", "https://xtw.stu.edu.cn/bszy/bslc.htm"),
+    ("校团委资料下载", "https://xtw.stu.edu.cn/bszy/zlxz.htm"),
 )
 
 OA_DIRECT = "http://oa.stu.edu.cn"

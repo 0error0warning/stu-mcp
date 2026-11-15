@@ -115,6 +115,7 @@ def test_config_rejects_other_origins_credential_headers_and_proxy_credentials(t
 def test_catalog_pagination_cache_and_allowlisted_output(takeout, takeout_config):
     result = takeout.shops("奶茶", limit=1)
     assert result["total_count"] == 2 and result["has_more"]
+    assert result["next_offset"] == 1
     assert result["items"][0]["shop_id"] == "10"
     assert result["categories"][0]["category_id"] == "20"
     assert not result["cached"] and result["ordering_supported"] is False

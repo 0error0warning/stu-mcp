@@ -230,10 +230,24 @@ def test_filter_intersection_known_empty_response_is_not_schema_failure(takeout)
     assert all_areas["items"][0]["delivery_area_ids"] == ["800", "801"]
     assert all_areas["filters"]["area_id"] == "0" and all_areas["filters"]["category_id"] == "2"
     assert all_areas["areas"][-1]["parent_area_id"] == "800"
-    with pytest.raises(AppError, match="本部/东校区"):
-        takeout.shops(meal_period="宵夜")
+    ambiguous = takeout.shops(meal_period="宵夜")
+    assert ambiguous["ok"] is False and ambiguous["next_action"] == "choose_meal_category"
+    assert [option["category_id"] for option in ambiguous["category_options"]] == ["3", "4"]
+    explicit = takeout.shops(meal_period="宵夜", category_id="3")
+    assert explicit["filters"]["category_id"] == "3"
     with pytest.raises(AppError, match="不同分类"):
         takeout.shops(meal_period="午餐", category_id="2")
+
+
+@pytest.mark.parametrize("meal,tool", [("午餐", "find_takeout_meal_shops"),
+                                     ("本部宵夜", "find_takeout_meal_shops"),
+                                     ("即点即送", "search_takeout_shops")])
+def test_missing_provider_meal_category_has_a_bounded_continuation_in_the_same_area(takeout, meal, tool):
+    result = takeout.shops(meal_period=meal, area_id="700")
+    assert result["ok"] is False and result["category_options"] == []
+    assert result["next_call"]["tool"] == tool
+    assert result["next_call"]["arguments"]["area_id"] == "700"
+    assert len(Catalog.calls) == 1
 
 
 @pytest.mark.parametrize("response", [{}, {"shopList": None}, {"shopList": {}},

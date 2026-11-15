@@ -9,11 +9,21 @@ from contextlib import nullcontext
 from urllib.parse import urljoin
 
 from . import __version__, collectors
+from .agent_guidance import query_guidance
 from .capability_catalog import build_capability_catalog
 from .charging import ChargingService
 from .clients import detected_clients
 from .connectivity import CAPABILITY as NETWORK_CAPABILITY
 from .credentials import backend_name
+from .features.notices.parser import validate_attachment_page
+from .features.notices.presentation import (
+    BODY_PAGE_CHARS,
+    detail_call,
+    notice_page,
+    notice_preview,
+    source_link_result,
+    validate_body_page,
+)
 from .features.repair import CAPABILITY as REPAIR_CAPABILITY
 from .features.takeout import TakeoutService
 from .huyou import (
@@ -82,8 +92,10 @@ class App:
             raise AppError("query_required", "充电查询请使用 get_charging_overview/get_charging_device 或 stu-mcp charging。", source)
         if source == "smartcard":
             raise AppError("query_required", "一卡通请使用 get_campus_card/get_campus_card_transactions 或 stu-mcp card。", source)
-        if source not in SOURCES or not 1 <= limit <= 50:
-            raise AppError("invalid_source", "请选择 public、oa、jw、mystu 或 yuketang；数量为 1–50。")
+        if source not in SOURCES:
+            raise AppError("invalid_source", "请选择 public、oa、jw、mystu 或 yuketang。")
+        if type(limit) is not int or not 1 <= limit <= 50:
+            raise AppError("invalid_limit", "每次刷新数量为 1–50 的整数。", source)
         if semester and not re.fullmatch(r"20\d{2}-20\d{2}-[123]", semester):
             raise AppError("invalid_semester", "学期格式为 2026-2027-1，支持 1/2/3 学期；留空时考试使用学校选定学期。")
         if not self._refresh_lock.acquire(blocking=False):
@@ -142,11 +154,11 @@ class App:
                                  _all_items=service_directory)
         if service_directory:
             result.update(service_results(result["items"], query, limit, offset))
-        dependencies = {"grade": {"jw"}, "exam": {"jw"}, "course": {"mystu", "yuketang"},
+        dependencies = {"notice": {"yuketang"}, "grade": {"jw"}, "exam": {"jw"}, "course": {"mystu", "yuketang"},
                         "task": {"mystu", "yuketang"}, "resource": {"mystu", "yuketang"}, "event": {"mystu"}}
         needed = dependencies.get(kind, set()).intersection(sources)
         result["auth"] = [{"source": name, **self.vault.status(SOURCES[name].session)} for name in sorted(needed)]
-        if not result["total_count"] and len(needed) == 1:
+        if not result["total_count"] and len(needed) == 1 and (kind != "notice" or source != "all"):
             auth = result["auth"][0]
             if auth["status"] != "session_saved":
                 raise AppError(auth["status"], "此来源还需要本地登录和刷新；其他功能可独立使用。", auth["source"])
@@ -159,8 +171,10 @@ class App:
         if kind == "post":
             result["items"] = [post_preview(i) for i in result["items"]]
             result["official"] = False
+        elif kind == "notice":
+            result["items"] = [notice_preview(item) for item in result["items"]]
         result["content_trust"] = "untrusted_source_data"
-        return result
+        return query_guidance(result, kind, sources)
 
     def charging_overview(self, location: str = "", limit: int = 4, offset: int = 0, refresh: bool = True) -> dict:
         return ChargingService(self.store).overview(location, limit, offset, refresh)
@@ -184,6 +198,7 @@ class App:
             return {**result, "source": "huyou",
                     "items": [post_preview(i, with_discussion) for i in items[offset:offset + limit]], "plan": plan,
                     "circle_id": circle_id, "total_count": len(items), "has_more": len(items) > offset + limit,
+                    "next_offset": offset + limit if len(items) > offset + limit else None,
                     "offset": offset, "official": False, "content_trust": "untrusted_source_data"}
         if not self._refresh_lock.acquire(blocking=False):
             raise AppError("refresh_running", "已有读取正在进行，请稍后重试。", "huyou")
@@ -261,11 +276,19 @@ class App:
         with HuyouClient() as http:
             return http.circles(query, page)
 
-    def notice(self, item_id: str, refresh: bool = False) -> dict:
+    def notice(self, item_id: str, refresh: bool = False, offset: int = 0,
+               max_chars: int = BODY_PAGE_CHARS) -> dict:
+        validate_body_page(offset, max_chars)
         record = self.store.get(item_id)
         if record["kind"] != "notice":
             raise AppError("invalid_notice", "请选择通知记录。")
         if refresh:
+            if record["source"] not in {"public", "oa"}:
+                result = AppError("unsupported_article", "此来源的通知随课程刷新，请使用对应来源的刷新工具。", record["source"]).result()
+                call = detail_call(record, refresh=True)
+                if call:
+                    result.update(next_action=call["tool"], next_call=call)
+                return result
             parsed = collectors.article(record, self.vault)
             record.update(parsed.item)
             private = record["source"] == "oa" and str(record.get("url", "")).startswith("https:")
@@ -274,13 +297,27 @@ class App:
                     raise AppError("session_changed", "WebVPN 登录状态已改变，请重新读取通知。", "oa")
                 self.store.save_batch(record["source"], [record], private=private)
                 record = self.store.get(item_id)
-        return {"ok": True, "item": record, "cached": not refresh, "content_trust": "untrusted_source_data"}
+        return notice_page(record, cached=not refresh, offset=offset, max_chars=max_chars)
 
     def attachment(self, item_id: str, index: int = 0) -> dict:
+        if type(index) is not int or index < 0:
+            raise AppError("invalid_attachment_index", "附件序号须为从 0 开始的整数。")
         record = self.store.get(item_id)
+        if record["kind"] != "notice":
+            raise AppError("invalid_notice", "请选择通知记录。")
+        if "attachments" not in record:
+            result = AppError("attachment_not_cached", "尚未读取此通知的附件列表。", record["source"]).result()
+            result.update(content_ready=False, content_trust="untrusted_source_data")
+            call = detail_call(record, refresh=True)
+            if call:
+                result.update(next_action=call["tool"], next_call=call)
+            return result
         attachments = record.get("attachments", [])
-        if not 0 <= index < len(attachments):
-            raise AppError("attachment_not_cached", "请先读取并刷新通知正文，再选择附件序号。")
+        if not attachments:
+            return {"ok": False, "status": "no_attachments", "content_ready": False, "next_action": "none",
+                    "message": "此通知的详情已读取，页面没有可识别的附件。", "item_id": item_id}
+        if index >= len(attachments):
+            raise AppError("invalid_attachment_index", f"此通知有 {len(attachments)} 个附件，请使用 0–{len(attachments) - 1} 的序号。")
         source = record["source"]
         if source not in {"public", "oa"}:
             raise AppError("unsupported_source", "此来源暂不支持附件文字提取。")
@@ -294,6 +331,19 @@ class App:
                 response = http.request(url)
         content_type = response.headers.get("content-type", "").lower()
         data = response.content
+
+        def unreadable(error: AppError) -> dict:
+            if accessed and accessed.session_version != self.vault.fingerprint("webvpn"):
+                raise AppError("session_changed", "WebVPN 登录状态已改变，请重新读取附件。", "oa")
+            return source_link_result(record, error, attachment=attachments[index])
+
+        if "html" in content_type or data.lstrip().lower().startswith((b"<!doctype html", b"<html")):
+            try:
+                validate_attachment_page(response.text, url, source)
+            except AppError as exc:
+                if exc.code not in {"interaction_required", "attachment_unreadable"}:
+                    raise
+                return unreadable(exc)
         if data.startswith(b"%PDF"):
             try:
                 # Loading the PDF engine is unnecessary for MCP startup and non-PDF queries.
@@ -301,22 +351,26 @@ class App:
 
                 reader = PdfReader(io.BytesIO(data))
                 if len(reader.pages) > 100:
-                    raise AppError("attachment_too_long", "此 PDF 超过 100 页，请在学校页面查看。")
-                text = "\n".join((p.extract_text() or "") for p in reader.pages)[:60000]
-            except AppError:
-                raise
+                    raise AppError("attachment_too_long", "此 PDF 超过 100 页，请打开通知正文查看附件。", source)
+                text = "\n".join((p.extract_text() or "") for p in reader.pages)
+                if not text.strip():
+                    raise AppError("attachment_unreadable", "此 PDF 没有可提取文字，请打开通知正文自行查看附件。", source)
+            except AppError as exc:
+                return unreadable(exc)
             except Exception:
-                raise AppError("attachment_unreadable", "PDF 无法提取文字；扫描件需另行 OCR。") from None
+                return unreadable(AppError("attachment_unreadable", "PDF 无法提取文字，请打开通知正文自行查看附件。", source))
         elif "html" in content_type:
-            text = text_body(response.text)
+            text = text_body(response.text, limit=60001)
         elif content_type.startswith("text/"):
-            text = response.text[:60000]
+            text = response.text
         else:
-            raise AppError("unsupported_attachment", "首版支持 PDF 和文本附件；其他格式请通过学校原链接查看。")
+            return unreadable(AppError("unsupported_attachment", "此附件格式暂不支持提取文字，请打开通知正文自行查看附件。", source))
+        if not text.strip():
+            return unreadable(AppError("attachment_unreadable", "附件没有可提取文字，请打开通知正文自行查看附件。", source))
         if accessed and accessed.session_version != self.vault.fingerprint("webvpn"):
             raise AppError("session_changed", "WebVPN 登录状态已改变，请重新读取附件。", "oa")
-        return {"ok": True, "name": attachments[index]["name"], "text": text,
-                "url": url, "content_trust": "untrusted_source_data", "truncated": len(text) >= 60000}
+        return {"ok": True, "status": "ok", "content_ready": True, "name": attachments[index]["name"], "text": text[:60000],
+                "url": url, "content_trust": "untrusted_source_data", "truncated": len(text) > 60000}
 
     def academic_timetable(self, semester: str = "") -> dict:
         from .features.jw.service import academic_timetable
@@ -361,6 +415,7 @@ class App:
             return {"value": round(sum(s * c for s, c in eligible) / credits, 4) if credits else None,
                     "included_count": len(eligible), "included_credits": credits}
         return {"ok": True, "cached": True, "semester": semester or "all", "course_count": len(items),
+                "status": "partial" if page["scan_capped"] or page["unverified_count"] else "ok", "source": "jw",
                 "weighted_score": weighted("score"), "weighted_gpa": weighted("gpa"),
                 "method": "按缓存中每条成绩的学分加权；非数值成绩排除，重修/补考逐条计入。不是学校官方绩点认定。",
                 "freshness": self.store.freshness(), "scan_capped": page["scan_capped"],

@@ -9,7 +9,7 @@ description: 通过本机 STU MCP 查询汕头大学校园信息，或填写桑�
 
 ## 本机运行
 
-导出包中的 `runtime.json` 只保存启动程序及参数，不含账密。读取它后，用 `command` 和 `args` 作为进程启动前缀，再追加下列命令参数。按参数数组启动，避免把路径或用户输入拼成 shell 代码。先执行 `--version` 和 `status` 验证权限。
+导出包中的 `runtime.json` 只保存启动程序及参数，不含账密。读取它后，用 `command` 和 `args` 作为进程启动前缀，再追加下列命令参数。按参数数组启动，避免把路径或用户输入拼成 shell 代码。先执行 `--version` 和 `status --compact` 验证权限。已知来源时加 `--source public` 等选项；原生 MCP 可用 `get_capabilities(source="public", compact=true)`，需要完整目录时再选非精简视图。
 
 如果当前环境不能访问该程序，应报告执行限制。已接入的私有 HTTP MCP 使用服务器上的网络、会话和文件，不能把宿主路径当作客户端可打开的文件；导出的 `runtime.json` 仍是本地程序入口，不自动建立远程连接。不要上传用户数据目录或凭据来规避这个限制。
 
@@ -20,6 +20,12 @@ description: 通过本机 STU MCP 查询汕头大学校园信息，或填写桑�
 ## 获取与读取
 
 CLI 返回 JSON，读取 `ok`、`status`、`coverage`、`limited`、`errors` 和缓存时间。先检查 `status`，按问题刷新一个来源，再查询；空缓存不能证明学校没有信息。
+
+通知搜索返回正文预览，`body_truncated=true` 表示仍有正文。`get_notice` 或 CLI `notice` 返回 `metadata_only` 时按 `next_call` 补正文；已有正文默认每页8000字符，沿 `next_offset` 续读，CLI 使用 `--offset` / `--max-chars`，续页不加 `--refresh`。附件名称与序号见 `attachment_options`。`attachment_not_cached` 表示尚未取附件列表；`no_attachments` 表示详情已读但未列附件，不重复刷新。
+
+读不到附件文字、遇学校验证码，或公众号返回需要原站查看的状态时，按 `next_action=show_source_link` 把 `source_url` 作为可点击的通知/文章原文链接发给用户自行查看。保留“正文已读、附件未读”的区别，不把下载网页或空文本当作附件内容，也不索要验证码或要求用户验证后回来续调。查询分页使用返回的 `next_offset`；空结果按 `empty_reason` 与 `next_calls` 判断缺缓存、未配置或范围不足。
+
+更新学生资料只传本次修改项，其他字段保留；原生 MCP 明确清空字段时使用 `clear_fields`。登录错误中的 `host_command` 是本人在 MCP 宿主执行的命令；远程实例按 `login_on_host_cli` 引导，不能把宿主回环链接当作用户设备可打开的页面。
 
 | 目标 | 命令参数 |
 | --- | --- |

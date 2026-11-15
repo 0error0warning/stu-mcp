@@ -102,6 +102,7 @@ class TakeoutService:
     @staticmethod
     def page(items: list, limit: int, offset: int) -> dict:
         return {"items": items[offset:offset + limit], "total_count": len(items), "offset": offset,
+                "next_offset": offset + limit if offset + limit < len(items) else None,
                 "has_more": offset + limit < len(items), "pagination": "local_slice_of_complete_response"}
 
     @staticmethod
@@ -123,14 +124,32 @@ class TakeoutService:
         effective_area = area_id or self._local.scope[1].get("default_area", "")
         area_catalog_count = None
         if targets:
-            catalog, _ = self._read("shops", ("", "-1", effective_area), refresh)
+            catalog, catalog_stamp = self._read("shops", ("", "-1", effective_area), refresh)
             area_catalog_count = len(shop_rows(catalog))
             groups = catalog.get("categoryList")
             if not isinstance(groups, list):
                 raise AppError("schema_changed", "外卖商家分类结构改变。", SOURCE)
             matches = [category(row) for row in groups if isinstance(row, dict) and row.get("categoryName") in targets]
+            if len(matches) > 1 and category_id != "-1":
+                matches = [match for match in matches if match["category_id"] == category_id]
+                if not matches:
+                    raise AppError("invalid_takeout_meal", "meal_period与category_id指向不同分类。", SOURCE)
             if len(matches) != 1:
-                raise AppError("takeout_meal_needs_category", "请明确本部/东校区餐段，或使用当前返回的分类ID。", SOURCE)
+                result = {**self.envelope(catalog_stamp), **AppError("takeout_meal_needs_category",
+                          "当前餐段对应多个分类或没有匹配分类，请按返回选项和实际区域继续查询。", SOURCE).result(),
+                          "category_options": matches, "meal_period": meal_period,
+                          "filters": {"area_id": effective_area, "area_selection": "explicit" if area_id else "host_default"},
+                          "areas": [{"area_id": "0", "name": "全部区域", "parent_area_id": ""}, *areas(catalog.get("area", []))],
+                          "next_action": "choose_meal_category" if matches else "choose_area"}
+                if not matches and effective_area:
+                    actual_meal = "宵夜" if "宵夜" in targets[0] else targets[0]
+                    if actual_meal == "即点即送":
+                        result.update(next_action="inspect_area_catalog", next_call={"tool": "search_takeout_shops",
+                                      "arguments": {"area_id": effective_area, "meal_period": "", "query": query}})
+                    else:
+                        result.update(next_action="find_takeout_meal_shops", next_call={"tool": "find_takeout_meal_shops",
+                                      "arguments": {"area_id": effective_area, "meal_period": slot_meal(actual_meal), "query": query}})
+                return result
             if category_id not in ("-1", matches[0]["category_id"]):
                 raise AppError("invalid_takeout_meal", "meal_period与category_id指向不同分类。", SOURCE)
             category_id = matches[0]["category_id"]

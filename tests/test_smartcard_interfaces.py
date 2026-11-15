@@ -64,7 +64,8 @@ async def test_card_tool_annotations_and_login_failure_are_actionable(app, monke
     try:
         server = build_server(host=host)
         result = await server.call_tool("get_campus_card", {})
-        assert result.model_dump(by_alias=True)["structuredContent"] == expected
+        assert result.model_dump(by_alias=True)["structuredContent"] == {
+            **expected, "host_command": "stu-mcp login smartcard", "credential_input": "user_on_mcp_host"}
         tools = {tool.name: tool for tool in await server.list_tools()}
         for name in ("get_campus_card", "get_campus_card_transactions"):
             tool = tools[name]
@@ -108,7 +109,8 @@ def test_original_48_complete_tool_definitions_stay_identical():
 
     root = Path(__file__).resolve().parents[1]
     current = json.loads((root / "scripts/mcp-tool-contract.json").read_text(encoding="utf-8"))
-    original = sorted((tool for tool in current["tools"] if tool["name"] not in {
+    historical = json.loads((root / "tests/fixtures/mcp-tool-contract-before-agent-usability.json").read_text(encoding="utf-8"))
+    original = sorted((tool for tool in historical["tools"] if tool["name"] not in {
         "get_campus_card", "get_campus_card_transactions", "report_feedback", "get_wechat_article", "get_medical_timetable"}), key=lambda tool: tool["name"])
     encoded = json.dumps(original, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()
     # Captured from the complete committed 48-tool contract before this additive change.

@@ -6,6 +6,7 @@ import threading
 from contextlib import contextmanager
 from typing import Any
 
+from .agent_guidance import LOGIN_COMMANDS, capability_view
 from .app import App
 from .capability_catalog import build_capability_catalog
 from .checkin import CheckinClient
@@ -91,9 +92,24 @@ class HostRuntime:
             return "请重启宿主上的 MCP 服务；仅重新连接 HTTP 客户端不会加载新版。"
         return "请在客户端重新加载 MCP，以新进程使用已安装版本。"
 
-    def capabilities(self) -> dict[str, Any]:
+    def capabilities(self, source: str = "all", compact: bool = False) -> dict[str, Any]:
+        return capability_view(self._capabilities(), source, compact)
+
+    def tool_error(self, error: AppError) -> dict[str, Any]:
+        result = error.result()
+        if error.code == "update_restart_required":
+            result["next_action"] = "reload_mcp" if self.transport == "stdio" else "restart_host_service"
+        if error.code in {"needs_login", "login_expired", "session_invalid", "repair_login_required"}:
+            command = LOGIN_COMMANDS.get("webvpn" if error.source == "oa" else error.source)
+            if command:
+                result.update(next_action="open_setup" if self.transport == "stdio" else "login_on_host_cli",
+                              host_command=command, credential_input="user_on_mcp_host")
+        return result
+
+    def _capabilities(self) -> dict[str, Any]:
         if self.updates.restart_required:
             return {"ok": True, "version": self.updates.capabilities()["running_version"],
+                    "next_action": "reload_mcp" if self.transport == "stdio" else "restart_host_service",
                     "updates": self.updates.capabilities(), "message": self._restart_message()}
         try:
             mode = require_interaction()
@@ -151,6 +167,7 @@ class HostRuntime:
     def open_setup(self) -> dict[str, Any]:
         if self.transport != "stdio":
             return {"ok": False, "status": "host_setup_required", "execution": execution_context(),
+                    "next_action": "login_on_host_cli", "host_command": "stu-mcp setup --no-browser",
                     "message": "请本人在 MCP 宿主选择 CLI 配置，或运行 stu-mcp setup --no-browser 查看私密设置链接。"
                     "网页可直接输入账号、扫码或完成回调，CLI 也提供完整认证；两者共用 HTTP 核心和独立业务会话。"
                     "设置页仅监听宿主回环，不需要服务端浏览器；认证信息和私密链接不通过 MCP 返回。"}
@@ -168,6 +185,8 @@ class HostRuntime:
             else:
                 opened = open_local_page(self._setup.url)
         return {"ok": opened, "status": "settings_opened" if opened else "local_browser_required",
+                "next_action": "complete_setup_in_browser" if opened else "login_on_host_cli",
+                **({"host_command": "stu-mcp setup --no-browser"} if not opened else {}),
                 "message": "已在你的浏览器打开设置页，可直接输入账号、扫码或完成授权，也可选择 CLI。"
                 "配置后返回 Agent 即可使用，各业务会话独立保存。" if opened else
                 "设置页已启动，但未能自动打开浏览器。请本人运行 stu-mcp setup --no-browser 查看私密链接，"

@@ -29,7 +29,7 @@
 
 | 功能分类 | 来源与系统 | 当前接入范围 | 登录方式 |
 | --- | --- | --- | --- |
-| 通知与活动 | 学校官网、学生处、OA 公告 | 新闻、通知、活动、正文、附件列表及 PDF / 文本附件内容 | OA 原站可达且内容公开时免登录；WebVPN 访问通道按需，见[读取范围与条件](docs/verification/2026-10-22-oa-entry-boundaries.md) |
+| 通知与活动 | 学校官网、学生处、校团委、OA 公告 | 新闻、通知、活动、正文、附件列表及 PDF / 文本附件内容；[校团委范围](docs/xtw.md) | OA 原站可达且内容公开时免登录；WebVPN 访问通道按需，见[读取范围与条件](docs/verification/2026-10-22-oa-entry-boundaries.md) |
 | 课程与教务 | 教务、MySTU / Moodle、雨课堂、对分易 | 成绩、考试、本人理论课表、课程、作业、资料、个人日程；对分易课程监听、启停及签到结果，新课堂提交仍待实测 | 教务与 MySTU 使用学校 SSO；雨课堂手机确认二维码；对分易原微信回调，各自保存会话 |
 | 医学院课表（试验） | 医学院教务 | 本人当前学期课表；适配器通过合成测试，待真实账号验收，见[范围说明](docs/medical-jw.md) | 教务本地口令及本人填写图片验证码，独立保存会话 |
 | 校园办事 | 宿舍报修、综合报修、一网通办等 | 桑浦山宿舍 `repair` 支持填表、完整预览、本人确认后单次提交及回执核对；综合报修 `r`、一网通办目前提供入口导航 | 宿舍报修使用学校 SSO，单独保存会话；其他入口按原站要求 |
@@ -46,6 +46,8 @@
 
 查到的信息会带来源和缓存时间。想看最新消息时，让 agent 先刷新；没查到也可能只是这次没取全。狐友里是同学们的讨论，学校的正式要求还是要看 OA 或学校原文。[狐友怎么查](docs/huyou.md)
 
+v0.7.7 补充了精简功能状态、正文分页和更明确的下一步提示；附件遇验证码或无法提取文字时，agent 会给你通知原文链接，方便自行查看。具体约定见[Agent 使用说明](docs/agent-usage.md)。
+
 本版包含充电查询，由本机 MCP 直接请求充电平台，按设备缓存，没有网站或自建服务器依赖。现有清单包含 15 台已核验设备，不代表全校完整清单；离线和旧数据会单独标记。[充电查询用法](docs/charging.md)
 
 校园连接按服务处理：r和一网通办先查自身入口，宿舍报修需要时核实校园接入，SSO和ITS各协议独立判断。同属网络排障的两个工具保留各自范围：单服务诊断定位一个入口及其依赖，批量检测比较固定目录；校园入口普查并不会自动扩充运行时探测清单。普通读取复用连接，同批次暂时跳过连接失败的主机，继续读取其他来源，不自动改代理或接入远程隧道。[单服务诊断](docs/network.md) · [批量检测](docs/network-audit.md)
@@ -55,13 +57,13 @@
 先装好 [uv](https://docs.astral.sh/uv/getting-started/installation/)，然后运行。这里以 Codex 为例：
 
 ```sh
-uv tool install --python 3.12 https://github.com/0error0warning/stu-mcp/releases/download/v0.7.6/stu_mcp-0.7.6-py3-none-any.whl
+uv tool install --python 3.12 https://github.com/0error0warning/stu-mcp/releases/download/v0.7.7/stu_mcp-0.7.7-py3-none-any.whl
 stu-mcp connect codex --apply
 ```
 
 第二行换成你用的客户端，比如 `claude-code` 或 `cursor`。其他客户端、豆包工作和 Skill 的接法放在[这里](docs/clients.md)。v0.6.1 起，运行 `stu-mcp update` 即可检查并升级；只想看有无新版用 `stu-mcp update --check`，也可以让 agent 调用对应更新工具。升级后，本机 stdio 重新加载 MCP；私有 HTTP 须重启宿主 MCP 服务。旧版首次升级见[安装说明](docs/install.md#从旧版升级)，支持范围见[更新说明](docs/updates.md)。
 
-使用 DeepSeek Harness（DSH）时，可另装 [STU MCP 插件](https://github.com/0error0warning/stu-mcp/releases/download/v0.7.6/dsh-stu-mcp-0.1.0.tgz)，在左右侧栏查看账号状态、打开登录设置。校园查询照常在对话里完成，安装方法见 [DSH 说明](integrations/dsh/README.md)。
+使用 DeepSeek Harness（DSH）时，可另装 [STU MCP 插件](https://github.com/0error0warning/stu-mcp/releases/download/v0.7.7/dsh-stu-mcp-0.1.0.tgz)，在左右侧栏查看账号状态、打开登录设置。校园查询照常在对话里完成，安装方法见 [DSH 说明](integrations/dsh/README.md)。
 
 MCP 接入和技能安装分别处理。随包的[课表导出技能](docs/timetable.md)组织校历核对和文件转换。v0.7.1 加入教务本人理论课表读取，继续复用该技能和同一转换器；实验课、校历及作息另行核对。技能 ZIP 是可选资源包，生成后仍需按客户端支持的方式安装，不会自动让当前 agent 加载技能。
 
@@ -83,7 +85,7 @@ stu-mcp huyou search 选课
 
 ## 还在慢慢补
 
-当前版本为 **[v0.7.6 学生预览版](docs/releases/v0.7.6.md)**，发布状态以 GitHub 发行页为准。[发行说明](docs/releases/v0.7.6.md) · [最近更新](CHANGELOG.md)
+当前版本为 **[v0.7.7 学生预览版](docs/releases/v0.7.7.md)**，发布状态以 GitHub 发行页为准。[发行说明](docs/releases/v0.7.7.md) · [最近更新](CHANGELOG.md)
 
 正式 HTTP 适配器已实测教务、MySTU 的身份与课程、ELC/Campus 的部分业务、雨课堂课程活动，以及报修登录和完整预览。WebVPN 的密码、动态口令和资源目录通过；受保护 OA 正文及自然过期续登尚未通过本轮验收。发行 CI 包含跨平台测试和默认镜像离线检查，容器内学校业务、跨机接入、更多账号和真实新报修提交仍分别待验，详见[验证记录](docs/verification.md)。
 

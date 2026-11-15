@@ -161,4 +161,5 @@ def service_results(cached: list[dict], query: str, limit: int, offset: int) -> 
             matches.append(item)
     return {"items": matches[offset:offset + limit], "total_count": len(matches),
             "offset": offset, "has_more": len(matches) > offset + limit,
+            "next_offset": offset + limit if len(matches) > offset + limit else None,
             "directory_verified_on": VERIFIED_ON, "availability_checked": False}

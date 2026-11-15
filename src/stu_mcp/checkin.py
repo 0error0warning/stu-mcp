@@ -368,7 +368,9 @@ class CheckinClient:
     def results(self, *, course_id="", limit=20, offset=0):
         if (type(limit) is not int or not 1 <= limit <= 100 or type(offset) is not int or offset < 0
                 or not isinstance(course_id, str)):
-            return {"ok": False, "source": "duifene", "action_error": "invalid_pagination"}
+            return {"ok": False, "source": "duifene", "action_error": "invalid_pagination",
+                    "status": "invalid_pagination", "retryable": False, "next_action": "adjust_pagination",
+                    "message": "每页 1–100 条，offset 为非负整数，course_id 为课程 ID 文字。"}
         view, info = self._snapshot()
         if not info or view["status"] in {"starting", "stopping"}:
             return view | {"results_available": False}

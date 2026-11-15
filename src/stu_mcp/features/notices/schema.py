@@ -1,12 +1,19 @@
 """Observed page contracts; URLs retain their original source boundaries."""
-from ...sources import OA_DIRECT, OA_SECURE_PROXY, PUBLIC_LISTINGS
+from ...sources import OA_DIRECT, OA_SECURE_PROXY, PUBLIC_LISTINGS, SOURCES
 
 QUICK_LINKS = "https://www.stu.edu.cn/kstd.htm"
 OA_LIST_PATH = "/login/Login.jsp?logintype=1"
 OA_ARTICLE_PATH = "/newstemplateprotal.jsp"
 OA_ARTICLE_PATHS = frozenset({OA_ARTICLE_PATH, "/page/maint/template/news/newstemplateprotal.jsp"})
-PUBLIC_HOSTS = frozenset({"www.stu.edu.cn", "xsc.stu.edu.cn"})
+PUBLIC_HOSTS = frozenset(SOURCES["public"].hosts)
 OA_HOSTS = frozenset({"oa.stu.edu.cn", "oa-stu-edu-cn.webvpn.stu.edu.cn"})
+XTW_HOST = "xtw.stu.edu.cn"
+XTW_MAX_PAGES = 3
+XTW_ARTICLE_FORM = ".art-main > form[name='_newscontent_fromname']"
+XTW_BODY_SELECTOR = ", ".join(XTW_ARTICLE_FORM + " > #" + identity
+                              for identity in ("vsb_content", "vsb_content_2"))
+XTW_ATTACHMENT_SUFFIXES = (".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
+                           ".txt", ".csv", ".zip", ".rar")
 
 # These identify business fields, independently of column order and wrappers.
 OA_COLUMNS = {

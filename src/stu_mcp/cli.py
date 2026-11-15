@@ -8,6 +8,7 @@ import time
 from pathlib import Path
 
 from . import __version__
+from .agent_guidance import CAPABILITY_SCOPES, capability_view
 from .app import App
 from .auth import interactive_login
 from .clients import CLIENTS, catalog, connect
@@ -29,7 +30,9 @@ def parser() -> argparse.ArgumentParser:
     serve.add_argument("--name", help="非敏感实例标签；字母数字、下划线、短横线，最多64字符")
     init = sub.add_parser("server-init", help="在新目录生成服务器主密钥和 HTTP 令牌，仅输出路径")
     init.add_argument("directory", type=Path)
-    sub.add_parser("status", help="输出功能/登录/缓存状态")
+    status = sub.add_parser("status", help="输出功能/登录/缓存状态")
+    status.add_argument("--source", choices=CAPABILITY_SCOPES, default="all")
+    status.add_argument("--compact", action="store_true", help="仅列已接入功能的精简状态")
     update = sub.add_parser("update", help="立即检查并升级当前 stu-mcp，保留用户配置")
     update.add_argument("--check", action="store_true", help="只检查官方新版本，不执行安装")
     sub.add_parser("clients", help="查看客户端接入方式与官方说明")
@@ -96,6 +99,8 @@ def parser() -> argparse.ArgumentParser:
     notice = sub.add_parser("notice", help="读取已缓存通知的正文和附件列表")
     notice.add_argument("item_id")
     notice.add_argument("--refresh", action="store_true")
+    notice.add_argument("--offset", type=int, default=0, help="缓存正文的字符偏移，续页不加 --refresh")
+    notice.add_argument("--max-chars", type=int, default=8000, help="本页正文字符数，最多20000")
     attachment = sub.add_parser("attachment", help="读取已缓存通知的 PDF / 文本附件")
     attachment.add_argument("item_id")
     attachment.add_argument("--index", type=int, default=0)
@@ -388,7 +393,7 @@ def _dispatch(args) -> int:
                                           args.comment_limit, args.reply_limit))
             return emit(app.huyou_circles(args.query, args.page))
         if args.command == "status":
-            return emit(app.status())
+            return emit(capability_view(app.status(), args.source, args.compact))
         if args.command == "setup":
             from .setup_web import SetupServer
             ui = SetupServer(app, port=args.port)
@@ -423,7 +428,7 @@ def _dispatch(args) -> int:
         if args.command == "query":
             return emit(app.query(args.kind, args.search, args.limit, args.offset, args.source))
         if args.command == "notice":
-            return emit(app.notice(args.item_id, args.refresh))
+            return emit(app.notice(args.item_id, args.refresh, args.offset, args.max_chars))
         if args.command == "attachment":
             return emit(app.attachment(args.item_id, args.index))
         if args.command == "academic-summary":
