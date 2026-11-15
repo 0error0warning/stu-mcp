@@ -182,11 +182,8 @@ class FileKeyStore:
             _reject_links(path)
             flags = os.O_RDWR | os.O_CREAT | getattr(os, "O_BINARY", 0) | getattr(os, "O_NOFOLLOW", 0)
             flags |= getattr(os, "O_NONBLOCK", 0)
-            stream = os.fdopen(os.open(path, flags, 0o600), "r+b")
+            stream = os.fdopen(os.open(path, flags, 0o600), "r+b", buffering=0)
             _check_private_file(os.fstat(stream.fileno()))
-            if not os.fstat(stream.fileno()).st_size:
-                stream.write(b"0")
-                stream.flush()
             deadline = time.monotonic() + 3
             while True:
                 try:
@@ -203,6 +200,10 @@ class FileKeyStore:
                     if time.monotonic() >= deadline:
                         raise _storage_error("安全凭据正在由其他进程更新，请稍后重试。") from None
                     time.sleep(0.025)
+            # Windows permits a byte-range lock past EOF; initialize only after ownership.
+            if not os.fstat(stream.fileno()).st_size:
+                stream.write(b"0")
+                stream.flush()
             yield
         except AppError:
             raise

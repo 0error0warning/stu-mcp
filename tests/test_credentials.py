@@ -1,5 +1,6 @@
 """Synthetic server-key tests: no operating-system credentials or school traffic."""
 import json
+import multiprocessing
 import os
 import stat
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
@@ -214,6 +215,78 @@ def test_file_store_transactions_are_safe_across_processes(tmp_path, server_key)
     for worker in range(3):
         for index in range(4):
             assert store.get_password("concurrent", f"{worker}:{index}") == f"synthetic-{worker}-{index}"
+
+
+def _write_with_another_process_holding_the_empty_lock(home, master, channel):
+    if os.name == "nt":
+        import msvcrt as native
+        attribute, acquire = "locking", native.LK_NBLCK
+    else:
+        import fcntl as native
+        attribute, acquire = "flock", native.LOCK_EX | native.LOCK_NB
+    original = getattr(native, attribute)
+    notified = False
+
+    def observe(descriptor, operation, *args):
+        nonlocal notified
+        if operation == acquire and not notified:
+            channel.send("waiting")
+            notified = True
+        return original(descriptor, operation, *args)
+
+    setattr(native, attribute, observe)
+    try:
+        FileKeyStore(Path(home), Path(master)).set_password("concurrent", "first", "synthetic-first")
+        channel.send("done")
+    except Exception:
+        channel.send("failed")
+        raise SystemExit(1) from None
+    finally:
+        setattr(native, attribute, original)
+        channel.close()
+
+
+def test_first_file_store_use_waits_for_a_locked_empty_file(tmp_path, server_key):
+    home = tmp_path / "mcp"
+    home.mkdir(mode=0o700)
+    path = home / ".credentials-lock"
+    path.touch(mode=0o600)
+    context = multiprocessing.get_context("spawn")
+    reader, writer = context.Pipe(duplex=False)
+    process = context.Process(target=_write_with_another_process_holding_the_empty_lock,
+                              args=(str(home), str(server_key), writer))
+    started = False
+    try:
+        with path.open("r+b", buffering=0) as held:
+            if os.name == "nt":
+                import msvcrt
+                msvcrt.locking(held.fileno(), msvcrt.LK_NBLCK, 1)
+            else:
+                import fcntl
+                fcntl.flock(held.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            try:
+                process.start()
+                started = True
+                writer.close()
+                assert reader.poll(20), "contender did not reach the held lock"
+                assert reader.recv() == "waiting"
+                assert os.fstat(held.fileno()).st_size == 0, "contender wrote before owning the lock"
+            finally:
+                if os.name == "nt":
+                    msvcrt.locking(held.fileno(), msvcrt.LK_UNLCK, 1)
+                else:
+                    fcntl.flock(held.fileno(), fcntl.LOCK_UN)
+        assert reader.poll(20) and reader.recv() == "done"
+    finally:
+        if started:
+            process.join(20)
+            if process.is_alive():
+                process.terminate()
+                process.join(10)
+        reader.close()
+        writer.close()
+    assert process.exitcode == 0
+    assert FileKeyStore(home, server_key).get_password("concurrent", "first") == "synthetic-first"
 
 
 def test_concurrent_first_session_keys_remain_decryptable(tmp_path, server_key):
