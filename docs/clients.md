@@ -2,7 +2,7 @@
 
 客户端资料核对基线：2026-10-05；v0.6.0 增加私有 HTTP 接入。STU MCP 可运行在自己的电脑或个人服务器，另外提供本地命令与可选技能资源包。账号仍按学校来源独立管理，与 agent 客户端解耦。
 
-v0.6.0 支持[个人服务器 Streamable HTTP](server.md)。下面的 `connect` 和 Skill 导出继续生成本地命令，不会自动配置远程地址或读取 Bearer；远程客户端须支持私有令牌，并分别核对客户端到 MCP、宿主到学校两段网络。
+v0.6.0 支持[个人服务器 Streamable HTTP](server.md)。`connect` 和 CLI Skill 导出继续生成本地命令，不会自动配置远程地址或读取 Bearer；远程客户端须支持私有令牌，并分别核对客户端到 MCP、宿主到学校两段网络。
 
 ## 支持范围
 
@@ -27,7 +27,25 @@ Codex、Claude Code、Cursor 是优先维护的核心适配；`generic` 是其�
 
 配置保存返回 `verification: configuration_only`。重新加载 / 重启并启用后，从当前 agent 发现并调用 `get_capabilities` 才算连接验证完成。
 
-Python 启动路径必须保留 uv 虚拟环境的入口，即使它是符号链接，也不能解析成底层 Python。升级后重新执行对应的 `connect ... --apply`，会备份并更新已有 STU MCP 启动项，保留用户的其他设置。导出的 JSON 或 Skill ZIP 需要重新生成并替换客户端内的旧副本；重新加载后在当前 agent 核实版本与 `get_capabilities`，配置写入成功不等于客户端已运行新版。完整步骤见[升级说明](install.md#从旧版升级)。
+Python 启动路径必须保留 uv 虚拟环境的入口，即使它是符号链接，也不能解析成底层 Python。升级后重新执行对应的 `connect ... --apply`，会备份并更新已有 STU MCP 启动项，保留用户的其他设置。通用 JSON 和本机命令 ZIP 按需重新导出并替换旧副本。重新加载后在当前 agent 调用 `get_capabilities` 核实运行版本。 [升级说明](install.md#从旧版升级)
+
+## STU MCP 使用指南
+
+`stu-campus` 是 STU MCP 使用指南的目录名。本机 stdio 和私有 Streamable HTTP 接通后，都可以选装纯 Markdown 版，安装技能无需 Python。使用本机命令接入时，按下文导出同一份指南并附上本机运行配置。 [远程 MCP 接入说明](server.md)
+
+1. 在运行版本对应的发行页下载 `stu-campus-vX.Y.Z.zip`，解压得到 `stu-campus`。该附件从同一标签的程序包生成。有合并版指南的源码也可直接取出整个技能目录。 [发行页](https://github.com/0error0warning/stu-mcp/releases) · [技能源目录](../src/stu_mcp/skills/stu-campus)
+2. 将 `stu-campus` 复制到下表的一个发现目录中，保留 `SKILL.md` 和整个 `references/`。
+3. 重新打开会话，在技能列表中确认 `stu-campus`，并调用 `get_capabilities(compact=true)` 核实当前 MCP 的运行版本和工具。升级后用对应新版 ZIP 替换之前复制的目录。
+
+| 客户端 | 项目级目录 | 用户级目录 |
+| --- | --- | --- |
+| [Codex](https://learn.chatgpt.com/docs/build-skills#where-codex-loads-local-skills) | `.agents/skills/` | `~/.agents/skills/` |
+| [Claude Code](https://code.claude.com/docs/en/skills) | `.claude/skills/` | `~/.claude/skills/` |
+| [Cursor](https://cursor.com/docs/skills#skill-directories) | `.cursor/skills/` 或 `.agents/skills/` | `~/.cursor/skills/` |
+| [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/subsystems/skills.md#local-discovery-priority) | `.dsh/skills/` 或 `.agents/skills/` | `DSH_HOME/skills/`，默认 `~/.dsh/skills/` |
+| [Antigravity](https://antigravity.google/docs/skills) | `.agents/skills/` | `~/.gemini/config/skills/` |
+
+云端会话按客户端支持的项目加载或上传方式安装。较早的发行仅提供本机命令导出时，按所用发行页的说明获取指南。
 
 ## WorkBuddy
 
@@ -98,9 +116,9 @@ CLI profile 与桌面 profile 应按实际运行环境选择；没有 `--profile
 
 提供 **CLI + Skill 候选接入**：运行 `stu-mcp connect doubao-work --apply` 生成 `stu-campus.zip`，再按客户端支持的方式安装技能。ZIP 是资源分发文件，不是各客户端通用安装器，也不会自动注册 MCP。使用本地电脑环境，先执行版本和状态命令确认它确实能访问本机安装。技能安装与调用权限依赖当前客户端，尚未用真实豆包工作验收，不报告成原生 MCP 已连接。
 
-ZIP 只有 `stu-campus/SKILL.md` 和 `stu-campus/runtime.json`；后者只含生成机器的绝对 Python 启动路径与参数，不含登录数据。换机器或重建环境后应重新导出，不能当作通用路径。云端或另一台虚拟电脑不能自动访问用户本机安装和密钥；如选择个人服务器，应在该宿主独立安装、配置安全后端并按[服务器说明](server.md)接入。无法执行时报告限制，不上传会话。包在数据目录的 `exports`，可直接删除；安装后的技能在客户端移除。
+此 ZIP 包含 `stu-campus/SKILL.md`、`references/` 和 `runtime.json`。后者只记录生成机器的绝对 Python 启动路径与参数。换机器或重建环境后重新导出。云端会话根据实际 MCP 宿主和客户端能力选择远程接入。包在数据目录的 `exports`，安装后的指南在客户端管理。 [个人服务器说明](server.md)
 
-Skill 覆盖通知正文 / 附件、成绩统计、课程 / 作业 / 日程、狐友公开讨论、服务入口与本机资料 / 待办，使用同一套数据、来源限制与加密存储，由当前 agent 分析。
+Skill 与本机 CLI 覆盖通知正文 / 附件、成绩统计、理论与医学院课表、一卡通、课程 / 作业 / 日程、狐友公开讨论、充电查询、外卖商家与菜单、服务入口与网络诊断、宿舍报修演练确认以及本机资料 / 待办（仅原生 MCP 提供的公众号读取、反馈与交互式对分易控制边界另见 `references/cli.md`），使用同一套数据、来源限制与加密存储，由当前 agent 分析。
 
 课表技能的工作流、默认行为和可选 ZIP 分发方式统一见[课表导出](timetable.md)。它不改变默认客户端接入，不代替完整学校课表读取或实际 App 导入验收。
 

@@ -10,14 +10,7 @@
 
 ## 想试试的话
 
-找一个能在你电脑上执行命令的 agent，把这两行发给它：
-
-```text
-帮我安装 STU MCP：https://github.com/0error0warning/stu-mcp
-按 docs/install.md 接入当前客户端，保留已有配置并验证公开查询。按安装版本说明登录；认证信息由我本人输入，不发给 agent。
-```
-
-[单独复制这段 prompt](install-prompt.txt) · [安装细节](docs/install.md)
+可以把安装提示发给能在你电脑上执行命令的 agent，由它安装、接入当前客户端并验证公开查询。 [复制安装提示](install-prompt.txt) · [安装说明](docs/install.md)
 
 装好以后，可以直接问它：
 
@@ -52,20 +45,21 @@ v0.7.8 明确了附件遇验证码后的交接：给你通知原文链接，结�
 
 校园连接按服务处理：r和一网通办先查自身入口，宿舍报修需要时核实校园接入，SSO和ITS各协议独立判断。同属网络排障的两个工具保留各自范围：单服务诊断定位一个入口及其依赖，批量检测比较固定目录；校园入口普查并不会自动扩充运行时探测清单。普通读取复用连接，同批次暂时跳过连接失败的主机，继续读取其他来源，不自动改代理或接入远程隧道。[单服务诊断](docs/network.md) · [批量检测](docs/network-audit.md)
 
-## 自己动手安装
+## 安装并连接 STU MCP
 
-先装好 [uv](https://docs.astral.sh/uv/getting-started/installation/)，然后运行。这里以 Codex 为例：
+按安装说明安装一个发行版，接着连接你使用的客户端。 [安装说明](docs/install.md)
+
+以 Codex 为例，安装后运行：
 
 ```sh
-uv tool install --python 3.12 https://github.com/0error0warning/stu-mcp/releases/download/v0.7.8/stu_mcp-0.7.8-py3-none-any.whl
 stu-mcp connect codex --apply
 ```
 
-第二行换成你用的客户端，比如 `claude-code` 或 `cursor`。其他客户端、豆包工作和 Skill 的接法放在[这里](docs/clients.md)。v0.6.1 起，运行 `stu-mcp update` 即可检查并升级；只想看有无新版用 `stu-mcp update --check`，也可以让 agent 调用对应更新工具。升级后，本机 stdio 重新加载 MCP；私有 HTTP 须重启宿主 MCP 服务。旧版首次升级见[安装说明](docs/install.md#从旧版升级)，支持范围见[更新说明](docs/updates.md)。
+用 Claude Code 或 Cursor 时，把 `codex` 换成 `claude-code` 或 `cursor`。v0.6.1 起可用 `stu-mcp update` 升级，或用 `stu-mcp update --check` 查看新版本。升级后，本机 stdio 重新加载 MCP，私有 HTTP 重启宿主 MCP 服务。 [客户端接入](docs/clients.md) · [升级说明](docs/install.md#从旧版升级)
 
-使用 DeepSeek Harness（DSH）时，可另装 [STU MCP 插件](https://github.com/0error0warning/stu-mcp/releases/download/v0.7.8/dsh-stu-mcp-0.1.1.tgz)，在左右侧栏查看账号状态、打开登录设置。校园查询照常在对话里完成，安装方法见 [DSH 说明](integrations/dsh/README.md)。
+使用 DeepSeek Harness（DSH）时，可另装 STU MCP 插件，在左右侧栏查看账号状态、打开登录设置。校园查询照常在对话里完成。 [DSH 插件安装](integrations/dsh/README.md)
 
-MCP 接入和技能安装分别处理。随包的[课表导出技能](docs/timetable.md)组织校历核对和文件转换。v0.7.1 加入教务本人理论课表读取，继续复用该技能和同一转换器；实验课、校历及作息另行核对。技能 ZIP 是可选资源包，生成后仍需按客户端支持的方式安装，不会自动让当前 agent 加载技能。
+连上 STU MCP 就可以查询。需要跨工具操作指引时，可选装 **STU MCP 使用指南**（`stu-campus`），按本次任务只读取对应参考（通知与附件、成绩课表与一卡通、医学院课表、外卖、公众号、狐友与充电、服务诊断与宿舍报修、对分易签到、认证维护及反馈）。豆包工作等本机命令接入也用这份指南。要导出 WakeUp CSV 或 ICS，可以另外使用**课表导出指南**（`stu-timetable-export`）核对校历和转换文件。 [使用指南获取和安装](docs/clients.md#stu-mcp-使用指南) · [课表导出](docs/timetable.md)
 
 需要登录时，让 agent 打开设置页，或自己运行 `stu-mcp setup`。在自己的浏览器里配置学校统一账号、雨课堂、对分易、WebVPN 或一卡通，认证信息不经过 agent。WebVPN 可填写已有令牌密钥，由程序生成动态码并自动登录；不配置密钥也能手动输入当前动态码。喜欢终端可用 `stu-mcp login school` 等命令，完整用法见[认证说明](docs/authentication.md)。
 
@@ -85,7 +79,7 @@ stu-mcp huyou search 选课
 
 ## 还在慢慢补
 
-当前版本为 **[v0.7.8 学生预览版](docs/releases/v0.7.8.md)**，发布状态以 GitHub 发行页为准。[发行说明](docs/releases/v0.7.8.md) · [最近更新](CHANGELOG.md)
+学生预览版的版本和下载附件以 GitHub 发行页为准。 [发行页](https://github.com/0error0warning/stu-mcp/releases) · [最近更新](CHANGELOG.md)
 
 正式 HTTP 适配器已实测教务、MySTU 的身份与课程、ELC/Campus 的部分业务、雨课堂课程活动，以及报修登录和完整预览。WebVPN 的密码、动态口令和资源目录通过；受保护 OA 正文及自然过期续登尚未通过本轮验收。发行 CI 包含跨平台测试和默认镜像离线检查，容器内学校业务、跨机接入、更多账号和真实新报修提交仍分别待验，详见[验证记录](docs/verification.md)。
 
