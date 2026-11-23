@@ -23,6 +23,8 @@ from .schema import (
     XTW_ATTACHMENT_SUFFIXES,
     XTW_BODY_SELECTOR,
     XTW_HOST,
+    is_oa_webvpn_url,
+    oa_content_url,
 )
 
 
@@ -166,7 +168,7 @@ def _oa_identity(link: Tag, base: str) -> tuple[str, str] | None:
     values = parse_qs(urlparse(url).query, keep_blank_values=True).get("docid", [])
     if len(values) != 1 or not re.fullmatch(r"[A-Za-z0-9._:-]{1,200}", values[0]):
         raise _changed("oa", "OA 通知标识缺失或有歧义。")
-    return url, values[0]
+    return oa_content_url(url, via_webvpn=is_oa_webvpn_url(base)), values[0]
 
 
 def _column_map(table: Tag) -> tuple[dict[str, int], int] | None:

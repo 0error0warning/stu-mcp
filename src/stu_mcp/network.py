@@ -87,6 +87,8 @@ def checked_url(source: str, url: str, *, authenticated: bool = False, allow_leg
     legacy_jw = source == "jw" and allow_legacy_http and parsed.hostname == "jw.stu.edu.cn"
     legacy_oa = (source == "oa" and allow_oa_http and parsed.scheme == "http"
                  and parsed.hostname == "oa-stu-edu-cn.webvpn.stu.edu.cn" and parsed.port == 8118)
+    if source == "oa" and authenticated and parsed.hostname == "oa.stu.edu.cn" and parsed.scheme == "https":
+        raise AppError("unsafe_url", "OA 原站仅读取公开内容，WebVPN 会话只用于对应访问通道。", source)
     card_read = source == "smartcard" and parsed.hostname == "smartcard.stu.edu.cn"
     if card_read and (parsed.path not in {"/accountcardUser.action", "/accounthisTrjn.action"}
                       or parsed.params or len(parsed.query) > 2048
