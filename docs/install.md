@@ -1,17 +1,17 @@
 # 给 agent 的安装操作说明
 
-本页对应 v0.7.8 学生预览版。本人可选择浏览器设置页或完整 CLI，两者共用 HTTP 认证核心；本机 stdio 与个人服务器私有 HTTP 共用同一包。服务器接入见[服务器说明](server.md)，各来源的人工步骤和成功证明见[认证说明](authentication.md)。旧版行为保留在历史发行记录，不套用到新版。
+本机 stdio 与个人服务器私有 HTTP 使用同一个 STU MCP 程序包。本人可选择浏览器设置页或完整 CLI，两者共用 HTTP 认证。所装版本以选定的发行页为准。 [服务器接入](server.md) · [认证说明](authentication.md)
 
 用户复制安装 prompt 后，可以直接完成下列安装、诊断和接入步骤。只配置用户当前使用的客户端，不默认给所有已安装客户端写配置。
 
 ## 1. 环境与发行包
 
-使用 `https://github.com/0error0warning/stu-mcp` 的 `v0.7.8` 学生预览版。[发行页](https://github.com/0error0warning/stu-mcp/releases/tag/v0.7.8) 提供 wheel、源码包与 SHA256 校验文件。不要安装未知 PyPI 同名包；当前未发布到 PyPI。
+从官方发行列表选择要安装的学生预览版。复制该标签下 `stu_mcp-版本-py3-none-any.whl` 的下载链接。源码包、可选指南 ZIP 和校验文件也从该标签的发行附件获取。STU MCP 目前通过 GitHub 发布。 [官方发行列表](https://github.com/0error0warning/stu-mcp/releases)
 
 检查 `uv`。缺少时参考 [uv 官方安装文档](https://docs.astral.sh/uv/getting-started/installation/)，使用官方安装器或系统已有的软件包管理器。优先用户目录安装；不需要管理员权限、不改全局 Python、不修改其他项目依赖。若终端还未刷新 PATH，使用安装好的 `uv` 绝对路径。
 
 ```sh
-uv tool install --python 3.12 https://github.com/0error0warning/stu-mcp/releases/download/v0.7.8/stu_mcp-0.7.8-py3-none-any.whl
+uv tool install --python 3.12 "<从发行页复制的 wheel 下载地址>"
 ```
 
 Python 3.12 缺失时，uv 可以按自己的受管理 Python 流程准备。安装后找到 `stu-mcp` 的用户级可执行文件；如果 PATH 未刷新，使用绝对路径执行接下来的命令。不要为了“修复安装”删除用户已有工具或配置。
@@ -21,10 +21,10 @@ Python 3.12 缺失时，uv 可以按自己的受管理 Python 流程准备。安
 ### 从旧版升级
 
 1. 先完成或关闭尚未发送的报修草稿；提交结果未知时先只读查单。停止同一安装的签到后台。手动安装前还须关闭旧设置页并让旧 MCP 宿主进程退出：stdio 在客户端禁用或关闭该 MCP，HTTP 停止宿主 MCP 服务；不能仅关闭网页或断开 HTTP 客户端。
-2. v0.6.0 及更旧版本需在上面的安装命令加入 `--force`，安装明确的 `v0.7.8` wheel，且仅在步骤 1 的旧进程已退出后执行。v0.6.1 及以后正常使用 `stu-mcp update`，不用 `--force`；若 v0.6.1 的更新检查受 GitHub 匿名 API 限流影响，按上述手动方式安装当前 wheel。不要删除 STU MCP 或对分易用户数据目录，也不要清空客户端配置或更换密钥库后端。
+2. v0.6.0 及更旧版本需在上面的安装命令加入 `--force`，安装选定发行标签的 wheel，且仅在步骤 1 的旧进程已退出后执行。v0.6.1 及以后正常使用 `stu-mcp update`，不用 `--force`；若 v0.6.1 的更新检查受 GitHub 匿名 API 限流影响，按上述手动方式安装选定的 wheel。不要删除 STU MCP 或对分易用户数据目录，也不要清空客户端配置或更换密钥库后端。
 3. 运行 `stu-mcp --version` 确认已安装版本。stdio 接入重新加载 MCP，使客户端启动新进程；私有 HTTP 接入须在宿主重启 MCP 服务，仅重连客户端无效。随后调用 `get_capabilities` 核实当前连接的运行版本。手动重建安装环境或启动路径改变时，重新执行当前客户端的 `stu-mcp connect CLIENT --apply`。
 4. 需要设置页时重新运行 `stu-mcp setup`。升级保留用户数据；缓存仍遵守当前解析契约，会话可能已过期，不能保证所有来源立即可读。WebVPN 自动重登仍由本人主动配置。
-5. 使用通用 JSON 或技能接入时，按需重新导出并替换客户端中的旧副本；课表技能使用 `stu-mcp skill-export --skill stu-timetable-export --apply`。资源中的 `runtime.json` 是本机 Python 路径，换机器或重建安装环境后需重新生成。ZIP 不会自动安装技能或注册 MCP。对分易用户可重新打开网页，核对登录和已选课程，再按需要恢复监听。
+5. 使用通用 JSON 或 CLI Skill 接入时，按需重新导出并替换客户端中的旧副本。课表导出仍用 `stu-mcp skill-export --skill stu-timetable-export --apply`。换机器或重建安装环境后，重新生成含有本机 Python 路径的 `runtime.json`。曾复制纯 Markdown 指南的用户，从所装版本的发行页获取对应 ZIP 并替换客户端中的目录。对分易用户可重新打开网页，核对登录和已选课程，再按需要恢复监听。 [指南安装说明](clients.md#stu-mcp-使用指南)
 
 配置写入前会备份并保留其他设置；同名冲突按下一节处理。验证失败时保留现有用户数据，分别报告安装、客户端加载和来源读取结果，不通过删配置或清缓存掩盖问题。
 
@@ -32,11 +32,13 @@ Python 3.12 缺失时，uv 可以按自己的受管理 Python 流程准备。安
 
 ## 2. 连接当前客户端
 
-`v0.7.8` 包含 53 项 MCP 工具，明确验证码附件交接、将缓存查询/刷新上限提高到100，并发布支持 DSH 0.2.2的薄插件；工具总数仍为53，原有默认值保留。医学院真实账号验收仍待完成，见[范围说明](medical-jw.md)。各项验证边界见[验证索引](verification.md)，对分易用法见[后台说明](checkin.md)。从源码构建时，在明确版本或 revision 的仓库根目录运行 `uv build`，再安装对应 wheel，不把分支名当作可复现版本。
+客户端连接后可用 `get_capabilities` 查看所运行版本提供的工具。源码安装可在选定的提交下运行 `uv build`，再安装构建出的 wheel。 [医学院验收范围](medical-jw.md) · [对分易用法](checkin.md) · [发行构建](README.md#构建发行附件)
 
 先运行 `stu-mcp clients`，按当前客户端选择 `stu-mcp connect CLIENT --apply`。自动合并配置支持 `codex`、`claude-code`、`cursor`、`workbuddy`、`zcode`、`grok-build` 和 `deepseek-harness`。官方路径、特殊合并规则和验收状态见 [客户端适配说明](clients.md)。程序负责保留其他设置、备份和生成不含凭据的启动项，不输出完整已有配置。
 
 使用绝对 Python 启动路径，避免桌面客户端的 PATH 与终端不同。DeepSeek Harness 需先安装并打开一次桌面端，再写它的桌面 profile；没有初始化时报告该步骤，不另建 CLI profile。
+
+连上 STU MCP 就可以查询。需要流程指引时，可以从对应发行页下载 **STU MCP 使用指南**（`stu-campus`）的纯 Markdown ZIP，按客户端的方式安装，本机和私有 HTTP 均可使用。 [使用指南安装说明](clients.md#stu-mcp-使用指南)
 
 豆包工作使用 `stu-mcp connect doubao-work --apply` 生成本机 Skill 包，再按客户端支持方式安装，并在本地电脑环境验证命令执行；其他可执行本机命令的 agent 可用 `generic-cli`。包生成成功不等于已导入、能执行命令或已配置原生 MCP，如实报告。可先用 CLI 验证公开查询，再由用户安装技能。不调用未公开的客户端内部接口或扫描账户数据库来自动注册。
 
@@ -44,7 +46,7 @@ Python 3.12 缺失时，uv 可以按自己的受管理 Python 流程准备。安
 
 同名冲突会返回 `client_config_conflict`；保留现状，向用户展示冲突类型，只有明确选择替换后才使用 `--replace`。原配置备份位于用户 STU MCP 数据目录的 `backups`，包含原来的设置，不要上传。
 
-保存后提醒用户重新加载/重启并启用；写入不等于已加载新工具。Skill 接入要执行版本 / 状态命令验证本机权限。
+保存后提醒用户重新加载/重启并启用，在客户端确认工具可以调用。CLI Skill 接入要执行版本 / 状态命令验证本机权限。
 
 ## 3. 验证公开功能
 

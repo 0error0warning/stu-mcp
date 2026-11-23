@@ -1,12 +1,13 @@
 # 文档目录
 
-发行安装说明对应 **v0.7.8 学生预览版**，明确验证码附件交接、将缓存查询与刷新上限提高到100，并支持 DSH 0.2.2；沿用共用认证、个人服务器接入与按需更新。安装见[安装说明](install.md)，DSH 界面见[插件安装](../integrations/dsh/README.md)，单命令升级见[更新说明](updates.md)；版本功能和真实验收范围分别记录在发行说明与验证索引中。
+安装说明从 GitHub 发行列表选取版本。各版功能和实测范围见发行说明与验证索引。 [安装](install.md) · [升级](updates.md) · [DSH 插件](../integrations/dsh/README.md)
 
 v0.7.1 提供统一账号 `login school`、配置分组能力目录和私密网页 HTTP 认证。本人可在自己的浏览器或真实终端完成交互，两者共用认证核心，MCP 不接收认证输入；用法见[配置与服务总表](campus-services.md)，检查范围见[本轮记录](verification/2026-10-23-private-setup.md)。
 
 | 用途 | 文档 |
 | --- | --- |
 | 安装、升级、登录 | [安装说明](install.md)、[更新说明](updates.md)、[客户端接入](clients.md) |
+| 安装可选的 STU MCP 使用指南 | [使用指南安装](clients.md#stu-mcp-使用指南) |
 | Agent 如何处理缓存、正文分页、失败及下一步 | [调用与结果约定](agent-usage.md) |
 | DeepSeek Harness（DSH）接入与跨 agent 兼容 | [已确定的低维护成本方案](deepseek-harness.md) |
 | DSH 0.2.2 本机升级、插件兼容与模型调用 | [v0.7.7 安装及可见工具轨迹验证](verification/2026-11-15-dsh-local.md) |
@@ -41,7 +42,7 @@ v0.7.1 提供统一账号 `login school`、配置分组能力目录和私密网�
 uv sync --locked --extra dev
 uv run --extra dev pytest
 uv run --extra dev ruff check .
-uv build
+uv run --locked --extra dev python scripts/build_release.py
 uv run --extra dev python scripts/check_installed_runtime.py
 ```
 
@@ -50,3 +51,15 @@ uv run --extra dev python scripts/check_installed_runtime.py
 `src/stu_mcp` 是 MCP/CLI、按需校园查询和本地文件转换；`src/stu_checkin` 是独立签到进程及网页。`tests/checkin_worker` 保存后台合成测试，`tests/test_checkin_integration.py` 验证共享进程与状态。上游适配代码单独放在 `src/stu_checkin/vendor`，保留来源和许可说明。
 
 真实个人页面、凭据、缓存及本机诊断回执留在 Git 外。自动化检查使用合成账号；实际课堂签到和账号登录的结论只以验证记录中的业务证据为准。
+
+## 构建发行附件
+
+推送版本标签后，Checks 工作流将同一标签构建出的 wheel、源码包、`stu-campus-vX.Y.Z.zip` 和 `SHA256SUMS.txt` 收集为 `stu-mcp-release-vX.Y.Z` 构建产物。全部标签检查通过后，从该次运行取附件用于发行。
+
+本地复核时，在干净的标签检出中执行以下命令，将 `vX.Y.Z` 换成当前检出的版本标签。
+
+```sh
+uv run --locked --extra dev python scripts/build_release.py --tag vX.Y.Z
+```
+
+脚本检查标签、项目版本、运行版本、锁文件和包元数据。纯 Markdown ZIP 从同次构建的 wheel 取出 `stu-campus`，与源码逐文件核对。`SHA256SUMS.txt` 覆盖 wheel、源码包与 `stu-campus-vX.Y.Z.zip` 三项核心产物；若同一发行另附可选资产（如 `dsh-stu-mcp-*.tgz`），随发行页单独校验。发行附件在 `dist/`，客户端安装时取运行版本同一标签的 ZIP。

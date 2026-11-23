@@ -1,13 +1,16 @@
 import json
+import re
 import sys
 import zipfile
 from pathlib import Path
 
 import pytest
+from ruamel.yaml import YAML
 
 from stu_mcp import cli, skill_export
 from stu_mcp.clients import connect
 from stu_mcp.runtime import AppError, Runtime
+from stu_mcp.server import build_server
 
 
 @pytest.fixture
@@ -176,3 +179,51 @@ def test_skill_cli_can_explicitly_export_without_constructing_app(tmp_path, skil
 def test_skill_cli_default_still_selects_stu_campus():
     args = cli.parser().parse_args(["skill-export"])
     assert args.skill == "stu-campus" and args.apply is False
+
+
+async def test_bundled_stu_campus_skill_structure_links_and_tool_coverage(app, tmp_path, monkeypatch):
+    skill_dir = skill_export.SKILLS_ROOT / "stu-campus"
+    assert not skill_dir.is_symlink() and skill_dir.is_dir()
+    files = {}
+    for path in sorted(skill_dir.rglob("*")):
+        assert not path.is_symlink(), path
+        if path.is_file():
+            relative = path.relative_to(skill_dir).as_posix()
+            assert path.suffix == ".md" and relative.lower() != "runtime.json", relative
+            files[relative] = path.read_text(encoding="utf-8")
+
+    skill_md = files["SKILL.md"]
+    match = re.match(r"^---\n(.*?)\n---\n", skill_md, re.DOTALL)
+    assert match is not None
+    meta = YAML(typ="safe").load(match.group(1))
+    assert meta["name"] == "stu-campus"
+    assert isinstance(meta["description"], str) and meta["description"].strip()
+    assert len(skill_md) < 3500
+    assert len(files["references/cli.md"]) < 5500
+
+    linked = set(re.findall(r"\[[^\]]+\]\((references/[^)#\s]+)\)", skill_md))
+    actual_refs = {rel for rel in files if rel.startswith("references/")}
+    assert linked == actual_refs
+
+    default_home = tmp_path / "unused-default-home"
+    monkeypatch.setenv("STU_MCP_HOME", str(default_home))
+    tools = {tool.name for tool in await build_server(app).list_tools()}
+    assert not default_home.exists()
+    mcp_docs = "\n".join(text for rel, text in files.items() if rel != "references/cli.md")
+    missing = sorted(name for name in tools if not re.search(rf"\b{re.escape(name)}\b", mcp_docs))
+    assert not missing, f"MCP-facing stu-campus docs missing tools: {missing}"
+    assert "stu-timetable-export" in mcp_docs
+
+    takeout_doc = files["references/takeout.md"]
+    assert "默认为 `false`" in takeout_doc and "默认 `include_closed=true`" in takeout_doc
+    assert "include_closed=false" in takeout_doc and "不重复" in takeout_doc
+
+
+def test_bundled_stu_campus_cli_doc_covers_key_commands_and_scope():
+    cli_doc = (skill_export.SKILLS_ROOT / "stu-campus" / "references" / "cli.md").read_text(encoding="utf-8")
+    for token in ("med_jw", "takeout", "card-transactions", "network-audit", "repair",
+                  "huyou", "charging", "skill-export", "login school", "webvpn-auto", "logout"):
+        assert token in cli_doc
+    for mcp_only in ("get_wechat_article", "report_feedback", "get_takeout_product",
+                     "prepare_takeout_selection", "clear_fields"):
+        assert mcp_only in cli_doc
