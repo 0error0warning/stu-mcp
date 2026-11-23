@@ -8,6 +8,7 @@ from contextlib import contextmanager
 from datetime import UTC, datetime
 
 from .features.jw.schema import JW_SCHEMA_VERSION
+from .features.notices.schema import oa_content_url
 from .huyou import merge_post, searchable_text
 from .runtime import AppError, Runtime, reject_symlinks
 from .sync import COURSE_KINDS, CourseSync, in_scope
@@ -16,6 +17,14 @@ from .vault import Vault
 
 def now() -> str:
     return datetime.now(UTC).isoformat()
+
+
+def _normalize_oa_links(item: dict, private: bool) -> None:
+    if item.get("source") == "oa" and item.get("kind") == "notice":
+        if item.get("url"):
+            item["url"] = oa_content_url(item["url"], via_webvpn=private)
+        for attachment in item.get("attachments", []):
+            attachment["url"] = oa_content_url(attachment["url"], via_webvpn=private)
 
 
 class Store:
@@ -80,6 +89,7 @@ class Store:
                         if previous and bool(previous["private"]) == private:
                             old = (self.vault.unprotect(bytes(previous["payload"]), cipher=cipher)
                                    if private else json.loads(previous["payload"]))
+                            _normalize_oa_links(old, private)
                             if old.get("url") == data.get("url"):
                                 data.update({key: old[key] for key in ("body", "attachments") if key in old})
                                 if "body" in data or "attachments" in data:
@@ -171,6 +181,7 @@ class Store:
             except AppError as exc:
                 unavailable.append({"source": row["source"], "status": exc.code})
                 continue
+            _normalize_oa_links(item, bool(row["private"]))
             if (row["source"] == "jw" and item["kind"] in {"grade", "exam"}
                     and item.get("jw_schema_version") != JW_SCHEMA_VERSION):
                 unverified_count += 1
@@ -202,7 +213,9 @@ class Store:
             row = c.execute("SELECT * FROM records WHERE id=?", (item_id,)).fetchone()
         if not row:
             raise AppError("not_cached", "缓存中尚无此记录；这不表示学校没有该事项。")
-        return self.vault.unprotect(bytes(row["payload"])) if row["private"] else json.loads(row["payload"])
+        item = self.vault.unprotect(bytes(row["payload"])) if row["private"] else json.loads(row["payload"])
+        _normalize_oa_links(item, bool(row["private"]))
+        return item
 
     def set_task_status(self, item_id: str, status: str) -> dict:
         if status not in ("todo", "done", "ignored") or self.get(item_id)["kind"] != "task":

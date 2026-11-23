@@ -15,7 +15,7 @@ from .parser import (
     parse_public_article,
     public_next_page,
 )
-from .schema import OA_DIRECT, OA_LIST_PATH, OA_SECURE_PROXY, QUICK_LINKS
+from .schema import OA_DIRECT, OA_LIST_PATH, OA_SECURE_PROXY, QUICK_LINKS, is_oa_webvpn_url, oa_content_url
 
 
 class NoticeAdapter:
@@ -60,7 +60,9 @@ class NoticeAdapter:
     def article(self, record: dict, vault) -> Article:
         source, url = record["source"], record["url"]
         version = None
-        if source == "oa" and urlparse(url).scheme == "https":
+        if source == "oa":
+            url = oa_content_url(url)
+        if source == "oa" and is_oa_webvpn_url(url):
             accessed = self.protected_reader(vault, url, lambda response: response.text)
             html, version = accessed.value, accessed.session_version
         else:

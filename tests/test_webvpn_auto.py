@@ -271,7 +271,7 @@ def test_network_or_permission_failure_does_not_resubmit_credentials(app, vpn_se
     assert app.vault.fingerprint("webvpn") == before
 
 
-@pytest.mark.parametrize("url", ["http://oa.stu.edu.cn/private", "https://evil.example/",
+@pytest.mark.parametrize("url", ["http://oa.stu.edu.cn/private", "https://oa.stu.edu.cn/private", "https://evil.example/",
                                "https://oa-stu-edu-cn.webvpn.stu.edu.cn/?access_token=synthetic"])
 def test_unsafe_destination_is_rejected_before_credentials_are_loaded(app, monkeypatch, url):
     monkeypatch.setattr(WebVPNConfig, "snapshot", lambda *_: pytest.fail("must validate URL first"))

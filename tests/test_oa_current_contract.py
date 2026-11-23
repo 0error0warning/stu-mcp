@@ -1,8 +1,11 @@
 """Synthetic examples for observed OA route/header contracts; no real notices."""
+import httpx
 import pytest
 
+from stu_mcp import collectors
 from stu_mcp.features.notices.parser import parse_oa, parse_oa_article, parse_public_article
-from stu_mcp.features.notices.schema import OA_ARTICLE_PATH, OA_ARTICLE_PATHS
+from stu_mcp.features.notices.schema import OA_ARTICLE_PATH, OA_ARTICLE_PATHS, OA_SECURE_PROXY
+from stu_mcp.network import CampusHTTP
 from stu_mcp.parsing import item_id
 from stu_mcp.runtime import AppError
 
@@ -30,6 +33,62 @@ def test_header_whitespace_normalization_does_not_change_business_values():
     result = parse_oa(listing(CURRENT + "?docid=123", title="合成 标题"), HOST, 1)[0]
     assert result["title"] == "合成 标题"
     assert result["department"] == "合成学院"
+
+
+@pytest.mark.parametrize("base", [HOST, OA_SECURE_PROXY])
+def test_absolute_https_oa_link_is_resolved_on_the_listing_access_path(base):
+    path = CURRENT + "?docid=123&templateid=7"
+    url = "https://oa.stu.edu.cn:443" + path
+    assert parse_oa(listing(url), base, 1)[0]["url"] == base + path
+
+
+def test_cached_https_origin_links_are_read_anonymously(app, monkeypatch):
+    path = CURRENT + "?docid=123"
+    legacy = "https://oa.stu.edu.cn"
+    attachment = "/weaver/weaver.file.FileDownload?fileid=42&download=1&requestid=0"
+    record = {"id": item_id("oa", "notice", "123"), "kind": "notice", "title": "合成公告", "url": legacy + path,
+              "attachments": [{"name": "合成附件", "url": legacy + attachment}]}
+    app.store.save_batch("oa", [record])
+    calls = []
+
+    def respond(request):
+        calls.append(str(request.url))
+        assert "cookie" not in request.headers
+        if request.url.path == "/login/Login.jsp":
+            return httpx.Response(200, text=listing(legacy + path))
+        if request.url.path == CURRENT:
+            return httpx.Response(200, text='<span id="spanContent">合成正文</span>')
+        return httpx.Response(200, text="合成附件内容")
+
+    transport = httpx.MockTransport(respond)
+
+    def http_factory(source):
+        return CampusHTTP(source, transport=transport)
+
+    def protected_reader(*_):
+        pytest.fail("anonymous OA must not use WebVPN")
+
+    monkeypatch.setattr(collectors, "CampusHTTP", http_factory)
+    monkeypatch.setattr(collectors, "protected_access", protected_reader)
+    monkeypatch.setattr("stu_mcp.app.CampusHTTP", http_factory)
+    monkeypatch.setattr("stu_mcp.app.protected_access", protected_reader)
+    assert app.query("notice", source="oa")["items"][0]["url"] == HOST + path
+    assert app.notice(record["id"])["item"]["url"] == HOST + path
+    assert app.refresh("oa", 1)["coverage"]["access"] == "anonymous_http"
+    result = app.attachment(record["id"])
+    assert result["url"] == HOST + attachment and result["text"] == "合成附件内容"
+    assert app.notice(record["id"], refresh=True)["item"]["body"] == "合成正文"
+    assert calls == [HOST + "/login/Login.jsp?logintype=1", HOST + attachment, HOST + path]
+
+
+def test_cached_private_oa_origin_links_keep_the_webvpn_route(app):
+    path = CURRENT + "?docid=123"
+    record = {"id": item_id("oa", "notice", "123"), "kind": "notice", "title": "合成公告",
+              "url": HOST + path, "attachments": [{"name": "合成附件", "url": HOST + "/download.pdf"}]}
+    app.store.save_batch("oa", [record], private=True)
+    cached = app.notice(record["id"])["item"]
+    assert cached["url"] == OA_SECURE_PROXY + path
+    assert cached["attachments"][0]["url"] == OA_SECURE_PROXY + "/download.pdf"
 
 
 @pytest.mark.parametrize("query", ["docid=", "docid=&docid=123", "docid=123&docid=",

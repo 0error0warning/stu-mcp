@@ -24,6 +24,7 @@ from .features.notices.presentation import (
     source_link_result,
     validate_body_page,
 )
+from .features.notices.schema import is_oa_webvpn_url
 from .features.repair import CAPABILITY as REPAIR_CAPABILITY
 from .features.takeout import TakeoutService
 from .huyou import (
@@ -291,7 +292,7 @@ class App:
                 return result
             parsed = collectors.article(record, self.vault)
             record.update(parsed.item)
-            private = record["source"] == "oa" and str(record.get("url", "")).startswith("https:")
+            private = record["source"] == "oa" and is_oa_webvpn_url(record["url"])
             with key_lock(self.runtime.home, "webvpn") if private else nullcontext():
                 if private and parsed.session_version != self.vault.fingerprint("webvpn"):
                     raise AppError("session_changed", "WebVPN 登录状态已改变，请重新读取通知。", "oa")
@@ -323,7 +324,7 @@ class App:
             raise AppError("unsupported_source", "此来源暂不支持附件文字提取。")
         url = urljoin(record["url"], attachments[index]["url"])
         accessed = None
-        if source == "oa" and url.startswith("https:"):
+        if source == "oa" and is_oa_webvpn_url(url):
             accessed = protected_access(self.vault, url, lambda response: response)
             response = accessed.value
         else:
